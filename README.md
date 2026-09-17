@@ -112,7 +112,18 @@ O.P.S/
 
 ## 🚀 Quick Start Guide
 
-### 1. Ollama Model Setup
+### ⚡ 1-Click Launcher (Windows)
+Simply double-click **`start_ops.bat`** in the project root directory!
+It will automatically:
+1. Activate the Python virtualenv and launch the **Django Backend Engine** on port 8000.
+2. Launch the **React Desktop Dashboard & Ambient Overlay** on port 3000.
+3. Open your browser to `http://localhost:3000`.
+
+---
+
+### 🛠️ Manual Step-by-Step Setup
+
+#### 1. Ollama Model Setup
 Ensure [Ollama](https://ollama.ai) is installed and pull the required 3 lightweight models:
 ```bash
 ollama pull qwen2.5:0.5b
@@ -120,7 +131,7 @@ ollama pull llama3.2:1b
 ollama pull qwen2.5-coder:1.5b
 ```
 
-### 2. Backend Setup (Django & AI Services)
+#### 2. Backend Setup (Django & AI Services)
 ```bash
 cd backend
 python -m venv venv
@@ -134,7 +145,7 @@ python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
 ```
 
-### 3. Frontend Setup (React + Tailwind CSS)
+#### 3. Frontend Setup (React + Tailwind CSS)
 ```bash
 cd frontend
 npm install
