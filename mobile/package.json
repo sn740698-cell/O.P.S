@@ -1,0 +1,20 @@
+{
+  "name": "OpsMobile",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "android": "react-native run-android",
+    "start": "react-native start"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-native": "0.74.2",
+    "@increase21/rn-floating-bubble": "^1.0.0",
+    "@husam287/react-native-draw-overlay": "^1.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "metro-react-native-babel-preset": "0.77.0"
+  }
+}
