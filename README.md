@@ -137,7 +137,39 @@ All automated actions (browser navigation, DOM clicks, keyboard/mouse macros, te
 
 ---
 
-## 🤖 3. Model Suite Strategy
+## 📱 3. Mobile Companion Architecture (Bidirectional PC ↔ Phone System)
+
+O.P.S. includes a dedicated **React Native Android Companion App** (`/mobile`) that creates a bidirectional link between your smartphone and your PC:
+
+```text
+               ┌─────────────────────────────────┐
+               │         O.P.S. BACKEND          │
+               │   (Runs heavy LLMs on Laptop)   │
+               └────────────────┬────────────────┘
+                                │
+        ┌───────────────────────┴───────────────────────┐
+        ▼                                               ▼
+┌──────────────────────────────┐        ┌──────────────────────────────┐
+│  1. CONTROLLING YOUR LAPTOP  │        │  2. CONTROLLING YOUR PHONE   │
+│         FROM YOUR PHONE      │        │        FROM YOUR LAPTOP      │
+├──────────────────────────────┤        ├──────────────────────────────┤
+│ • Run terminal commands on PC│        │ • Capture phone camera feed  │
+│ • Write & build PC code      │        │ • Inspect phone notifications│
+│ • Open browser / web research│        │ • Sync clipboard phone ↔ PC  │
+│ • Control VS Code & Docker   │        │ • Vibrate/Alert on approval  │
+│ • Take laptop screenshots    │        │ • Record phone microphone    │
+└──────────────────────────────┘        └──────────────────────────────┘
+```
+
+### Mobile Companion Features:
+1. **Persistent Floating Chat Bubble Overlay**: A Messenger-style floating head that stays over any Android app for instant voice/text commands.
+2. **Mobile Human-in-the-Loop Gateway**: Approve or deny sensitive PC execution requests (terminal commands, git pushes, script execution) via mobile notifications or popup modals.
+3. **Cross-Device Shared Clipboard**: Synchronizes clipboard buffers instantly between phone and desktop.
+4. **Mobile Web PWA & Tailscale Remote Access**: Access your desktop O.P.S. cockpit from anywhere over 4G/5G encrypted tunnels.
+
+---
+
+## 🤖 4. Model Suite Strategy
 
 O.P.S. combines lightweight local models with cloud fallback options:
 
@@ -164,6 +196,7 @@ O.P.S. combines lightweight local models with cloud fallback options:
 | **Vector DB** | ChromaDB, Sentence-Transformers |
 | **Voice AI** | Faster-Whisper (STT), Piper / Kokoro (TTS) |
 | **Automation** | Playwright, Crawl4AI, PyAutoGUI, Model Context Protocol (MCP) |
+| **Mobile App** | React Native Android Companion, `@increase21/rn-floating-bubble` |
 | **Database** | PostgreSQL |
 | **Deployment** | Docker, Windows 1-Click Batch Launcher |
 
@@ -197,6 +230,9 @@ O.P.S/
 │   └── package.json
 │
 ├── mobile/                   # React Native Android Companion App
+│   ├── package.json          # Floating bubble overlay & draw-overlay dependencies
+│   └── App.js                # Mobile companion application entrypoint
+│
 └── start_ops.bat             # 1-Click Windows Launcher
 ```
 
@@ -254,6 +290,13 @@ npm run dev
 ```
 Navigate to `http://localhost:3000` to access the O.P.S. Cockpit.
 
+#### 4. Run Mobile Companion (Android)
+```bash
+cd mobile
+npm install
+npx react-native run-android
+```
+
 ---
 
 ## 🛣️ Implementation Roadmap
@@ -268,7 +311,7 @@ Navigate to `http://localhost:3000` to access the O.P.S. Cockpit.
 - [ ] Interactive Permission Popup Modal with Human-in-the-Loop Gateway
 - [ ] ChromaDB Vector RAG integration for long-term project memory
 - [ ] Faster-Whisper STT & Piper TTS Perception Subsystem
-- [ ] React Native Android companion app deployment
+- [ ] React Native Android companion floating bubble deployment
 
 ---
 
