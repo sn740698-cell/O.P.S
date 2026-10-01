@@ -13,13 +13,16 @@ echo         Local-First AI Operating System - Environment Launcher
 echo ======================================================================
 echo.
 
-echo [1/3] Starting Django Backend Engine (Port 8000)...
+echo [1/4] Starting Django Backend Engine (Port 8000)...
 start /min "O.P.S Backend (Django)" cmd /c "cd /d %ROOT_DIR%backend && call .\venv\Scripts\activate.bat && python manage.py runserver 0.0.0.0:8000"
 
-echo [2/3] Starting React Desktop Dashboard (Vite)...
+echo [2/4] Starting React Desktop Dashboard (Vite)...
 start /min "O.P.S Frontend (Vite)" cmd /c "cd /d %ROOT_DIR%frontend && npm run dev"
 
-echo [3/3] Waiting for servers to initialize...
+echo [3/4] Starting System-Wide Desktop Overlay Daemon (Works everywhere: WhatsApp, Games, Apps)...
+start /min "O.P.S Desktop Overlay" cmd /c "cd /d %ROOT_DIR% && call .\backend\venv\Scripts\activate.bat && python local_agent\desktop_overlay.py"
+
+echo [4/4] Waiting for servers to initialize...
 timeout /t 4 /nobreak >nul
 
 echo Opening O.P.S. Ambient Overlay Dashboard in default browser...
@@ -27,8 +30,9 @@ start http://localhost:3000
 
 echo.
 echo ======================================================================
-echo  O.P.S. is now running in the BACKGROUND! 
-echo  Press Ctrl+Windows anytime and say "Hey OPS" to bring up pop-up face.
+echo  O.P.S. System-Wide Ambient Engine is ACTIVE EVERYWHERE! 
+echo  Press Ctrl+Win anywhere (over WhatsApp, Chrome, Games, Home Screen)
+echo  to bring up the O.P.S. System-Wide Pop-Up Face Cockpit!
 echo ======================================================================
 echo.
 timeout /t 3 /nobreak >nul
@@ -37,6 +41,7 @@ exit
 :BACKGROUND_MODE
 start /min "O.P.S Backend (Django)" cmd /c "cd /d %ROOT_DIR%backend && call .\venv\Scripts\activate.bat && python manage.py runserver 0.0.0.0:8000"
 start /min "O.P.S Frontend (Vite)" cmd /c "cd /d %ROOT_DIR%frontend && npm run dev"
+start /min "O.P.S Desktop Overlay" cmd /c "cd /d %ROOT_DIR% && call .\backend\venv\Scripts\activate.bat && python local_agent\desktop_overlay.py"
 timeout /t 4 /nobreak >nul
 start http://localhost:3000
 exit
