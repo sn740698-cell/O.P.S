@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Sparkles, Mic, MicOff, Keyboard, ShieldAlert, Radio, Moon, Send } from 'lucide-react';
+import { Bot, Sparkles, Mic, MicOff, Keyboard, ShieldAlert, Radio, Moon, Send, Smile, Zap } from 'lucide-react';
 
 export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -8,10 +8,11 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
   const [inputMode, setInputMode] = useState('text'); // 'text' (Quiet Night Mode) or 'voice' (Wispr Flow)
   const [isListening, setIsListening] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState('Wispr Flow Standby');
+  const [heyOpsTriggered, setHeyOpsTriggered] = useState(false);
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  // Initialize Speech Recognition for Wispr Flow Voice-to-Text
+  // Initialize Speech Recognition for Wispr Flow Voice-to-Text & "Hey OPS" Wake Word
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -23,7 +24,7 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
       recognition.onstart = () => {
         setIsListening(true);
         setInputMode('voice');
-        setVoiceStatus('Wispr Flow Listening... (Ctrl+Win)');
+        setVoiceStatus('Wispr Flow Listening... Speak "Hey OPS" or command');
       };
 
       recognition.onresult = (event) => {
@@ -38,9 +39,34 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
           }
         }
 
-        const combined = (finalTranscript || interimTranscript).trim();
-        if (combined) {
-          setPrompt(combined);
+        const rawText = (finalTranscript || interimTranscript).trim();
+        const lowerText = rawText.toLowerCase();
+
+        // Check for "Hey OPS" wake phrase trigger
+        if (
+          lowerText.includes('hey ops') ||
+          lowerText.includes('hey opps') ||
+          lowerText.includes('hey office') ||
+          lowerText.startsWith('ops ') ||
+          lowerText === 'ops'
+        ) {
+          setIsOpen(true); // Pop up the face modal immediately!
+          setHeyOpsTriggered(true);
+
+          // Strip out "Hey OPS" wake word from command text
+          const cleaned = rawText
+            .replace(/hey\s+ops/gi, '')
+            .replace(/hey\s+opps/gi, '')
+            .replace(/hey\s+office/gi, '')
+            .replace(/^ops\s+/gi, '')
+            .trim();
+
+          setPrompt(cleaned);
+
+          // Reset Hey OPS trigger visual banner after 3.5s
+          setTimeout(() => setHeyOpsTriggered(false), 3500);
+        } else if (rawText) {
+          setPrompt(rawText);
         }
       };
 
@@ -64,12 +90,14 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
   // Global Ctrl + Win Hotkey Listener (activates Voice) and Ctrl+Shift+K (activates Quiet Text Mode)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ctrl + Win: Toggle Wispr Flow Voice
+      // Ctrl + Win: Toggle Wispr Flow Voice & Trigger Face Pop-up
       if (e.ctrlKey && (e.key === 'Meta' || e.key === 'OS' || e.code === 'MetaLeft' || e.code === 'MetaRight')) {
         e.preventDefault();
+        setHeyOpsTriggered(true);
+        setTimeout(() => setHeyOpsTriggered(false), 3000);
         toggleWisprVoice();
       }
-      
+
       // Ctrl + Shift + K: Focus Quiet Text Input Mode
       if (e.ctrlKey && e.shiftKey && (e.key === 'K' || e.key === 'k')) {
         e.preventDefault();
@@ -94,7 +122,7 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
   };
 
   const toggleWisprVoice = async () => {
-    setIsOpen(true);
+    setIsOpen(true); // Pop open the face popup on Ctrl + Win
     setInputMode('voice');
 
     try {
@@ -150,18 +178,49 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.85, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="mb-4 w-96 rounded-2xl bg-slate-900/95 border border-indigo-500/30 p-4 shadow-2xl backdrop-blur-xl"
+            exit={{ opacity: 0, scale: 0.85, y: 30 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className="mb-4 w-96 rounded-2xl bg-slate-900/95 border border-indigo-500/30 p-4 shadow-2xl backdrop-blur-xl relative overflow-hidden"
           >
-            {/* Header */}
+            {/* Background Glow Effect */}
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Face Header with Interactive Avatar Expression */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
-                <span className="font-semibold text-sm text-slate-200">O.P.S. Input Cockpit</span>
+              <div className="flex items-center gap-2.5">
+                {/* Pop-up Avatar Face Icon */}
+                <motion.div
+                  animate={{
+                    scale: heyOpsTriggered ? [1, 1.25, 1] : 1,
+                    rotate: heyOpsTriggered ? [0, 10, -10, 0] : 0
+                  }}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center border shadow-lg ${
+                    heyOpsTriggered
+                      ? 'bg-gradient-to-tr from-amber-500 to-purple-600 border-amber-300 shadow-amber-500/30'
+                      : isListening
+                      ? 'bg-gradient-to-tr from-purple-600 to-red-500 border-purple-300 shadow-purple-500/30'
+                      : 'bg-gradient-to-tr from-indigo-600 to-purple-600 border-indigo-300/30'
+                  }`}
+                >
+                  <Bot className="w-5 h-5 text-white" />
+                </motion.div>
+
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-sm text-slate-100">O.P.S. Face Cockpit</span>
+                    {heyOpsTriggered && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono animate-bounce">
+                        HEY OPS!
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400">Call "Hey OPS" or Ctrl+Win</p>
+                </div>
               </div>
 
+              {/* Mode Selector */}
               <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
                 <button
                   onClick={switchToQuietTextMode}
@@ -190,6 +249,26 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
                 </button>
               </div>
             </div>
+
+            {/* "Hey OPS" Wake Word Trigger Banner */}
+            <AnimatePresence>
+              {heyOpsTriggered && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="mt-2.5 p-2 rounded-lg bg-gradient-to-r from-purple-900/80 via-indigo-900/80 to-purple-900/80 border border-purple-400/40 flex items-center justify-between shadow-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-300 animate-spin" />
+                    <span className="text-xs font-semibold text-amber-200">
+                      "Hey OPS" Recognized! Pop-up Active.
+                    </span>
+                  </div>
+                  <Smile className="w-4 h-4 text-purple-300" />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Mode Banner Indicator */}
             <div className="mt-2.5 px-3 py-1.5 rounded-md bg-slate-950/70 border border-slate-800 flex items-center justify-between text-xs font-mono">
@@ -237,8 +316,8 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
                   onKeyDown={handleKeyDown}
                   placeholder={
                     inputMode === 'text'
-                      ? 'Type prompt silently... (Press Enter to execute)'
-                      : 'Speak via Wispr Flow (Ctrl+Win) or edit text...'
+                      ? 'Type command silently... (Press Enter to execute)'
+                      : 'Call "Hey OPS" or speak via Wispr Flow (Ctrl+Win)...'
                   }
                   className="w-full h-24 rounded-lg bg-slate-950 border border-slate-800 p-3 pr-10 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-sans"
                 />
@@ -259,7 +338,7 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
               <div className="flex items-center justify-between mt-2">
                 <span className="text-xs text-slate-500 flex items-center gap-1 font-mono">
                   <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
-                  {inputMode === 'text' ? 'Keyboard Active' : 'Hotkey: Ctrl+Win'}
+                  {inputMode === 'text' ? 'Keyboard Active' : 'Wake: "Hey OPS"'}
                 </span>
                 <button
                   type="submit"
@@ -274,18 +353,22 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
         )}
       </AnimatePresence>
 
-      {/* Floating Action Button Avatar */}
+      {/* Floating Action Button Avatar Face */}
       <motion.button
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.92 }}
         onClick={() => setIsOpen(!isOpen)}
         className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl border relative transition-all ${
-          isListening
+          heyOpsTriggered
+            ? 'bg-gradient-to-tr from-amber-500 via-purple-600 to-indigo-600 border-amber-300 ring-4 ring-amber-500/30 animate-pulse'
+            : isListening
             ? 'bg-gradient-to-tr from-red-600 via-purple-600 to-indigo-600 border-red-400/50 shadow-red-500/30 ring-4 ring-red-500/20'
             : 'bg-gradient-to-tr from-indigo-600 via-purple-600 to-indigo-400 border-indigo-300/30 shadow-indigo-500/30'
         }`}
       >
-        {isListening ? (
+        {heyOpsTriggered ? (
+          <Bot className="w-7 h-7 text-amber-200 animate-bounce" />
+        ) : isListening ? (
           <Mic className="w-7 h-7 text-white animate-bounce" />
         ) : inputMode === 'text' ? (
           <Keyboard className="w-6 h-6 text-indigo-200" />
@@ -294,7 +377,11 @@ export default function FloatingAvatar({ activeCategory, onPromptSubmit }) {
         )}
         <span
           className={`absolute top-0 right-0 w-3.5 h-3.5 border-2 border-slate-950 rounded-full ${
-            isListening ? 'bg-red-500 animate-ping' : 'bg-emerald-500'
+            heyOpsTriggered
+              ? 'bg-amber-400 animate-ping'
+              : isListening
+              ? 'bg-red-500 animate-ping'
+              : 'bg-emerald-500'
           }`}
         />
       </motion.button>
