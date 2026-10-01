@@ -23,7 +23,7 @@ class OPSDesktopOverlay:
     """
     O.P.S. Native System-Wide Desktop Overlay Daemon.
     Floats ON TOP of all Windows apps (WhatsApp, Chrome, Desktop, VS Code, Games).
-    Triggers HANDS-FREE when you say "He OPS" or "Hey OPS" without touching anything!
+    Starts VISIBLE and FOCUSED on desktop so Wispr Flow can dictate directly into it!
     """
 
     def __init__(self):
@@ -39,13 +39,13 @@ class OPSDesktopOverlay:
         # Position window in bottom-right corner of screen
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        width = 420
+        width = 440
         height = 300
         x = screen_width - width - 30
         y = screen_height - height - 80
         self.root.geometry(f"{width}x{height}+{x}+{y}")
 
-        self.is_open = False
+        self.is_open = True
         self.input_mode = "text"  # 'text' or 'voice'
         self.backend_url = "http://localhost:8000/api/v1"
         self.hey_ops_triggered = False
@@ -54,17 +54,19 @@ class OPSDesktopOverlay:
         self._setup_hotkeys()
         self._setup_handsfree_wake_word_listener()
         
-        # Start hidden initially
-        self.root.withdraw()
+        # Show and focus immediately on launch
+        self.show_overlay()
 
     def _build_ui(self):
         # Container frame with glowing border effect
         main_frame = tk.Frame(self.root, bg="#0f172a", highlightbackground="#6366f1", highlightthickness=2)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Header bar
+        # Header bar (draggable window)
         header_frame = tk.Frame(main_frame, bg="#1e293b", height=42)
         header_frame.pack(fill=tk.X, side=tk.TOP)
+        header_frame.bind("<B1-Motion>", self._on_drag)
+        header_frame.bind("<Button-1>", self._start_drag)
 
         title_label = tk.Label(
             header_frame,
@@ -75,7 +77,7 @@ class OPSDesktopOverlay:
         )
         title_label.pack(side=tk.LEFT, padx=10, pady=8)
 
-        # Close button
+        # Close & Minimize buttons
         close_btn = tk.Button(
             header_frame,
             text="✕",
@@ -92,7 +94,7 @@ class OPSDesktopOverlay:
         # Wake Word Alert Banner
         self.wake_banner = tk.Label(
             main_frame,
-            text="🎙️ Hands-Free Mic Active: Say 'He OPS' or 'Hey OPS' anywhere!",
+            text="🎙️ Active & Listening: Wispr Flow Dictation & 'He OPS' Wake Word",
             font=("Segoe UI", 8, "bold"),
             fg="#a5b4fc",
             bg="#1e293b",
@@ -103,14 +105,14 @@ class OPSDesktopOverlay:
         # Mode Indicator Banner
         self.banner_label = tk.Label(
             main_frame,
-            text="🌙 System-Wide Pop-Up (Active over WhatsApp, Games, Desktop)",
+            text="🌙 Active System-Wide over WhatsApp, Chrome, Desktop & Apps",
             font=("Segoe UI", 8),
             fg="#a5b4fc",
             bg="#0f172a"
         )
         self.banner_label.pack(anchor=tk.W, padx=12, pady=(4, 4))
 
-        # Text input area
+        # Text input area (Focused for Wispr Flow dictation)
         self.text_area = tk.Text(
             main_frame,
             font=("Segoe UI", 10),
@@ -120,7 +122,7 @@ class OPSDesktopOverlay:
             bd=1,
             relief=tk.SOLID,
             highlightthickness=1,
-            highlightbackground="#334155",
+            highlightbackground="#6366f1",
             wrap=tk.WORD,
             height=4
         )
@@ -133,7 +135,7 @@ class OPSDesktopOverlay:
 
         self.status_label = tk.Label(
             footer_frame,
-            text="Say 'He OPS' | Ctrl+Win",
+            text="Wispr Flow Ready | Hotkey: Ctrl+Win",
             font=("Segoe UI", 8),
             fg="#64748b",
             bg="#0f172a"
@@ -155,6 +157,17 @@ class OPSDesktopOverlay:
         )
         dispatch_btn.pack(side=tk.RIGHT)
 
+    def _start_drag(self, event):
+        self._drag_x = event.x
+        self._drag_y = event.y
+
+    def _on_drag(self, event):
+        deltax = event.x - self._drag_x
+        deltay = event.y - self._drag_y
+        x = self.root.winfo_x() + deltax
+        y = self.root.winfo_y() + deltay
+        self.root.geometry(f"+{x}+{y}")
+
     def _setup_hotkeys(self):
         """Sets up global hotkey listener for Ctrl + Windows in Windows OS using keyboard module & Win32 API."""
         if keyboard:
@@ -162,9 +175,8 @@ class OPSDesktopOverlay:
                 keyboard.add_hotkey('ctrl+windows', lambda: self.root.after(0, self.toggle_overlay))
                 keyboard.add_hotkey('ctrl+win', lambda: self.root.after(0, self.toggle_overlay))
             except Exception as e:
-                print(f"[Overlay] Keyboard hotkey registration note: {e}")
+                pass
 
-        # Native Win32 API Hotkey listener fallback thread
         def listen_win32_keys():
             try:
                 import ctypes
@@ -192,10 +204,8 @@ class OPSDesktopOverlay:
         """
         Background Hands-Free Audio Listener.
         Constantly listens to microphone in background for "He OPS" or "Hey OPS".
-        Pops up the overlay system-wide automatically WITHOUT touching anything!
         """
         if not sr:
-            print("[Overlay] SpeechRecognition module missing, skipping background handsfree listener.")
             return
 
         def mic_listener_loop():
@@ -203,8 +213,6 @@ class OPSDesktopOverlay:
             recognizer.energy_threshold = 300
             recognizer.dynamic_energy_threshold = True
 
-            print("[Overlay] Hands-Free Background Mic Listener Started... Say 'He OPS' anywhere!")
-            
             while True:
                 try:
                     with sr.Microphone() as source:
@@ -213,26 +221,18 @@ class OPSDesktopOverlay:
 
                         try:
                             text = recognizer.recognize_google(audio).lower()
-                            print(f"[Handsfree Mic] Detected speech: '{text}'")
-
-                            # Check for "He OPS" or "Hey OPS" wake phrase
                             wake_words = ['he ops', 'hey ops', 'hey opps', 'hi ops', 'hey office', 'ops']
                             if any(w in text for w in wake_words):
-                                # Clean prompt text
                                 cleaned = text
                                 for w in wake_words:
                                     cleaned = cleaned.replace(w, '')
                                 cleaned = cleaned.strip()
 
-                                # Trigger System-Wide Pop-up Face automatically!
                                 self.root.after(0, lambda c=cleaned: self.trigger_wake_popup(c))
-
-                        except sr.UnknownValueError:
-                            pass
-                        except sr.RequestError as err:
+                        except Exception:
                             pass
 
-                except Exception as e:
+                except Exception:
                     time.sleep(0.5)
 
         t = threading.Thread(target=mic_listener_loop, daemon=True)
@@ -250,9 +250,8 @@ class OPSDesktopOverlay:
             self.text_area.delete("1.0", tk.END)
             self.text_area.insert(tk.END, prompt_command)
 
-        # Reset banner after 4s
         self.root.after(4000, lambda: self.wake_banner.config(
-            text="🎙️ Hands-Free Mic Active: Say 'He OPS' or 'Hey OPS' anywhere!",
+            text="🎙️ Active & Listening: Wispr Flow Dictation & 'He OPS' Wake Word",
             bg="#1e293b",
             fg="#a5b4fc"
         ))
