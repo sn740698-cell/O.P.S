@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ModelStatusCard from './components/ModelStatusCard';
 import AutomationTerminal from './components/AutomationTerminal';
 import FloatingAvatar from './components/FloatingAvatar';
-import { Cpu, Globe, Terminal, Shield, Layers, Activity } from 'lucide-react';
+import { Cpu, Globe, Terminal, Shield, Layers, Activity, Mic, Radio } from 'lucide-react';
 
 export default function App() {
   const [logs, setLogs] = useState([]);
@@ -13,6 +13,11 @@ export default function App() {
       router: 'qwen2.5:0.5b',
       reasoning: 'llama3.2:1b',
       coding: 'qwen2.5-coder:1.5b'
+    },
+    voice_integration: {
+      provider: 'Wispr Flow',
+      hotkey: 'Ctrl+Win',
+      is_listening: false
     }
   });
 
@@ -22,6 +27,7 @@ export default function App() {
       .then((data) => {
         setSystemInfo(data);
         addLog('System connected to Django backend & Ollama tri-model provider.', 'info');
+        addLog('Wispr Flow Voice Integration Active — Hotkey [Ctrl + Windows] enabled.', 'info');
       })
       .catch((err) => {
         setSystemInfo((prev) => ({ ...prev, status: 'offline' }));
@@ -34,7 +40,7 @@ export default function App() {
   };
 
   const handlePromptSubmit = async (promptText) => {
-    addLog(`User Request: "${promptText}"`, 'info');
+    addLog(`User Request (Voice/Text): "${promptText}"`, 'info');
     try {
       const res = await fetch('/api/v1/orchestrate/', {
         method: 'POST',
@@ -68,11 +74,17 @@ export default function App() {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Local-First Developer AI Environment • Persistent Overlay • Multi-Agent Automation
+            Local-First Developer AI Environment • Wispr Flow Voice Integration • Multi-Agent Automation
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs font-mono bg-purple-950/40 border border-purple-800/50 px-3 py-1.5 rounded-lg text-purple-300">
+            <Radio className="w-4 h-4 text-purple-400 animate-pulse" />
+            <span>Wispr Flow:</span>
+            <span className="font-bold text-emerald-400">[Ctrl + Win]</span>
+          </div>
+
           <div className="flex items-center gap-2 text-xs font-mono bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
             <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
             <span className="text-slate-400">Backend:</span>
@@ -97,14 +109,24 @@ export default function App() {
         </section>
 
         {/* System Capabilities Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="rounded-xl bg-slate-900/40 border border-slate-800/80 p-5">
+            <div className="flex items-center gap-2 text-purple-400 mb-2">
+              <Mic className="w-5 h-5" />
+              <h3 className="font-semibold text-sm text-slate-200">Wispr Flow Voice</h3>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Global <span className="text-purple-300 font-mono font-semibold">Ctrl + Win</span> hotkey activates sub-100ms voice-to-text transcription directly into O.P.S. pipeline.
+            </p>
+          </div>
+
           <div className="rounded-xl bg-slate-900/40 border border-slate-800/80 p-5">
             <div className="flex items-center gap-2 text-indigo-400 mb-2">
               <Globe className="w-5 h-5" />
-              <h3 className="font-semibold text-sm text-slate-200">Web Automation & Crawling</h3>
+              <h3 className="font-semibold text-sm text-slate-200">Web Automation</h3>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Crawl4AI, ScrapeGraphAI & Playwright for headless browser DOM control, markdown extraction, and web interaction.
+              Crawl4AI & Playwright for headless browser DOM control, markdown extraction, and web research.
             </p>
           </div>
 

@@ -179,7 +179,7 @@ O.P.S. combines lightweight local models with cloud fallback options:
 | **Reasoning Engine** | `llama3.2:1b` | `~150ms` | Context evaluation, multi-step execution graph planning. |
 | **Coding & Synthesizer**| `qwen2.5-coder:1.5b`| `~200ms` | Code generation, DOM selector extraction, PyAutoGUI parameter schemas. |
 | **RAG Embeddings** | `all-MiniLM-L6-v2` / `nomic-embed-text` | `< 20ms` | Semantic vector search across project files via ChromaDB. |
-| **Voice STT** | `Faster-Whisper` | `< 100ms` | High-speed local speech-to-text transcription. |
+| **Voice STT** | `Wispr Flow` / `Faster-Whisper` | `< 100ms` | Global `Ctrl + Windows` hotkey speech-to-text transcription. |
 | **Voice TTS** | `Piper TTS` / `Kokoro-82M` | `< 100ms` | Offline voice synthesis feedback. |
 | **Cloud Fallback** | `Gemini 2.5` / `Claude 3.5` / `GPT-4o` | Dynamic | External escalation for high-complexity reasoning or low-confidence vision tasks. |
 
@@ -310,7 +310,7 @@ npx react-native run-android
 - [ ] 7-Tier Intelligence Escalation Engine & LangGraph Agent Nodes
 - [ ] Interactive Permission Popup Modal with Human-in-the-Loop Gateway
 - [ ] ChromaDB Vector RAG integration for long-term project memory
-- [ ] Faster-Whisper STT & Piper TTS Perception Subsystem
+- [x] Wispr Flow STT (`Ctrl + Windows`) Voice-to-Text Integration Engine
 - [ ] React Native Android companion floating bubble deployment
 
 ---

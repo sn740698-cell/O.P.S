@@ -4,10 +4,12 @@ from rest_framework import status
 from ops_core.services.ollama_service import OPSOllamaService
 from ops_core.services.automation_service import OPSAutomationService
 from ops_core.services.scraping_service import OPSScrapingService
+from ops_core.services.voice_service import WisprFlowVoiceService
 
 ollama_service = OPSOllamaService()
 automation_service = OPSAutomationService()
 scraping_service = OPSScrapingService()
+voice_service = WisprFlowVoiceService()
 
 class HealthCheckView(APIView):
     def get(self, request):
@@ -19,7 +21,8 @@ class HealthCheckView(APIView):
                 "router": ollama_service.router_model,
                 "reasoning": ollama_service.reasoning_model,
                 "coding": ollama_service.coding_model
-            }
+            },
+            "voice_integration": voice_service.get_status()
         })
 
 class IntentRouterView(APIView):
@@ -80,3 +83,27 @@ class AutomationDispatcherView(APIView):
             res = automation_service.execute_gui_action(action, x, y, text)
             
         return Response(res)
+
+class WisprVoiceStatusView(APIView):
+    def get(self, request):
+        return Response(voice_service.get_status())
+
+class WisprVoiceToggleView(APIView):
+    def post(self, request):
+        res = voice_service.toggle_listening()
+        return Response(res)
+
+class WisprVoiceTranscriptView(APIView):
+    def post(self, request):
+        transcript = request.data.get("transcript", "")
+        if not transcript:
+            return Response({"error": "Transcript payload missing."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        processed = voice_service.process_voice_transcript(transcript)
+        # Option to automatically trigger pipeline execution upon receiving voice transcription:
+        auto_dispatch = request.data.get("auto_dispatch", True)
+        if auto_dispatch:
+            pipeline_res = ollama_service.orchestrate_pipeline(transcript)
+            processed["orchestration"] = pipeline_res
+            
+        return Response(processed)

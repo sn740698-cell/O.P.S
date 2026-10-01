@@ -6,7 +6,10 @@ from ops_core.views import (
     CodeSynthesizerView,
     OrchestrationView,
     WebScraperView,
-    AutomationDispatcherView
+    AutomationDispatcherView,
+    WisprVoiceStatusView,
+    WisprVoiceToggleView,
+    WisprVoiceTranscriptView
 )
 
 urlpatterns = [
@@ -17,4 +20,9 @@ urlpatterns = [
     path('orchestrate/', OrchestrationView.as_view(), name='orchestrate_pipeline'),
     path('scrape/', WebScraperView.as_view(), name='web_scraper'),
     path('automation/', AutomationDispatcherView.as_view(), name='automation_dispatcher'),
+    
+    # Wispr Flow Voice Integration Endpoints
+    path('voice/status/', WisprVoiceStatusView.as_view(), name='wispr_voice_status'),
+    path('voice/toggle/', WisprVoiceToggleView.as_view(), name='wispr_voice_toggle'),
+    path('voice/transcript/', WisprVoiceTranscriptView.as_view(), name='wispr_voice_transcript'),
 ]
