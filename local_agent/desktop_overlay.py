@@ -13,17 +13,12 @@ try:
 except ImportError:
     keyboard = None
 
-try:
-    import speech_recognition as sr
-except ImportError:
-    sr = None
-
 
 class OPSDesktopOverlay:
     """
     O.P.S. Native System-Wide Desktop Overlay Daemon.
     Floats ON TOP of all Windows apps (WhatsApp, Chrome, Desktop, VS Code, Games).
-    Starts VISIBLE and FOCUSED on desktop so Wispr Flow can dictate directly into it!
+    Microphone is OFF by default. Wispr Flow is the PRIMARY Voice Engine (On-Demand only).
     """
 
     def __init__(self):
@@ -40,7 +35,7 @@ class OPSDesktopOverlay:
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
         width = 440
-        height = 300
+        height = 320
         x = screen_width - width - 30
         y = screen_height - height - 80
         self.root.geometry(f"{width}x{height}+{x}+{y}")
@@ -48,11 +43,9 @@ class OPSDesktopOverlay:
         self.is_open = True
         self.input_mode = "text"  # 'text' or 'voice'
         self.backend_url = "http://localhost:8000/api/v1"
-        self.hey_ops_triggered = False
 
         self._build_ui()
         self._setup_hotkeys()
-        self._setup_handsfree_wake_word_listener()
         
         # Show and focus immediately on launch
         self.show_overlay()
@@ -77,7 +70,7 @@ class OPSDesktopOverlay:
         )
         title_label.pack(side=tk.LEFT, padx=10, pady=8)
 
-        # Close & Minimize buttons
+        # Close button
         close_btn = tk.Button(
             header_frame,
             text="✕",
@@ -91,28 +84,52 @@ class OPSDesktopOverlay:
         )
         close_btn.pack(side=tk.RIGHT, padx=8)
 
-        # Wake Word Alert Banner
+        # Mode Switch Bar (Voice vs. Text Switch)
+        switch_frame = tk.Frame(main_frame, bg="#0f172a")
+        switch_frame.pack(fill=tk.X, padx=10, pady=(8, 2))
+
+        self.speak_switch_btn = tk.Button(
+            switch_frame,
+            text="🎙️ Speak via Wispr Flow",
+            font=("Segoe UI", 8, "bold"),
+            fg="#ffffff",
+            bg="#7c3aed",  # Purple
+            activebackground="#6d28d9",
+            activeforeground="#ffffff",
+            bd=0,
+            padx=10,
+            pady=3,
+            command=self.trigger_wispr_speech
+        )
+        self.speak_switch_btn.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.quiet_type_btn = tk.Button(
+            switch_frame,
+            text="🌙 Quiet Type",
+            font=("Segoe UI", 8, "bold"),
+            fg="#cbd5e1",
+            bg="#334155",
+            activebackground="#475569",
+            activeforeground="#ffffff",
+            bd=0,
+            padx=10,
+            pady=3,
+            command=self.trigger_quiet_type
+        )
+        self.quiet_type_btn.pack(side=tk.LEFT)
+
+        # Mic Status Banner (Muted / Off by Default)
         self.wake_banner = tk.Label(
             main_frame,
-            text="🎙️ Active & Listening: Wispr Flow Dictation & 'He OPS' Wake Word",
-            font=("Segoe UI", 8, "bold"),
-            fg="#a5b4fc",
+            text="🔒 Mic Status: OFF / RESTING (Turns ON only via Wispr Flow)",
+            font=("Segoe UI", 8),
+            fg="#94a3b8",
             bg="#1e293b",
             pady=4
         )
-        self.wake_banner.pack(fill=tk.X, padx=8, pady=(6, 2))
+        self.wake_banner.pack(fill=tk.X, padx=8, pady=(4, 2))
 
-        # Mode Indicator Banner
-        self.banner_label = tk.Label(
-            main_frame,
-            text="🌙 Active System-Wide over WhatsApp, Chrome, Desktop & Apps",
-            font=("Segoe UI", 8),
-            fg="#a5b4fc",
-            bg="#0f172a"
-        )
-        self.banner_label.pack(anchor=tk.W, padx=12, pady=(4, 4))
-
-        # Text input area (Focused for Wispr Flow dictation)
+        # Text input area (Focused for Wispr Flow dictation / Typing)
         self.text_area = tk.Text(
             main_frame,
             font=("Segoe UI", 10),
@@ -135,7 +152,7 @@ class OPSDesktopOverlay:
 
         self.status_label = tk.Label(
             footer_frame,
-            text="Wispr Flow Ready | Hotkey: Ctrl+Win",
+            text="Wispr Flow Voice Switch | Hotkey: Ctrl+Win",
             font=("Segoe UI", 8),
             fg="#64748b",
             bg="#0f172a"
@@ -157,6 +174,32 @@ class OPSDesktopOverlay:
         )
         dispatch_btn.pack(side=tk.RIGHT)
 
+    def trigger_wispr_speech(self):
+        """Activates Voice Dictation Focus for Wispr Flow."""
+        self.input_mode = "voice"
+        self.show_overlay()
+        self.speak_switch_btn.config(bg="#9333ea", fg="#ffffff")
+        self.quiet_type_btn.config(bg="#334155", fg="#cbd5e1")
+        self.wake_banner.config(
+            text="🎙️ Wispr Flow Active: Speak now (Mic turns off when finished)",
+            bg="#6b21a8",
+            fg="#f3e8ff"
+        )
+        self.text_area.focus_set()
+
+    def trigger_quiet_type(self):
+        """Switches to Quiet Text Mode (Mic OFF)."""
+        self.input_mode = "text"
+        self.show_overlay()
+        self.quiet_type_btn.config(bg="#475569", fg="#ffffff")
+        self.speak_switch_btn.config(bg="#7c3aed", fg="#ffffff")
+        self.wake_banner.config(
+            text="🔒 Mic Status: OFF / RESTING (Quiet Typing Mode)",
+            bg="#1e293b",
+            fg="#94a3b8"
+        )
+        self.text_area.focus_set()
+
     def _start_drag(self, event):
         self._drag_x = event.x
         self._drag_y = event.y
@@ -172,8 +215,8 @@ class OPSDesktopOverlay:
         """Sets up global hotkey listener for Ctrl + Windows in Windows OS using keyboard module & Win32 API."""
         if keyboard:
             try:
-                keyboard.add_hotkey('ctrl+windows', lambda: self.root.after(0, self.toggle_overlay))
-                keyboard.add_hotkey('ctrl+win', lambda: self.root.after(0, self.toggle_overlay))
+                keyboard.add_hotkey('ctrl+windows', lambda: self.root.after(0, self.trigger_wispr_speech))
+                keyboard.add_hotkey('ctrl+win', lambda: self.root.after(0, self.trigger_wispr_speech))
             except Exception as e:
                 pass
 
@@ -191,7 +234,7 @@ class OPSDesktopOverlay:
                 while True:
                     if user32.GetMessageA(ctypes.byref(msg), None, 0, 0) != 0:
                         if msg.message == 0x0312:  # WM_HOTKEY
-                            self.root.after(0, self.toggle_overlay)
+                            self.root.after(0, self.trigger_wispr_speech)
                         user32.TranslateMessage(ctypes.byref(msg))
                         user32.DispatchMessageA(ctypes.byref(msg))
             except Exception as e:
@@ -199,62 +242,6 @@ class OPSDesktopOverlay:
 
         t = threading.Thread(target=listen_win32_keys, daemon=True)
         t.start()
-
-    def _setup_handsfree_wake_word_listener(self):
-        """
-        Background Hands-Free Audio Listener.
-        Constantly listens to microphone in background for "He OPS" or "Hey OPS".
-        """
-        if not sr:
-            return
-
-        def mic_listener_loop():
-            recognizer = sr.Recognizer()
-            recognizer.energy_threshold = 300
-            recognizer.dynamic_energy_threshold = True
-
-            while True:
-                try:
-                    with sr.Microphone() as source:
-                        recognizer.adjust_for_ambient_noise(source, duration=0.3)
-                        audio = recognizer.listen(source, timeout=4.0, phrase_time_limit=5.0)
-
-                        try:
-                            text = recognizer.recognize_google(audio).lower()
-                            wake_words = ['he ops', 'hey ops', 'hey opps', 'hi ops', 'hey office', 'ops']
-                            if any(w in text for w in wake_words):
-                                cleaned = text
-                                for w in wake_words:
-                                    cleaned = cleaned.replace(w, '')
-                                cleaned = cleaned.strip()
-
-                                self.root.after(0, lambda c=cleaned: self.trigger_wake_popup(c))
-                        except Exception:
-                            pass
-
-                except Exception:
-                    time.sleep(0.5)
-
-        t = threading.Thread(target=mic_listener_loop, daemon=True)
-        t.start()
-
-    def trigger_wake_popup(self, prompt_command=""):
-        """Called hands-free when 'He OPS' is spoken."""
-        self.show_overlay()
-        self.wake_banner.config(
-            text="⚡ 'HE OPS' RECOGNIZED! Pop-Up Active Hands-Free!",
-            bg="#b45309",
-            fg="#fef3c7"
-        )
-        if prompt_command:
-            self.text_area.delete("1.0", tk.END)
-            self.text_area.insert(tk.END, prompt_command)
-
-        self.root.after(4000, lambda: self.wake_banner.config(
-            text="🎙️ Active & Listening: Wispr Flow Dictation & 'He OPS' Wake Word",
-            bg="#1e293b",
-            fg="#a5b4fc"
-        ))
 
     def show_overlay(self):
         self.root.deiconify()
@@ -306,6 +293,13 @@ class OPSDesktopOverlay:
 
         threading.Thread(target=send_req, daemon=True).start()
         self.text_area.delete("1.0", tk.END)
+
+        # Reset Mic Status back to Resting / Muted after dispatch
+        self.wake_banner.config(
+            text="🔒 Mic Status: OFF / RESTING (Turns ON only via Wispr Flow)",
+            bg="#1e293b",
+            fg="#94a3b8"
+        )
 
     def run(self):
         self.root.mainloop()
