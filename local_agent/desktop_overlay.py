@@ -13,12 +13,17 @@ try:
 except ImportError:
     keyboard = None
 
+try:
+    import speech_recognition as sr
+except ImportError:
+    sr = None
+
 
 class OPSDesktopOverlay:
     """
     O.P.S. Native System-Wide Desktop Overlay Daemon.
     Floats ON TOP of all Windows apps (WhatsApp, Chrome, Desktop, VS Code, Games).
-    Microphone is OFF by default. Wispr Flow is the PRIMARY Voice Engine (On-Demand only).
+    Starts when you say "hey ops" OR when you press Wispr Flow hotkey (Ctrl + Win)!
     """
 
     def __init__(self):
@@ -46,6 +51,7 @@ class OPSDesktopOverlay:
 
         self._build_ui()
         self._setup_hotkeys()
+        self._setup_wake_word_listener()
         
         # Show and focus immediately on launch
         self.show_overlay()
@@ -118,12 +124,12 @@ class OPSDesktopOverlay:
         )
         self.quiet_type_btn.pack(side=tk.LEFT)
 
-        # Mic Status Banner (Muted / Off by Default)
+        # Mic Status Banner
         self.wake_banner = tk.Label(
             main_frame,
-            text="🔒 Mic Status: OFF / RESTING (Turns ON only via Wispr Flow)",
-            font=("Segoe UI", 8),
-            fg="#94a3b8",
+            text="🎙️ Trigger: Say 'Hey OPS' OR Press Wispr Flow (Ctrl+Win)",
+            font=("Segoe UI", 8, "bold"),
+            fg="#a5b4fc",
             bg="#1e293b",
             pady=4
         )
@@ -152,7 +158,7 @@ class OPSDesktopOverlay:
 
         self.status_label = tk.Label(
             footer_frame,
-            text="Wispr Flow Voice Switch | Hotkey: Ctrl+Win",
+            text="Wake: 'Hey OPS' | Hotkey: Ctrl+Win",
             font=("Segoe UI", 8),
             fg="#64748b",
             bg="#0f172a"
@@ -181,7 +187,7 @@ class OPSDesktopOverlay:
         self.speak_switch_btn.config(bg="#9333ea", fg="#ffffff")
         self.quiet_type_btn.config(bg="#334155", fg="#cbd5e1")
         self.wake_banner.config(
-            text="🎙️ Wispr Flow Active: Speak now (Mic turns off when finished)",
+            text="🎙️ Wispr Flow Active: Speak now...",
             bg="#6b21a8",
             fg="#f3e8ff"
         )
@@ -243,6 +249,62 @@ class OPSDesktopOverlay:
         t = threading.Thread(target=listen_win32_keys, daemon=True)
         t.start()
 
+    def _setup_wake_word_listener(self):
+        """
+        Background Listener for "Hey OPS" wake word.
+        When you say "Hey OPS", it automatically opens the pop-up cockpit and activates Wispr Flow speech focus!
+        """
+        if not sr:
+            return
+
+        def wake_word_loop():
+            recognizer = sr.Recognizer()
+            recognizer.energy_threshold = 300
+            recognizer.dynamic_energy_threshold = True
+
+            while True:
+                try:
+                    with sr.Microphone() as source:
+                        recognizer.adjust_for_ambient_noise(source, duration=0.2)
+                        audio = recognizer.listen(source, timeout=3.5, phrase_time_limit=4.0)
+
+                        try:
+                            text = recognizer.recognize_google(audio).lower()
+                            wake_phrases = ['hey ops', 'he ops', 'hey opps', 'hi ops', 'hey office', 'ops']
+                            if any(w in text for w in wake_phrases):
+                                cleaned = text
+                                for w in wake_phrases:
+                                    cleaned = cleaned.replace(w, '')
+                                cleaned = cleaned.strip()
+
+                                # Open system-wide pop-up & start speech focus
+                                self.root.after(0, lambda c=cleaned: self._on_hey_ops_wake(c))
+                        except Exception:
+                            pass
+                except Exception:
+                    time.sleep(0.5)
+
+        t = threading.Thread(target=wake_word_loop, daemon=True)
+        t.start()
+
+    def _on_hey_ops_wake(self, prompt_text=""):
+        """Triggered automatically when 'Hey OPS' is spoken out loud."""
+        self.trigger_wispr_speech()
+        self.wake_banner.config(
+            text="⚡ 'HEY OPS' RECOGNIZED! Pop-Up Active!",
+            bg="#b45309",
+            fg="#fef3c7"
+        )
+        if prompt_text:
+            self.text_area.delete("1.0", tk.END)
+            self.text_area.insert(tk.END, prompt_text)
+
+        self.root.after(4000, lambda: self.wake_banner.config(
+            text="🎙️ Trigger: Say 'Hey OPS' OR Press Wispr Flow (Ctrl+Win)",
+            bg="#1e293b",
+            fg="#a5b4fc"
+        ))
+
     def show_overlay(self):
         self.root.deiconify()
         self.root.lift()
@@ -294,11 +356,11 @@ class OPSDesktopOverlay:
         threading.Thread(target=send_req, daemon=True).start()
         self.text_area.delete("1.0", tk.END)
 
-        # Reset Mic Status back to Resting / Muted after dispatch
+        # Reset Mic Status back to ready after dispatch
         self.wake_banner.config(
-            text="🔒 Mic Status: OFF / RESTING (Turns ON only via Wispr Flow)",
+            text="🎙️ Trigger: Say 'Hey OPS' OR Press Wispr Flow (Ctrl+Win)",
             bg="#1e293b",
-            fg="#94a3b8"
+            fg="#a5b4fc"
         )
 
     def run(self):
