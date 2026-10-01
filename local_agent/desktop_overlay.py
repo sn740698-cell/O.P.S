@@ -8,11 +8,22 @@ import urllib.error
 import tkinter as tk
 from tkinter import ttk
 
+try:
+    import keyboard
+except ImportError:
+    keyboard = None
+
+try:
+    import speech_recognition as sr
+except ImportError:
+    sr = None
+
+
 class OPSDesktopOverlay:
     """
     O.P.S. Native System-Wide Desktop Overlay Daemon.
     Floats ON TOP of all Windows apps (WhatsApp, Chrome, Desktop, VS Code, Games).
-    Triggered globally via Ctrl + Windows hotkey or "Hey OPS" voice trigger.
+    Triggers HANDS-FREE when you say "He OPS" or "Hey OPS" without touching anything!
     """
 
     def __init__(self):
@@ -28,21 +39,22 @@ class OPSDesktopOverlay:
         # Position window in bottom-right corner of screen
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        width = 400
-        height = 280
+        width = 420
+        height = 300
         x = screen_width - width - 30
         y = screen_height - height - 80
         self.root.geometry(f"{width}x{height}+{x}+{y}")
 
         self.is_open = False
         self.input_mode = "text"  # 'text' or 'voice'
-        self.is_listening = False
         self.backend_url = "http://localhost:8000/api/v1"
+        self.hey_ops_triggered = False
 
         self._build_ui()
         self._setup_hotkeys()
+        self._setup_handsfree_wake_word_listener()
         
-        # Start hidden initially or shown as small pill
+        # Start hidden initially
         self.root.withdraw()
 
     def _build_ui(self):
@@ -51,7 +63,7 @@ class OPSDesktopOverlay:
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # Header bar
-        header_frame = tk.Frame(main_frame, bg="#1e293b", height=40)
+        header_frame = tk.Frame(main_frame, bg="#1e293b", height=42)
         header_frame.pack(fill=tk.X, side=tk.TOP)
 
         title_label = tk.Label(
@@ -77,15 +89,26 @@ class OPSDesktopOverlay:
         )
         close_btn.pack(side=tk.RIGHT, padx=8)
 
+        # Wake Word Alert Banner
+        self.wake_banner = tk.Label(
+            main_frame,
+            text="🎙️ Hands-Free Mic Active: Say 'He OPS' or 'Hey OPS' anywhere!",
+            font=("Segoe UI", 8, "bold"),
+            fg="#a5b4fc",
+            bg="#1e293b",
+            pady=4
+        )
+        self.wake_banner.pack(fill=tk.X, padx=8, pady=(6, 2))
+
         # Mode Indicator Banner
         self.banner_label = tk.Label(
             main_frame,
-            text="🌙 Quiet Text Mode (Works System-Wide: WhatsApp, Desktop, Apps)",
+            text="🌙 System-Wide Pop-Up (Active over WhatsApp, Games, Desktop)",
             font=("Segoe UI", 8),
             fg="#a5b4fc",
             bg="#0f172a"
         )
-        self.banner_label.pack(anchor=tk.W, padx=12, pady=(8, 4))
+        self.banner_label.pack(anchor=tk.W, padx=12, pady=(4, 4))
 
         # Text input area
         self.text_area = tk.Text(
@@ -110,7 +133,7 @@ class OPSDesktopOverlay:
 
         self.status_label = tk.Label(
             footer_frame,
-            text="Hotkey: Ctrl+Win | Wake: 'Hey OPS'",
+            text="Say 'He OPS' | Ctrl+Win",
             font=("Segoe UI", 8),
             fg="#64748b",
             bg="#0f172a"
@@ -133,18 +156,23 @@ class OPSDesktopOverlay:
         dispatch_btn.pack(side=tk.RIGHT)
 
     def _setup_hotkeys(self):
-        """Sets up global hotkey listener for Ctrl + Windows in Windows OS."""
-        def listen_global_keys():
+        """Sets up global hotkey listener for Ctrl + Windows in Windows OS using keyboard module & Win32 API."""
+        if keyboard:
+            try:
+                keyboard.add_hotkey('ctrl+windows', lambda: self.root.after(0, self.toggle_overlay))
+                keyboard.add_hotkey('ctrl+win', lambda: self.root.after(0, self.toggle_overlay))
+            except Exception as e:
+                print(f"[Overlay] Keyboard hotkey registration note: {e}")
+
+        # Native Win32 API Hotkey listener fallback thread
+        def listen_win32_keys():
             try:
                 import ctypes
                 user32 = ctypes.windll.user32
-
-                # Register VK_LWIN (0x5B) and VK_RWIN (0x5C) or Ctrl+Win hotkey loop
                 MOD_CONTROL = 0x0002
                 MOD_WIN = 0x0008
                 VK_O = 0x4F
 
-                # Hotkey ID 1: Ctrl + Win + O or Ctrl + Win
                 user32.RegisterHotKey(None, 1, MOD_CONTROL | MOD_WIN, VK_O)
 
                 msg = ctypes.wintypes.MSG()
@@ -155,10 +183,79 @@ class OPSDesktopOverlay:
                         user32.TranslateMessage(ctypes.byref(msg))
                         user32.DispatchMessageA(ctypes.byref(msg))
             except Exception as e:
-                print(f"[Desktop Overlay] Global hotkey listener notice: {e}")
+                pass
 
-        t = threading.Thread(target=listen_global_keys, daemon=True)
+        t = threading.Thread(target=listen_win32_keys, daemon=True)
         t.start()
+
+    def _setup_handsfree_wake_word_listener(self):
+        """
+        Background Hands-Free Audio Listener.
+        Constantly listens to microphone in background for "He OPS" or "Hey OPS".
+        Pops up the overlay system-wide automatically WITHOUT touching anything!
+        """
+        if not sr:
+            print("[Overlay] SpeechRecognition module missing, skipping background handsfree listener.")
+            return
+
+        def mic_listener_loop():
+            recognizer = sr.Recognizer()
+            recognizer.energy_threshold = 300
+            recognizer.dynamic_energy_threshold = True
+
+            print("[Overlay] Hands-Free Background Mic Listener Started... Say 'He OPS' anywhere!")
+            
+            while True:
+                try:
+                    with sr.Microphone() as source:
+                        recognizer.adjust_for_ambient_noise(source, duration=0.3)
+                        audio = recognizer.listen(source, timeout=4.0, phrase_time_limit=5.0)
+
+                        try:
+                            text = recognizer.recognize_google(audio).lower()
+                            print(f"[Handsfree Mic] Detected speech: '{text}'")
+
+                            # Check for "He OPS" or "Hey OPS" wake phrase
+                            wake_words = ['he ops', 'hey ops', 'hey opps', 'hi ops', 'hey office', 'ops']
+                            if any(w in text for w in wake_words):
+                                # Clean prompt text
+                                cleaned = text
+                                for w in wake_words:
+                                    cleaned = cleaned.replace(w, '')
+                                cleaned = cleaned.strip()
+
+                                # Trigger System-Wide Pop-up Face automatically!
+                                self.root.after(0, lambda c=cleaned: self.trigger_wake_popup(c))
+
+                        except sr.UnknownValueError:
+                            pass
+                        except sr.RequestError as err:
+                            pass
+
+                except Exception as e:
+                    time.sleep(0.5)
+
+        t = threading.Thread(target=mic_listener_loop, daemon=True)
+        t.start()
+
+    def trigger_wake_popup(self, prompt_command=""):
+        """Called hands-free when 'He OPS' is spoken."""
+        self.show_overlay()
+        self.wake_banner.config(
+            text="⚡ 'HE OPS' RECOGNIZED! Pop-Up Active Hands-Free!",
+            bg="#b45309",
+            fg="#fef3c7"
+        )
+        if prompt_command:
+            self.text_area.delete("1.0", tk.END)
+            self.text_area.insert(tk.END, prompt_command)
+
+        # Reset banner after 4s
+        self.root.after(4000, lambda: self.wake_banner.config(
+            text="🎙️ Hands-Free Mic Active: Say 'He OPS' or 'Hey OPS' anywhere!",
+            bg="#1e293b",
+            fg="#a5b4fc"
+        ))
 
     def show_overlay(self):
         self.root.deiconify()
