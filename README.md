@@ -1,319 +1,216 @@
-# 🧠 O.P.S. — Over-Engineered Processing System
+# 🧠 O.P.S. — Over-Engineered Programmed System
 
-> **An AI Operating System that can hear, see, think, search, code, and operate your digital world.**
+> **A Local-First Agentic AI Operating System that can hear, see, think, search, code, automate, and remember your digital world.**
 
-O.P.S. is a **multimodal, agentic AI operating environment** that connects local AI models, web intelligence, computer automation, developer tools, vision, voice perception, RAG vector memory, Model Context Protocol (MCP), and external cloud AI systems through a **strict permission-controlled interface**.
+O.P.S. is an **ambient, multimodal, agentic AI operating system** that transforms your workstation into a J.A.R.V.I.S.-class command cockpit. Built with a **'90s retro tactical Iron Man HUD aesthetic** (Crimson Red, Jet Black, Steel Gray, and Pure White), O.P.S. coordinates local lightweight LLMs, live autonomous web crawling, universal OS and DOM automation, conversational session memory, and a persistent PostgreSQL memory vault under a strict safety gatekeeper.
 
 ---
 
-## 🌟 Architectural Overview
-
-O.P.S. acts as an **intelligent orchestration layer between the user and the computer**, structured across 7 major architectural layers:
+## 🌟 Key Architecture & Upgrades Overview
 
 ```text
-                         ┌───────────────┐
-                         │     USER      │
-                         └───────┬───────┘
-                                 │
-                   Voice / Text / Image / Camera
-                                 │
-                                 ▼
-                    ┌─────────────────────┐
-                    │    O.P.S. UI        │
-                    │ React + Tailwind    │
-                    └──────────┬──────────┘
-                               │
-                         WebSocket Events
-                               │
-                               ▼
-                    ┌─────────────────────┐
-                    │   O.P.S. CORE       │
-                    │ Django + Python     │
-                    └──────────┬──────────┘
-                               │
-                               ▼
-                    ┌─────────────────────┐
-                    │   AI ORCHESTRATOR   │
-                    │     LangGraph       │
-                    └──────────┬──────────┘
-                               │
-             ┌─────────────────┼──────────────────┐
-             │                 │                  │
-             ▼                 ▼                  ▼
-        Knowledge           Local AI            Agents
-          RAG               Ollama                │
-       ChromaDB               │          ┌────────┼────────┐
-             │                │          ↓        ↓        ↓
-             │                │       Browser  Developer Vision
-             │                │          ↓        ↓        ↓
-             │                │       Research  Coding  Camera
-             │                │
-             └────────────────┼──────────────────┘
-                              │
-                              ▼
-                       Intelligence
-                         Escalation
-                              │
-                  ┌───────────┼───────────┐
-                  ↓           ↓           ↓
-                Web      External AI    Human
-              Browser     Systems      Clarification
-                  │           │           │
-                  └───────────┼───────────┘
-                              │
-                              ▼
-                       Permission Engine
-                              │
-                              ▼
-                            MCP
-                              │
-       ┌──────────────┬───────┼────────┬─────────────┐
-       ↓              ↓       ↓        ↓             ↓
-   Filesystem      GitHub  Browser  Docker       PostgreSQL
-       │              │       │        │             │
-       └──────────────┴───────┼────────┴─────────────┘
-                              │
-                              ▼
-                     LOCAL O.P.S. AGENT
-                              │
-       ┌──────────────┬───────┼──────────┬───────────┐
-       ↓              ↓       ↓          ↓           ↓
-      OS           Camera  Microphone Clipboard    VS Code
-                              │
-                              ▼
-                     Verify / Audit
-                              │
-                              ▼
-                       O.P.S. UI
-                              │
-                       Text + Voice
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      O.P.S. AMBIENT OPERATING ENVIRONMENT                   │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                Voice / Hotkeys / Text / Camera / Screen
+                                       │
+                                       ▼
+ ┌───────────────────────────────────────────────────────────────────────────┐
+ │               UNIFIED USER SURFACES & SYSTEM-WIDE OVERLAYS                │
+ ├─────────────────────────────────────┬─────────────────────────────────────┤
+ │ • 90s Tactical HUD (React + Vite)   │ • System-Wide Pop-Up Cockpit        │
+ │   - Tab 01: [ Command Cockpit ]     │   - Global Hotkey: Ctrl + Alt       │
+ │   - Tab 02: [ Live Orchestration ]  │   - Disappear: Ctrl + Alt + Space   │
+ │   - Tab 03: [ Workstation Memories ]│   - Wispr Voice: Ctrl + Win         │
+ │ • Ambient Floating Avatar Cockpit   │ • Frameless Always-On-Top Overlay   │
+ └─────────────────────────────────────┴─────────────────────────────────────┘
+                                       │
+                         Bidirectional WebSocket Events
+                                       │
+                                       ▼
+ ┌───────────────────────────────────────────────────────────────────────────┐
+ │                       CENTRAL DJANGO BACKEND ENGINE                       │
+ │        Async Channels WebSockets • REST APIs • Safety Gatekeeper          │
+ └─────────────────────────────────────┬─────────────────────────────────────┘
+                                       │
+                                       ▼
+ ┌───────────────────────────────────────────────────────────────────────────┐
+ │                TRI-MODEL LANGGRAPH MULTI-AGENT ORCHESTRATOR               │
+ ├───────────────────────────────────────────────────────────────────────────┤
+ │ 1. Fast Intent Router (<50ms):         Qwen3 0.6B                         │
+ │ 2. Reasoning, Planning & Developer:    Qwen3 1.7B + Codebase RAG          │
+ │ 3. Content Specialist & J.A.R.V.I.S.:  Llama 3.2 1B Instruct              │
+ │ 4. Autonomous Web Crawling Agent:      Crawlee + ScrapeGraphAI Pipeline   │
+ │ 5. Browser Automation Agent:           Playwright Universal DOM Engine    │
+ │ 6. Physical OS Automation Agent:       PyAutoGUI Keyboard & Mouse Macros  │
+ └─────────────────────────────────────┬─────────────────────────────────────┘
+                                       │
+        ┌──────────────────────────────┼──────────────────────────────┐
+        ▼                              ▼                              ▼
+┌───────────────┐              ┌───────────────┐              ┌───────────────┐
+│ TEMPORARY CHAT│              │ CHATBOT VECTOR│              │  POSTGRESQL 18│
+│    MEMORY     │              │   DATABASE    │              │  MEMORY VAULT │
+│ (Session RAM) │              │  (ChromaDB)   │              │   (ops_db)    │
+├───────────────┤              ├───────────────┤              ├───────────────┤
+│ Contextual    │              │ Isolated      │              │ Persistent    │
+│ Pronoun &     │              │ partition:    │              │ workstation   │
+│ Follow-Up     │              │ ops_chatbot_  │              │ memories      │
+│ Resolution    │              │ memory        │              │ (songs, reels)│
+└───────────────┘              └───────────────┘              └───────────────┘
 ```
 
 ---
 
-## ⚡ 1. Intelligence Escalation Engine
+## 🚀 All Upgrades & New Capabilities
 
-Rather than relying on a single AI model, O.P.S. operates via a **7-tier cognitive escalation hierarchy**. It maximizes privacy and latency by starting locally, only escalating to more resource-intensive capabilities when required:
-
-```text
-LEVEL 1: Conversation Memory (Active Session State)
-    ↓ (If not answered by active conversation state)
-LEVEL 2: Project Vector RAG (ChromaDB Code & Document Search)
-    ↓ (If query requires project/codebase knowledge)
-LEVEL 3: Local Tri-Model Serving (Ollama: Qwen 0.5B / Llama 1B / Qwen Coder 1.5B)
-    ↓ (If task requires autonomous multi-agent execution)
-LEVEL 4: LangGraph Specialized Multi-Agent Orchestration
-    ↓ (If information is missing locally)
-LEVEL 5: Web & Browser Automation (Playwright / Crawl4AI)
-    ↓ (If local model confidence is low or task is extremely complex)
-LEVEL 6: External AI Escalation (Gemini 2.5 / Claude 3.5 / GPT-4o)
-    ↓ (If intent remains ambiguous or requires user choice)
-LEVEL 7: Human Clarification Modal
-```
+### 1. 🤖 Local-First Tri-Model Architecture
+Implementation strictly follows [`OPS_Local_LLM_Model_Roles.md`](file:///d:/Projects/O.P.S/OPS_Local_LLM_Model_Roles.md):
+* **Model 1 — Qwen3 0.6B (Fast Router & Intent Classifier):**
+  * Extremely low latency (`<50ms`).
+  * Classifies prompts into: `SYSTEM_COMMAND`, `MEDIA_CONTROL`, `WORKSTATION_MEMORY_CAPTURE`, `WORKSTATION_MEMORY_RECALL`, `WEB_SEARCH`, `CONTENT_CREATION`, `CODE_DEVELOPMENT`, or `REASONING_PLANNER`.
+* **Model 2 — Qwen3 1.7B (Deep Reasoning, Planning & Developer Agent):**
+  * Analyzes complex multi-step directives.
+  * Formulates structured execution plans and writes verified Python/JavaScript code.
+* **Model 3 — Llama 3.2 1B Instruct (Persona Layer & Content Specialist):**
+  * Unifies the system voice with the polite, capable J.A.R.V.I.S. personality.
+  * Crafts structured bullet-point responses, summaries, and correspondence.
 
 ---
 
-## 🛡️ 2. Execution Safety & Permission Engine
-
-All automated actions (browser navigation, DOM clicks, keyboard/mouse macros, terminal execution, git operations) are strictly gatekept by **Django Backend Security & Permission Engine**:
-
-1. **Safety Whitelist & Regex Filters**: Commands like `rm -rf`, `format`, `drop database`, or `reg delete` are immediately blocked.
-2. **Interactive Human-in-the-Loop Popup**: Sensitive operations pause agent execution and stream a permission request over WebSockets to the React UI:
-
-```text
-┌──────────────────────────────────────────────────┐
-│ 🔐 O.P.S. Permission Required                    │
-│                                                  │
-│ Action:  Terminal Command Execution             │
-│ Command: git push origin main                    │
-│ Agent:   Git / Developer Agent                   │
-│ Reason:  Deploy completed features to GitHub     │
-│                                                  │
-│  [ ⛔ DENY ]    [ 🕒 ALLOW ONCE ]   [ ⚡ ALLOW TASK ] │
-└──────────────────────────────────────────────────┘
-```
-
-3. **Audit Log**: Every approval, denial, and execution event is logged to PostgreSQL for security and traceability.
+### 2. 🌐 Autonomous Web Crawling Pipeline (Crawlee & ScrapeGraphAI)
+* Pure informational and live research queries (*"Who is Brad Pitt?"*, *"Latest quantum computing theories"*, *"Live news"*) are routed to the **Web Crawling Agent**.
+* Integrates **Crawlee** and **ScrapeGraphAI** to extract clean, ad-free markdown dossiers without triggering unwanted desktop browser popups.
+* Automatically synthesizes spoken briefings dispatched through the local **Piper TTS** voice pipeline.
 
 ---
 
-## 📱 3. Mobile Companion Architecture (Bidirectional PC ↔ Phone System)
-
-O.P.S. includes a dedicated **React Native Android Companion App** (`/mobile`) that creates a bidirectional link between your smartphone and your PC:
-
-```text
-               ┌─────────────────────────────────┐
-               │         O.P.S. BACKEND          │
-               │   (Runs heavy LLMs on Laptop)   │
-               └────────────────┬────────────────┘
-                                │
-        ┌───────────────────────┴───────────────────────┐
-        ▼                                               ▼
-┌──────────────────────────────┐        ┌──────────────────────────────┐
-│  1. CONTROLLING YOUR LAPTOP  │        │  2. CONTROLLING YOUR PHONE   │
-│         FROM YOUR PHONE      │        │        FROM YOUR LAPTOP      │
-├──────────────────────────────┤        ├──────────────────────────────┤
-│ • Run terminal commands on PC│        │ • Capture phone camera feed  │
-│ • Write & build PC code      │        │ • Inspect phone notifications│
-│ • Open browser / web research│        │ • Sync clipboard phone ↔ PC  │
-│ • Control VS Code & Docker   │        │ • Vibrate/Alert on approval  │
-│ • Take laptop screenshots    │        │ • Record phone microphone    │
-└──────────────────────────────┘        └──────────────────────────────┘
-```
-
-### Mobile Companion Features:
-1. **Persistent Floating Chat Bubble Overlay**: A Messenger-style floating head that stays over any Android app for instant voice/text commands.
-2. **Mobile Human-in-the-Loop Gateway**: Approve or deny sensitive PC execution requests (terminal commands, git pushes, script execution) via mobile notifications or popup modals.
-3. **Cross-Device Shared Clipboard**: Synchronizes clipboard buffers instantly between phone and desktop.
-4. **Mobile Web PWA & Tailscale Remote Access**: Access your desktop O.P.S. cockpit from anywhere over 4G/5G encrypted tunnels.
+### 3. 🖱️ Universal Physical OS & DOM Automation
+* **Any Website on Earth:** Supports natural language DOM search across 40+ pre-mapped platforms (Google, YouTube, Instagram, Spotify, Netflix, Amazon, Reddit, GitHub, Wikipedia, etc.) and dynamically resolves any custom web address.
+* **Application Control:** Launches any Windows Start Menu application, executable binary, control panel applet, or browser deep link.
+* **Developer Routines:** Supports custom scripted routines like navigating to `D:\freellmapi`, executing `npm run dev`, and launching the Claude CLI automatically.
+* **VS Code & Filesystem Integration:** Resolves file paths, opens workspaces in VS Code, and navigates directories.
 
 ---
 
-## 🤖 4. Model Suite Strategy
+### 4. 🧠 Multi-Tier Memory Engine
 
-O.P.S. combines lightweight local models with cloud fallback options:
+#### A. Temporary Chat Session Memory (RAM)
+* Retains conversational turns only during the active browser session.
+* Seamlessly resolves contextual follow-ups and pronouns (*"him"*, *"her"*, *"it"*, *"that"*, *"tell me more"*).
+* Completely purged on page refresh or when clicking the **`[ ↺ ERASE MEMORY ]`** button with authentic retro degauss sound effects.
 
-| Role | Selected Model | Target Latency | Function & Responsibilities |
-| :--- | :--- | :--- | :--- |
-| **Router Model** | `qwen2.5:0.5b` | `< 50ms` | Ultra-fast intent classification & dispatching. |
-| **Reasoning Engine** | `llama3.2:1b` | `~150ms` | Context evaluation, multi-step execution graph planning. |
-| **Coding & Synthesizer**| `qwen2.5-coder:1.5b`| `~200ms` | Code generation, DOM selector extraction, PyAutoGUI parameter schemas. |
-| **RAG Embeddings** | `all-MiniLM-L6-v2` / `nomic-embed-text` | `< 20ms` | Semantic vector search across project files via ChromaDB. |
-| **Voice STT** | `Wispr Flow` / `Faster-Whisper` | `< 100ms` | Global `Ctrl + Windows` hotkey speech-to-text transcription. |
-| **Voice TTS** | `Piper TTS` / `Kokoro-82M` | `< 100ms` | Offline voice synthesis feedback. |
-| **Cloud Fallback** | `Gemini 2.5` / `Claude 3.5` / `GPT-4o` | Dynamic | External escalation for high-complexity reasoning or low-confidence vision tasks. |
+#### B. Dedicated Chatbot Vector Database (ChromaDB)
+* Isolated vector collection **`ops_chatbot_memory`** strictly partitioned away from project codebase RAG (`ops_codebase`).
+* Enables semantic relevance search across recent dialogue history.
+
+#### C. Persistent Workstation Memory Vault (PostgreSQL 18 `ops_db`)
+* **Dynamic Capture:** When viewing any YouTube song, Instagram reel, Google search, or application, simply say:
+  > *"add it to this, my memory, this is my favorite song"*
+  * O.P.S. captures the label, category, active window title, and target URL, committing it permanently into PostgreSQL (`ops_db`).
+* **Dynamic Recall & Automatic Playback:** Command:
+  > *"Add my favorite song from the memory"* *(or "Play my favorite song from memory")*
+  * O.P.S. retrieves the record from PostgreSQL, navigates directly to the window/URL, and initiates automatic playback.
+* **Sound Feedback:** Every memory capture triggers an authentic '90s cybernetic data-lock chime across speakers and HUD.
 
 ---
 
-## 🛠️ Tech Stack
+### 5. 🎛️ 3-Tab Tactical Iron Man HUD Cockpit
+
+* **Tab 01: [ 01: COMMAND COCKPIT ]**
+  * Central JARVIS command console with retro typewriter streaming.
+  * Real-time WebSocket connectivity status (Agent, Permissions, Terminal, Mobile).
+  * Glowing animated Arc Reactor Core representing multi-model brain telemetry.
+  * Terminal console and live web research stream.
+* **Tab 02: [ 02: LIVE ORCHESTRATION & AGENTS ]**
+  * Live model-to-agent mapping inspector showing which local LLM runs each agent.
+  * Real-time LangGraph workflow visualizer with active agent indicators.
+  * Temporary conversation session inspector and vector DB partition status.
+* **Tab 03: [ 03: MY WORKSTATION MEMORIES ]**
+  * Complete personal memory vault dashboard backed by PostgreSQL 18.
+  * Starts with a clean 0-memory state and clear interactive guidance.
+  * Tactical cards for each memory with **`[ ▶ PLAY / OPEN NOW ]`** and **`[ 🗑 DELETE MEMORY ]`** controls.
+  * Quick-memorize console form to commit any active window or custom media on demand.
+
+---
+
+### 6. 🎧 '90s Retro Audio Synthesizer
+* **Client-Side Web Audio Engine ([`retroSounds.js`](file:///d:/Projects/O.P.S/frontend/src/utils/retroSounds.js)):**
+  * Zero-latency acoustic chimes for cockpit appearance (`playAppear`), disappearance (`playDisappear`), memory purge (`playMemoryErase`), memory store (`playMemoryStore`), and memory execution (`playMemoryExecute`).
+* **Native Workstation Audio ([`local_agent/sounds/`](file:///d:/Projects/O.P.S/local_agent/sounds/)):**
+  * High-fidelity 16-bit 44.1 kHz PCM audio files (`cockpit_appear.wav`, `cockpit_disappear.wav`, `memory_added.wav`) played through Windows speakers via `winsound`.
+
+---
+
+## 🔮 Upcoming Upgrades Roadmap
+
+As the architect of O.P.S., here are the next major upgrades planned for future releases:
+
+1. **Local Vision Model Integration (Qwen2-VL 2B / 7B):**
+   * Direct visual desktop understanding without relying on OCR or bounding-box heuristics.
+   * Enables the agent to inspect canvas elements, complex desktop games, and GUI dialogs visually.
+2. **On-Device Whisper Fine-Tuning:**
+   * Transition from cloud/hybrid STT to an offline quantized `faster-whisper-medium` running with CUDA acceleration.
+3. **Autonomous Tool Synthesizer (Zero-Shot MCP Generation):**
+   * When encountering an unmapped application or CLI, the Developer Agent will dynamically generate, test, and register a new Model Context Protocol (MCP) server in seconds.
+4. **Multi-Workstation Mesh Telemetry (Tailscale P2P):**
+   * Link multiple PCs, laptops, and Android devices into a unified O.P.S. cluster with shared clipboard and cross-device memory recall.
+5. **Self-Healing Code Sandbox:**
+   * Execution loop where errors in generated scripts are automatically diagnosed by the Debugger Agent, patched, and re-executed until verified.
+6. **Smart Media Ducking & Interception:**
+   * When speaking voice commands, O.P.S. will automatically duck system background audio (Spotify/YouTube) for crisp microphone transcription.
+
+---
+
+## 🛠️ Tech Stack & Database Architecture
 
 | Layer | Technology |
 | :--- | :--- |
-| **Frontend** | React 18, Tailwind CSS, WebSockets |
-| **Backend Core** | Django 5, Django Ninja APIs, ASGI Channels |
+| **Frontend Cockpit** | React 18, Vite, Tailwind CSS, Lucide Icons, Framer Motion, Web Audio API |
+| **Backend Core** | Django 5, ASGI Channels (WebSockets), Django REST Framework |
 | **AI Orchestration** | LangGraph, LangChain, Pydantic |
-| **Local LLMs** | Ollama (`qwen2.5:0.5b`, `llama3.2:1b`, `qwen2.5-coder:1.5b`) |
-| **Vector DB** | ChromaDB, Sentence-Transformers |
-| **Voice AI** | Faster-Whisper (STT), Piper / Kokoro (TTS) |
-| **Automation** | Playwright, Crawl4AI, PyAutoGUI, Model Context Protocol (MCP) |
-| **Mobile App** | React Native Android Companion, `@increase21/rn-floating-bubble` |
-| **Database** | PostgreSQL |
-| **Deployment** | Docker, Windows 1-Click Batch Launcher |
+| **Local LLMs** | Ollama (`qwen:0.6b` / `qwen:1.7b` / `llama3.2:1b`) |
+| **Web Crawling** | Crawlee, ScrapeGraphAI, Playwright |
+| **Desktop Automation**| PyAutoGUI, Windows PowerShell `Get-StartApps`, `winsound` |
+| **Relational Database**| **PostgreSQL 18 (`ops_db`)** for Workstation Memories & Audit Logs |
+| **Vector Database** | ChromaDB (`ops_codebase` and `ops_chatbot_memory`) |
+| **Speech & Voice** | Wispr Flow (`Ctrl + Win`), Faster-Whisper, Piper TTS |
 
 ---
 
-## 📁 Repository Structure
+## ⚡ Quick Start Guide (Windows)
 
-```text
-O.P.S/
-├── backend/                  # Django REST, Django Ninja & Async WebSockets Engine
-│   ├── manage.py             # Django entrypoint
-│   ├── ops_backend/          # Core configuration (settings, asgi, urls)
-│   ├── ops_core/             # App domain logic, views, models & safety gatekeeper
-│   └── requirements.txt      # Backend Python dependencies
-│
-├── ai/                       # LangGraph Orchestrator & Intelligence Escalation
-│   ├── agents/               # Supervisor, Planner, Developer, Researcher, Vision, Tester
-│   ├── escalation.py         # 7-Tier Intelligence Escalation Router
-│   └── rag/                  # ChromaDB vector store manager
-│
-├── mcp/                      # Model Context Protocol servers (Filesystem, Git, Terminal, Docker)
-├── perception/               # Faster-Whisper STT, Piper TTS & Computer Vision drivers
-├── local_agent/              # Host OS desktop integration daemon
-│
-├── frontend/                 # React 18 + Vite + Tailwind CSS Cockpit Dashboard
-│   ├── src/
-│   │   ├── components/       # FloatingAvatar, AutomationTerminal, PermissionModal
-│   │   ├── hooks/            # useWebSocket, usePermission
-│   │   ├── App.jsx           # Main dashboard UI
-│   │   └── main.jsx
-│   └── package.json
-│
-├── mobile/                   # React Native Android Companion App
-│   ├── package.json          # Floating bubble overlay & draw-overlay dependencies
-│   └── App.js                # Mobile companion application entrypoint
-│
-└── start_ops.bat             # 1-Click Windows Launcher
-```
+### 1. 1-Click Launch
+Double-click **`start_ops.bat`** in the project root!
+It automatically checks and initializes:
+1. **PostgreSQL 18 Engine** on port `5432` (`ops_db`).
+2. **Django Backend Engine** on `http://127.0.0.1:8000`.
+3. **React Cockpit HUD** on `http://localhost:3000`.
+4. **Desktop Overlay Daemon** on global hotkeys (`Ctrl + Alt`).
 
 ---
 
-## 🔌 API Reference Endpoints
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/v1/health/` | System health check & Ollama model availability status |
-| `POST` | `/api/v1/router/` | Route request via `qwen2.5:0.5b` intent router |
-| `POST` | `/api/v1/plan/` | Generate multi-step execution plan via `llama3.2:1b` |
-| `POST` | `/api/v1/coding/` | Synthesize code or tool parameter schemas via `qwen2.5-coder:1.5b` |
-| `POST` | `/api/v1/orchestrate/` | Run full tri-model pipeline end-to-end |
-| `POST` | `/api/v1/scrape/` | Trigger web crawling and clean markdown extraction |
-| `POST` | `/api/v1/automation/` | Dispatch validated DOM (Playwright) or GUI (PyAutoGUI) action |
-
----
-
-## 🚀 Quick Start Guide
-
-### ⚡ 1-Click Launcher (Windows)
-Double-click **`start_ops.bat`** in the root directory!
-It automatically launches:
-1. **Django Backend Engine** on `http://localhost:8000`.
-2. **React Dashboard Cockpit** on `http://localhost:3000`.
-
----
-
-### 🛠️ Manual Setup
-
-#### 1. Pull Ollama Models
+### 2. Manual Startup
 ```bash
-ollama pull qwen2.5:0.5b
-ollama pull llama3.2:1b
-ollama pull qwen2.5-coder:1.5b
-```
+# 1. Start PostgreSQL 18
+"D:\Program Files\program Files (postgreSQL)\18\bin\postgres.exe" -D "D:\Program Files\program Files (postgreSQL)\18\data"
 
-#### 2. Start Backend Engine
-```bash
+# 2. Start Django Backend
 cd backend
-python -m venv venv
-.\venv\Scripts\activate      # Windows
-# source venv/bin/activate   # Linux/macOS
-pip install -r requirements.txt
+.\venv\Scripts\activate
 python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
-```
 
-#### 3. Start Frontend Dashboard
-```bash
+# 3. Start React Frontend
 cd frontend
 npm install
 npm run dev
+
+# 4. Start Desktop Overlay Daemon
+python local_agent\desktop_overlay.py
 ```
-Navigate to `http://localhost:3000` to access the O.P.S. Cockpit.
-
-#### 4. Run Mobile Companion (Android)
-```bash
-cd mobile
-npm install
-npx react-native run-android
-```
-
----
-
-## 🛣️ Implementation Roadmap
-
-- [x] Initial Repository Architecture & Directory Blueprint
-- [x] Django Backend Skeleton & Security Safety Gatekeeper
-- [x] Ollama Tri-Model Service Layer (`Qwen 0.5B`, `Llama 1B`, `Qwen Coder 1.5B`)
-- [x] Web Scraping (Crawl4AI) & Automation (Playwright / PyAutoGUI) Wrappers
-- [x] React 18 + Tailwind CSS Cockpit Dashboard & Ambient Overlay
-- [ ] Django Ninja Typed API Service Layer & Channels WebSockets
-- [ ] 7-Tier Intelligence Escalation Engine & LangGraph Agent Nodes
-- [ ] Interactive Permission Popup Modal with Human-in-the-Loop Gateway
-- [ ] ChromaDB Vector RAG integration for long-term project memory
-- [x] Wispr Flow STT (`Ctrl + Windows`) Voice-to-Text Integration Engine
-- [ ] React Native Android companion floating bubble deployment
 
 ---
 
 ## 📄 License
-Distributed under the **MIT License**. Built for privacy-first, developer-centric AI productivity.
+Distributed under the **MIT License**. Built for privacy-first, local-first AI productivity.

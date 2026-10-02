@@ -1,167 +1,573 @@
-import React, { useState, useEffect } from 'react';
-import ModelStatusCard from './components/ModelStatusCard';
-import AutomationTerminal from './components/AutomationTerminal';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Activity,
+  Shield,
+  Smartphone,
+  Cpu,
+  Power,
+  Volume2,
+  Terminal,
+  Radio,
+  Eye,
+  ShieldAlert
+} from 'lucide-react';
+
+import LiveConnectionStatus from './components/LiveConnectionStatus';
+import OpsCommandCore from './components/OpsCommandCore';
+import OpsTriModelStatus from './components/OpsTriModelStatus';
+import OpsBrowserFeed from './components/OpsBrowserFeed';
+import OpsTerminalConsole from './components/OpsTerminalConsole';
+import OpsBriefingCard from './components/OpsBriefingCard';
+import OpsSecurityModal from './components/OpsSecurityModal';
+import OpsMobileDrawer from './components/OpsMobileDrawer';
+import OpsLiveOrchestrationTab from './components/OpsLiveOrchestrationTab';
+import OpsUserMemoriesTab from './components/OpsUserMemoriesTab';
+import OpsHeart from './components/OpsHeart';
 import FloatingAvatar from './components/FloatingAvatar';
-import { Cpu, Globe, Terminal, Shield, Layers, Activity, Mic, Radio } from 'lucide-react';
+import { retroSoundEngine } from './utils/retroSounds';
+
 
 export default function App() {
-  const [logs, setLogs] = useState([]);
-  const [systemInfo, setSystemInfo] = useState({
-    status: 'connecting',
-    version: '0.1.0',
-    tri_models: {
-      router: 'qwen2.5:0.5b',
-      reasoning: 'llama3.2:1b',
-      coding: 'qwen2.5-coder:1.5b'
-    },
-    voice_integration: {
-      provider: 'Wispr Flow',
-      hotkey: 'Ctrl+Win',
-      is_listening: false
-    }
+  // Temporary Chat Session Identifier (RAM-only; reloads create a fresh ID automatically)
+  const [sessionId, setSessionId] = useState(() => 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+
+  // Backend & WS Status
+  const [backendHealth, setBackendHealth] = useState('checking');
+  const [wsStatuses, setWsStatuses] = useState({
+    agent: false,
+    permissions: false,
+    terminal: false,
+    mobile: false
   });
 
-  useEffect(() => {
-    fetch('/api/v1/health/')
-      .then((res) => res.json())
-      .then((data) => {
-        setSystemInfo(data);
-        addLog('System connected to Django backend & Ollama tri-model provider.', 'info');
-        addLog('Wispr Flow Voice Integration Active — Hotkey [Ctrl + Windows] enabled.', 'info');
-      })
-      .catch((err) => {
-        setSystemInfo((prev) => ({ ...prev, status: 'offline' }));
-        addLog('Backend offline. Make sure Django server is running on port 8000.', 'error');
-      });
-  }, []);
+  // Autonomous Pipeline State
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeAgent, setActiveAgent] = useState('');
+  const [currentThought, setCurrentThought] = useState('');
+  const [planSteps, setPlanSteps] = useState([]);
+  const [activeCategory, setActiveCategory] = useState('');
+  const [briefingText, setBriefingText] = useState('');
 
-  const addLog = (message, type = 'info') => {
-    setLogs((prev) => [...prev, { message, type }]);
+  // Feeds
+  const [searchResults, setSearchResults] = useState([]);
+  const [lastScrape, setLastScrape] = useState(null);
+  const [terminalLogs, setTerminalLogs] = useState([]);
+  const [activePermissionReq, setActivePermissionReq] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
+
+  // Voice & UI Modals & Navigation Tabs
+  const [isListening, setIsListening] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('cockpit'); // 'cockpit', 'orchestration'
+
+  // WebSocket references
+  const agentWs = useRef(null);
+  const permWs = useRef(null);
+  const termWs = useRef(null);
+  const mobileWs = useRef(null);
+
+  const getWsUrl = (path) => {
+    const loc = window.location;
+    const protocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${loc.host}${path}`;
   };
 
-  const handlePromptSubmit = async (promptText) => {
-    addLog(`User Request (Voice/Text): "${promptText}"`, 'info');
+  const checkHealth = async () => {
     try {
-      const res = await fetch('/api/v1/orchestrate/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptText })
-      });
-      const data = await res.json();
-      
-      addLog(`Router Model classified: [${data.router?.category}] (Confidence: ${data.router?.confidence})`, 'route');
-      addLog(`Reasoning Engine Plan (${data.reasoning?.model}): ${data.reasoning?.plan?.join(' -> ')}`, 'info');
-      
-      if (data.coding?.parameters) {
-        addLog(`Coding Synthesizer parameters: ${JSON.stringify(data.coding?.parameters)}`, 'info');
+      const resp = await fetch('/api/v1/health/');
+      if (resp.ok) setBackendHealth('online');
+      else setBackendHealth('error');
+    } catch {
+      setBackendHealth('offline');
+    }
+  };
+
+  const loadAuditLogs = async () => {
+    try {
+      const resp = await fetch('/api/v1/audit/logs/');
+      if (resp.ok) {
+        const data = await resp.json();
+        setAuditLogs(data.results || data || []);
       }
     } catch (e) {
-      addLog(`Failed to dispatch prompt: ${e.message}`, 'error');
+      console.error(e);
     }
+  };
+
+  // Connect WebSockets
+  useEffect(() => {
+    checkHealth();
+    loadAuditLogs();
+    const interval = setInterval(checkHealth, 10000);
+
+    // 1. Agent WebSocket
+    const connectAgentWs = () => {
+      try {
+        const ws = new WebSocket(getWsUrl('/ws/agent/'));
+        agentWs.current = ws;
+        ws.onopen = () => setWsStatuses((prev) => ({ ...prev, agent: true }));
+        ws.onclose = () => {
+          setWsStatuses((prev) => ({ ...prev, agent: false }));
+          setTimeout(connectAgentWs, 3000);
+        };
+        ws.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.event === 'agent_thought') {
+              setCurrentThought(`${data.agent}: ${data.thought}`);
+              setActiveAgent(data.agent || '');
+            } else if (data.event === 'agent_plan') {
+              setPlanSteps(data.plan || []);
+            } else if (data.event === 'task_completed') {
+              setBriefingText(data.final_answer || '');
+              if (
+                data.intent === 'WORKSTATION_MEMORY_CAPTURE' ||
+                data.category === 'WORKSTATION_MEMORY_CAPTURE' ||
+                (data.final_answer && (data.final_answer.includes('COMMITTED TO POSTGRESQL') || data.final_answer.includes('WORKSTATION MEMORY COMMITTED')))
+              ) {
+                retroSoundEngine.playMemoryStore();
+                window.dispatchEvent(new CustomEvent('ops_memory_added'));
+              }
+              setIsLoading(false);
+              setActiveAgent('');
+              setCurrentThought('Task execution complete.');
+              loadAuditLogs();
+            } else if (data.event === 'memory_added') {
+              retroSoundEngine.playMemoryStore();
+              window.dispatchEvent(new CustomEvent('ops_memory_added'));
+            } else if (data.event === 'task_failed') {
+              setBriefingText(`Execution Error: ${data.error}`);
+              setIsLoading(false);
+              setActiveAgent('');
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        };
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    // 2. Permissions WebSocket
+    const connectPermWs = () => {
+      try {
+        const ws = new WebSocket(getWsUrl('/ws/permissions/'));
+        permWs.current = ws;
+        ws.onopen = () => setWsStatuses((prev) => ({ ...prev, permissions: true }));
+        ws.onclose = () => {
+          setWsStatuses((prev) => ({ ...prev, permissions: false }));
+          setTimeout(connectPermWs, 3000);
+        };
+        ws.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.event === 'permission_request') {
+              setActivePermissionReq(data);
+            } else if (data.event === 'permission_resolved' || data.event === 'permission_acknowledged') {
+              setActivePermissionReq(null);
+              loadAuditLogs();
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        };
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    // 3. Terminal WebSocket
+    const connectTermWs = () => {
+      try {
+        const ws = new WebSocket(getWsUrl('/ws/terminal/'));
+        termWs.current = ws;
+        ws.onopen = () => setWsStatuses((prev) => ({ ...prev, terminal: true }));
+        ws.onclose = () => {
+          setWsStatuses((prev) => ({ ...prev, terminal: false }));
+          setTimeout(connectTermWs, 3000);
+        };
+        ws.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.event === 'terminal_log') {
+              setTerminalLogs((prev) => [...prev.slice(-150), data]);
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        };
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    // 4. Mobile WebSocket
+    const connectMobileWs = () => {
+      try {
+        const ws = new WebSocket(getWsUrl('/ws/mobile/'));
+        mobileWs.current = ws;
+        ws.onopen = () => setWsStatuses((prev) => ({ ...prev, mobile: true }));
+        ws.onclose = () => {
+          setWsStatuses((prev) => ({ ...prev, mobile: false }));
+          setTimeout(connectMobileWs, 3000);
+        };
+        ws.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.event === 'emergency_halt') {
+              alert(`🚨 EMERGENCY SYSTEM HALT: ${data.reason}`);
+              setIsLoading(false);
+              setActiveAgent('');
+              setCurrentThought('SYSTEM EMERGENCY HALT TRIGGERED');
+              loadAuditLogs();
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        };
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    connectAgentWs();
+    connectPermWs();
+    connectTermWs();
+    connectMobileWs();
+
+    return () => {
+      clearInterval(interval);
+      if (agentWs.current) agentWs.current.close();
+      if (permWs.current) permWs.current.close();
+      if (termWs.current) termWs.current.close();
+      if (mobileWs.current) mobileWs.current.close();
+    };
+  }, []);
+
+  // Universal Command Dispatcher
+  const handleDispatchCommand = async (prompt) => {
+    setIsLoading(true);
+    setBriefingText('');
+    setPlanSteps([]);
+    setActiveAgent('Supervisor');
+    setCurrentThought(`Routing directive: "${prompt}"...`);
+
+    try {
+      const resp = await fetch('/api/v1/agent/run/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, session_id: sessionId })
+      });
+      const data = await resp.json();
+      setBriefingText(data.final_answer || JSON.stringify(data, null, 2));
+      setActiveCategory(data.category || '');
+      setPlanSteps(data.plan || []);
+
+      // Play retro sound whenever something is added to memory
+      if (
+        data.intent === 'WORKSTATION_MEMORY_CAPTURE' ||
+        data.category === 'WORKSTATION_MEMORY_CAPTURE' ||
+        data.tool_output?.action === 'workstation_memory_capture' ||
+        (data.final_answer && (data.final_answer.includes('COMMITTED TO POSTGRESQL') || data.final_answer.includes('WORKSTATION MEMORY COMMITTED')))
+      ) {
+        retroSoundEngine.playMemoryStore();
+        window.dispatchEvent(new CustomEvent('ops_memory_added'));
+      }
+
+      // If browser search output present, feed it to the browser cards
+      if (data.browser_output?.search_result?.results) {
+        setSearchResults(data.browser_output.search_result.results);
+      } else if (data.browser_output?.scrape_result) {
+        setLastScrape(data.browser_output.scrape_result);
+      }
+
+      loadAuditLogs();
+    } catch (err) {
+      setBriefingText(`Error: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+      setActiveAgent('');
+      setCurrentThought('Standing by.');
+    }
+  };
+
+  // Erase Temporary Conversation Memory & Reset Session
+  const handleClearMemory = async () => {
+    try {
+      await fetch(`/api/v1/memory/?session_id=${sessionId}`, { method: 'DELETE' });
+      await fetch(`/api/v1/memory/chatbot-vector/?session_id=${sessionId}`, { method: 'DELETE' });
+    } catch (e) {
+      console.warn('Memory purge error:', e);
+    }
+    const newSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    setSessionId(newSessionId);
+    setBriefingText('');
+    setPlanSteps([]);
+    setCurrentThought('[•] MEMORY PURGED // FRESH SESSION INITIALIZED');
+    retroSoundEngine.playMemoryErase();
+  };
+
+  // Direct Terminal Execution
+  const handleExecuteTerminal = async (command) => {
+    try {
+      await fetch('/api/v1/automation/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'terminal', command })
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Speak Text via Piper TTS
+  const handleSpeakText = async (text) => {
+    try {
+      const clean = text.replace(/[#*`_]/g, '');
+      const resp = await fetch('/api/v1/voice/synthesize/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: clean.slice(0, 300) })
+      });
+      const data = await resp.json();
+      if (data.audio_base64) {
+        const audio = new Audio(`data:audio/wav;base64,${data.audio_base64}`);
+        audio.play().catch((e) => console.log('Autoplay prevented:', e));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Toggle Voice
+  const handleToggleVoice = async () => {
+    setIsListening((prev) => !prev);
+    try {
+      const resp = await fetch('/api/v1/voice/toggle/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enable: !isListening })
+      });
+      const data = await resp.json();
+      if (data.transcript) {
+        handleDispatchCommand(data.transcript);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Emergency Halt
+  const handleEmergencyHalt = async () => {
+    try {
+      await fetch('/api/v1/mobile/emergency-halt/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'Emergency Halt via O.P.S. Master HUD' })
+      });
+      setIsLoading(false);
+      setActiveAgent('');
+      setCurrentThought('🚨 SYSTEM EMERGENCY HALT TRIGGERED');
+      loadAuditLogs();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Resolve Permission
+  const handleResolvePermission = (requestId, decision) => {
+    if (permWs.current && permWs.current.readyState === WebSocket.OPEN) {
+      permWs.current.send(JSON.stringify({
+        action: 'permission_response',
+        request_id: requestId,
+        decision: decision
+      }));
+    }
+    setActivePermissionReq(null);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans">
-      {/* Top Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-8 border-b border-slate-800 gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 via-purple-300 to-emerald-400 bg-clip-text text-transparent">
-              O.P.S. (Over-Engineered Programmed System)
-            </h1>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-              v{systemInfo.version} SKELETON
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Local-First Developer AI Environment • Wispr Flow Voice Integration • Multi-Agent Automation
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs font-mono bg-purple-950/40 border border-purple-800/50 px-3 py-1.5 rounded-lg text-purple-300">
-            <Radio className="w-4 h-4 text-purple-400 animate-pulse" />
-            <span>Wispr Flow:</span>
-            <span className="font-bold text-emerald-400">[Ctrl + Win]</span>
+    <div className="retro-scanlines min-h-screen bg-[#050505] text-zinc-100 flex flex-col font-mono selection:bg-red-600 selection:text-white">
+      {/* 90s Retro Tactical HUD Header */}
+      <header className="border-b border-zinc-800 bg-black sticky top-0 z-40 px-4 py-2">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+          {/* Logo & Subtitle */}
+          <div className="flex items-center gap-2.5">
+            <div className="px-2 py-0.5 bg-red-600 text-white font-black text-xs border border-red-500 shadow-sm">
+              OPS
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm tracking-wider text-white">=== O.P.S. TACTICAL HUD ===</span>
+                <span className="text-[10px] text-zinc-500 hidden sm:inline">
+                  // LOCAL-FIRST IRON MAN OS
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-mono bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
-            <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
-            <span className="text-slate-400">Backend:</span>
-            <span className={systemInfo.status === 'online' ? 'text-emerald-400' : 'text-amber-400'}>
-              {systemInfo.status.toUpperCase()}
-            </span>
+          {/* Quick HUD Actions */}
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              onClick={() => setIsMobileOpen(true)}
+              className="retro-btn px-2.5 py-1 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-red-500" />
+              <span>[ MOBILE SYNC ]</span>
+            </button>
+
+            <button
+              onClick={handleEmergencyHalt}
+              className="retro-btn-red px-3 py-1 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>[ KILL SWITCH ]</span>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Grid */}
-      <main className="space-y-8 max-w-7xl mx-auto">
-        {/* Model Serving Dashboard */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Cpu className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-              Ollama Tri-Model Architecture Status
-            </h2>
-          </div>
-          <ModelStatusCard models={systemInfo.tri_models} />
-        </section>
+      {/* 90s Retro Navigation Tab Bar */}
+      <nav className="bg-black border-b border-zinc-800 px-4 py-1.5 sticky top-[45px] z-30">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-2 text-xs">
+          <button
+            onClick={() => setActiveTab('cockpit')}
+            className={`px-3 py-1.5 font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'cockpit'
+                ? 'bg-red-600 text-white border-2 border-red-500 shadow-md'
+                : 'bg-zinc-950 text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-600'
+            }`}
+          >
+            <span>[ 01: COMMAND COCKPIT ]</span>
+          </button>
 
-        {/* System Capabilities Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="rounded-xl bg-slate-900/40 border border-slate-800/80 p-5">
-            <div className="flex items-center gap-2 text-purple-400 mb-2">
-              <Mic className="w-5 h-5" />
-              <h3 className="font-semibold text-sm text-slate-200">Wispr Flow Voice</h3>
+          <button
+            onClick={() => setActiveTab('orchestration')}
+            className={`px-3 py-1.5 font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'orchestration'
+                ? 'bg-red-600 text-white border-2 border-red-500 shadow-md'
+                : 'bg-zinc-950 text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-600'
+            }`}
+          >
+            <span>[ 02: LIVE ORCHESTRATION & AGENTS ]</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('memories')}
+            className={`px-3 py-1.5 font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'memories'
+                ? 'bg-red-600 text-white border-2 border-red-500 shadow-md'
+                : 'bg-zinc-950 text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-600'
+            }`}
+          >
+            <span>[ 03: MY WORKSTATION MEMORIES ]</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Main HUD Cockpit Body */}
+      <main className="flex-1 max-w-7xl mx-auto w-full p-4 space-y-4">
+        {/* TAB 1: Main Operational Cockpit */}
+        {activeTab === 'cockpit' && (
+          <div className="space-y-4">
+            {/* Real-Time WebSocket Connectivity Ribbon */}
+            <LiveConnectionStatus wsStatuses={wsStatuses} backendHealth={backendHealth} />
+
+            {/* Top Dashboard Row: Command & Tri-Model Telemetry on Left, Ops Heart Brain on Right */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+              <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-4">
+                {/* Local-First Tri-Model Architecture (OPS_Local_LLM_Model_Roles.md) */}
+                <OpsTriModelStatus />
+
+                {/* Central JARVIS-Style Command & Voice Core */}
+                <OpsCommandCore
+                  onDispatchCommand={handleDispatchCommand}
+                  isLoading={isLoading}
+                  activeAgent={activeAgent}
+                  currentThought={currentThought}
+                  onToggleVoice={handleToggleVoice}
+                  isListening={isListening}
+                  onEmergencyHalt={handleEmergencyHalt}
+                />
+              </div>
+
+              {/* Right-Top Corner: Ops Heart (Neural Living Brain of O.P.S.) */}
+              <div className="lg:col-span-4 xl:col-span-3 flex flex-col min-h-[300px]">
+                <OpsHeart className="h-full" />
+              </div>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Global <span className="text-purple-300 font-mono font-semibold">Ctrl + Win</span> hotkey activates sub-100ms voice-to-text transcription directly into O.P.S. pipeline.
-            </p>
-          </div>
 
-          <div className="rounded-xl bg-slate-900/40 border border-slate-800/80 p-5">
-            <div className="flex items-center gap-2 text-indigo-400 mb-2">
-              <Globe className="w-5 h-5" />
-              <h3 className="font-semibold text-sm text-slate-200">Web Automation</h3>
+            {/* Tri-Split Live Ambient Telemetry Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Column 1: Live Browser & Web Intelligence */}
+              <OpsBrowserFeed
+                searchResults={searchResults}
+                lastScrape={lastScrape}
+              />
+
+              {/* Column 2: Live Sandbox Terminal & Process Console */}
+              <OpsTerminalConsole
+                terminalLogs={terminalLogs}
+                onExecuteCommand={handleExecuteTerminal}
+              />
+
+              {/* Column 3: Synthesized Executive Briefing */}
+              <OpsBriefingCard
+                briefingText={briefingText}
+                planSteps={planSteps}
+                activeCategory={activeCategory}
+                onSpeakText={handleSpeakText}
+              />
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Crawl4AI & Playwright for headless browser DOM control, markdown extraction, and web research.
-            </p>
           </div>
+        )}
 
-          <div className="rounded-xl bg-slate-900/40 border border-slate-800/80 p-5">
-            <div className="flex items-center gap-2 text-purple-400 mb-2">
-              <Layers className="w-5 h-5" />
-              <h3 className="font-semibold text-sm text-slate-200">OS & GUI Control</h3>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              PyAutoGUI & native desktop automation gatekept strictly by Django validation to prevent unauthorized actions.
-            </p>
-          </div>
+        {/* TAB 2: Live Multi-Agent Orchestration & Fleet Inspector */}
+        {activeTab === 'orchestration' && (
+          <OpsLiveOrchestrationTab
+            activeAgent={activeAgent}
+            currentThought={currentThought}
+            planSteps={planSteps}
+            isLoading={isLoading}
+            onDispatchPrompt={handleDispatchCommand}
+            briefingText={briefingText}
+            sessionId={sessionId}
+            onClearMemory={handleClearMemory}
+          />
+        )}
 
-          <div className="rounded-xl bg-slate-900/40 border border-slate-800/80 p-5">
-            <div className="flex items-center gap-2 text-emerald-400 mb-2">
-              <Shield className="w-5 h-5" />
-              <h3 className="font-semibold text-sm text-slate-200">Safety Gatekeeper</h3>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Ollama models output JSON proposals; Django backend validates schema and security before executing system calls.
-            </p>
-          </div>
-        </section>
-
-        {/* Live Execution Console */}
-        <section>
-          <AutomationTerminal logs={logs} />
-        </section>
+        {/* TAB 3: User Personal Workstation Memories (PostgreSQL ops_db) */}
+        {activeTab === 'memories' && (
+          <OpsUserMemoriesTab onDispatchCommand={handleDispatchCommand} />
+        )}
       </main>
 
-      {/* Floating Avatar Widget */}
+      {/* Ambient Floating Avatar Pop-Up Cockpit */}
       <FloatingAvatar
-        activeCategory={systemInfo.status === 'online' ? 'READY' : 'OFFLINE'}
-        onPromptSubmit={handlePromptSubmit}
+        onPromptSubmit={handleDispatchCommand}
+        agentOutput={briefingText}
+        isLoading={isLoading}
+        onClearMemory={handleClearMemory}
       />
+
+      {/* Interactive Human-In-The-Loop Security Authorization Modal */}
+      <OpsSecurityModal
+        activeRequest={activePermissionReq}
+        onResolvePermission={handleResolvePermission}
+        auditLogs={auditLogs}
+      />
+
+      {/* Mobile Companion Pairing Drawer */}
+      <OpsMobileDrawer
+        isOpen={isMobileOpen}
+        onClose={() => setIsMobileOpen(false)}
+      />
+
+      {/* 90s Retro Footer */}
+      <footer className="border-t border-zinc-900 py-3 text-center text-zinc-500 text-[11px] font-mono bg-black">
+        [ O.P.S. // TACTICAL IRON MAN AMBIENT OS // 100% LOCAL WORKSTATION CONTROL // PALETTE: RED, WHITE, BLACK & GRAY ]
+      </footer>
     </div>
   );
 }

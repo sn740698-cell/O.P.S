@@ -4,23 +4,114 @@
 
 @layer base {
   body {
-    background-color: #030712;
-    color: #f3f4f6;
+    background-color: #050505;
+    color: #f4f4f5;
+    font-family: 'Consolas', 'Courier New', 'Lucida Console', Monaco, monospace;
+    overflow-x: hidden;
   }
 }
 
-/* Custom scrollbars */
+/* Custom Tactical 90s Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #09090b;
+  border: 1px solid #18181b;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: #3f3f46;
+  border: 1px solid #52525b;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #dc2626;
+  border-color: #ef4444;
 }
+
+/* 90s Retro CRT Scanline Overlay */
+.retro-scanlines {
+  position: relative;
+}
+.retro-scanlines::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Retro Terminal Card Borders */
+.retro-box {
+  background-color: #09090b;
+  border: 1px solid #27272a;
+  box-shadow: inset 1px 1px 0px rgba(255, 255, 255, 0.05), 2px 2px 0px #000000;
+}
+
+.retro-box-red {
+  background-color: #09090b;
+  border: 1px solid #7f1d1d;
+  box-shadow: inset 1px 1px 0px rgba(239, 68, 68, 0.2), 2px 2px 0px #000000;
+}
+
+/* 90s Retro Beveled Push-Buttons */
+.retro-btn {
+  background-color: #18181b;
+  border-top: 2px solid #3f3f46;
+  border-left: 2px solid #3f3f46;
+  border-bottom: 2px solid #09090b;
+  border-right: 2px solid #09090b;
+  color: #f4f4f5;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  transition: all 0.05s ease-in-out;
+}
+.retro-btn:active {
+  border-top: 2px solid #09090b;
+  border-left: 2px solid #09090b;
+  border-bottom: 2px solid #3f3f46;
+  border-right: 2px solid #3f3f46;
+  transform: translate(1px, 1px);
+}
+
+.retro-btn-red {
+  background-color: #991b1b;
+  border-top: 2px solid #ef4444;
+  border-left: 2px solid #ef4444;
+  border-bottom: 2px solid #450a0a;
+  border-right: 2px solid #450a0a;
+  color: #ffffff;
+}
+.retro-btn-red:hover {
+  background-color: #b91c1c;
+}
+.retro-btn-red:active {
+  border-top: 2px solid #450a0a;
+  border-left: 2px solid #450a0a;
+  border-bottom: 2px solid #ef4444;
+  border-right: 2px solid #ef4444;
+}
+
+.glow-red {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.35);
+}
+
+.border-glow-red {
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+/* Retro Blinking Cursor */
+@keyframes retro-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.retro-cursor {
+  animation: retro-blink 0.8s infinite;
+}
+

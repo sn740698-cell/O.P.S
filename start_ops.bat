@@ -13,6 +13,13 @@ echo         Local-First AI Operating System - Environment Launcher
 echo ======================================================================
 echo.
 
+netstat -ano | findstr 127.0.0.1:5432 >nul
+if errorlevel 1 (
+    echo [0/4] Starting PostgreSQL 18 Engine (Port 5432)...
+    start /min "O.P.S PostgreSQL" "D:\Program Files\program Files (postgreSQL)\18\bin\postgres.exe" -D "D:\Program Files\program Files (postgreSQL)\18\data"
+    ping 127.0.0.1 -n 3 >nul
+)
+
 echo [1/4] Starting Django Backend Engine (Port 8000)...
 start "O.P.S Backend (Django)" cmd /c "cd /d %ROOT_DIR%backend && call .\venv\Scripts\activate.bat && python manage.py runserver 0.0.0.0:8000"
 
@@ -31,13 +38,19 @@ start http://localhost:3000
 echo.
 echo ======================================================================
 echo  O.P.S. System-Wide Ambient Engine is ACTIVE EVERYWHERE! 
-echo  Press Ctrl+Win anywhere (over WhatsApp, Chrome, Games, Home Screen)
-echo  to bring up the O.P.S. System-Wide Pop-Up Face Cockpit!
+echo  Press Ctrl+Alt anywhere (over WhatsApp, Chrome, Games, Home Screen)
+echo  to bring up the O.P.S. System-Wide Pop-Up Cockpit!
 echo ======================================================================
+
 echo.
 exit
 
 :BACKGROUND_MODE
+netstat -ano | findstr 127.0.0.1:5432 >nul
+if errorlevel 1 (
+    start /min "O.P.S PostgreSQL" "D:\Program Files\program Files (postgreSQL)\18\bin\postgres.exe" -D "D:\Program Files\program Files (postgreSQL)\18\data"
+    ping 127.0.0.1 -n 3 >nul
+)
 start /min "O.P.S Backend (Django)" cmd /c "cd /d %ROOT_DIR%backend && call .\venv\Scripts\activate.bat && python manage.py runserver 0.0.0.0:8000"
 start /min "O.P.S Frontend (Vite)" cmd /c "cd /d %ROOT_DIR%frontend && npm run dev"
 start "O.P.S Desktop Overlay" cmd /c "cd /d %ROOT_DIR% && call .\backend\venv\Scripts\activate.bat && python local_agent\desktop_overlay.py"
