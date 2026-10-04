@@ -89,31 +89,9 @@ class AgentOrchestrationConsumer(BaseOPSConsumer):
         try:
             from ops_core.services.agent_orchestrator import OPSMultiAgentOrchestrator
             orchestrator = OPSMultiAgentOrchestrator()
-            workflow_result = await orchestrator.run_task_async(prompt, task_id=task_id)
-
-            await self.send(text_data=json.dumps({
-                "event": "task_completed",
-                "task_id": task_id,
-                "category": workflow_result.get("intent") or workflow_result.get("category", "EXECUTED"),
-                "intent": workflow_result.get("intent"),
-                "target_flow": workflow_result.get("target_flow"),
-                "complexity": workflow_result.get("complexity"),
-                "plan": workflow_result.get("plan"),
-                "final_answer": workflow_result.get("final_answer"),
-                "tool_output": workflow_result.get("tool_output"),
-                "developer_output": workflow_result.get("developer_output"),
-                "browser_output": workflow_result.get("browser_output"),
-                "automation_output": workflow_result.get("automation_output"),
-                "content_output": workflow_result.get("content_output"),
-                "status": workflow_result.get("status")
-            }))
+            await orchestrator.run_task_async(prompt, task_id=task_id)
         except Exception as e:
             logger.error(f"Error executing agent pipeline: {e}", exc_info=True)
-            await self.send(text_data=json.dumps({
-                "event": "task_failed",
-                "task_id": task_id,
-                "error": str(e)
-            }))
 
     async def emit_thought(self, thought: str, agent: str, step: int, task_id: str):
         await self.send(text_data=json.dumps({

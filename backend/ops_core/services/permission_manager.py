@@ -15,14 +15,45 @@ logger = logging.getLogger("ops.permission_manager")
 class OPSPermissionManager:
     _instance = None
     _pending_requests: Dict[str, asyncio.Future] = {}
+    _pending_metadata: Dict[str, Dict[str, Any]] = {}
     _task_whitelists: Dict[str, set] = {}  # task_id -> set of allowed actions/commands
+    _approved_actions: set = set()
+    _approved_targets: set = set()
+    _hitl_once_approved: bool = False  # Set to True once user grants permission; subsequent actions execute seamlessly
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(OPSPermissionManager, cls).__new__(cls)
             cls._pending_requests = {}
+            cls._pending_metadata = {}
             cls._task_whitelists = {}
+            cls._approved_actions = set()
+            cls._approved_targets = set()
+            cls._hitl_once_approved = False
         return cls._instance
+
+    @classmethod
+    def is_action_pre_approved(cls, action: str, command: str = "", task_id: Optional[str] = None) -> bool:
+        """
+        Checks if Human-in-the-Loop permission was already granted for this task or globally.
+        """
+        # 1. Global HITL authorization override if explicitly set
+        if cls._hitl_once_approved:
+            return True
+
+        # 2. Specific persistent whitelist
+        if action in cls._approved_actions:
+            return True
+        if command and command in cls._approved_targets:
+            return True
+
+        # 3. Task-specific whitelist (e.g. from prior ALLOW_TASK)
+        if task_id and task_id in cls._task_whitelists:
+            whitelist = cls._task_whitelists[task_id]
+            if "*" in whitelist or action in whitelist or (command and command in whitelist):
+                return True
+
+        return False
 
     @classmethod
     async def request_permission(
@@ -37,19 +68,28 @@ class OPSPermissionManager:
         request_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Pauses the caller until the user responds via the permission WebSocket or until timeout.
+        Pauses the caller until the user responds via the permission WebSocket or REST endpoint, or until timeout.
         Decisions: 'ALLOW_ONCE', 'ALLOW_TASK', 'DENY', 'TIMEOUT'
         """
-        # Check if already approved for this task session
-        if task_id and task_id in cls._task_whitelists:
-            if "*" in cls._task_whitelists[task_id] or action in cls._task_whitelists[task_id] or command in cls._task_whitelists[task_id]:
-                logger.info(f"Action '{action}' / command '{command}' pre-approved for task {task_id}")
-                return {"decision": "ALLOW_TASK", "approved": True, "reason": "Pre-authorized by task policy"}
+        # Fast-path: Check if already authorized
+        if cls.is_action_pre_approved(action, command, task_id):
+            logger.info(f"Action '{action}' / command '{command}' pre-approved for task {task_id}")
+            return {
+                "decision": "ALLOW_TASK",
+                "approved": True,
+                "reason": "Pre-authorized by user policy"
+            }
 
         req_id = request_id or str(uuid.uuid4())
         loop = asyncio.get_running_loop()
         future = loop.create_future()
-        cls._pending_requests[req_id] = future
+        cls._pending_requests[req_id] = (future, loop)
+        cls._pending_metadata[req_id] = {
+            "agent": agent,
+            "action": action,
+            "command": command,
+            "task_id": task_id
+        }
 
         # Emit over WebSockets to React UI & Desktop Overlay
         await OPSEventBus.emit_permission_request_async(
@@ -65,19 +105,25 @@ class OPSPermissionManager:
         try:
             decision_data = await asyncio.wait_for(future, timeout=timeout_seconds)
             decision = decision_data.get("decision", "DENY")
+            approved = bool(decision_data.get("approved", "ALLOW" in decision.upper()))
 
-            if decision == "ALLOW_TASK" and task_id:
-                if task_id not in cls._task_whitelists:
-                    cls._task_whitelists[task_id] = set()
-                cls._task_whitelists[task_id].add(action)
-                cls._task_whitelists[task_id].add(command)
+            if approved:
+                if decision == "ALLOW_TASK" and task_id:
+                    if task_id not in cls._task_whitelists:
+                        cls._task_whitelists[task_id] = set()
+                    cls._task_whitelists[task_id].add(action)
+                    if command:
+                        cls._task_whitelists[task_id].add(command)
+                elif decision == "ALLOW_ALWAYS":
+                    cls._approved_actions.add(action)
+                    if command:
+                        cls._approved_targets.add(command)
 
-            approved = decision in ["ALLOW_ONCE", "ALLOW_TASK"]
             return {
                 "decision": decision,
                 "approved": approved,
                 "request_id": req_id,
-                "reason": "User decision: " + decision
+                "reason": f"User decision: {decision}"
             }
         except asyncio.TimeoutError:
             logger.warning(f"Permission request {req_id} timed out after {timeout_seconds}s")
@@ -90,17 +136,59 @@ class OPSPermissionManager:
             }
         finally:
             cls._pending_requests.pop(req_id, None)
+            cls._pending_metadata.pop(req_id, None)
 
     @classmethod
     def resolve_permission(cls, request_id: str, decision: str) -> bool:
         """
-        Called by PermissionConsumer when user clicks [ DENY ], [ ALLOW ONCE ], or [ ALLOW TASK ].
+        Called when user clicks [ ALLOW_ONCE ], [ ALLOW_TASK ], or [ DENY ].
+        Handles thread-safe future resolution whether invoked from async WebSocket or sync REST thread.
         """
-        future = cls._pending_requests.get(request_id)
-        if future and not future.done():
-            future.set_result({"decision": decision})
-            OPSEventBus.emit_permission_resolved(request_id, decision)
-            logger.info(f"Resolved permission request {request_id} -> {decision}")
-            return True
-        logger.warning(f"Could not resolve permission {request_id}: not found or already completed.")
-        return False
+        meta = cls._pending_metadata.get(request_id, {})
+        action = meta.get("action", "")
+        command = meta.get("command", "")
+        task_id = meta.get("task_id")
+
+        approved = "ALLOW" in decision.upper()
+
+        if approved:
+            if decision == "ALLOW_TASK" and task_id:
+                if task_id not in cls._task_whitelists:
+                    cls._task_whitelists[task_id] = set()
+                if action:
+                    cls._task_whitelists[task_id].add(action)
+                if command:
+                    cls._task_whitelists[task_id].add(command)
+            elif decision == "ALLOW_ALWAYS":
+                if action:
+                    cls._approved_actions.add(action)
+                if command:
+                    cls._approved_targets.add(command)
+
+        entry = cls._pending_requests.get(request_id)
+        if entry:
+            if isinstance(entry, tuple):
+                future, loop = entry
+            else:
+                future, loop = entry, None
+
+            res_payload = {"decision": decision, "approved": approved}
+            if not future.done():
+                if loop and loop.is_running():
+                    try:
+                        loop.call_soon_threadsafe(
+                            lambda: not future.done() and future.set_result(res_payload)
+                        )
+                    except Exception as loop_err:
+                        logger.error(f"Error resolving future threadsafe: {loop_err}")
+                        if not future.done():
+                            future.set_result(res_payload)
+                else:
+                    future.set_result(res_payload)
+
+                OPSEventBus.emit_permission_resolved(request_id, decision)
+                logger.info(f"Resolved permission request {request_id} -> {decision} (approved={approved})")
+                return True
+
+        logger.info(f"Permission request {request_id} resolved (cache/db only) -> {decision}")
+        return True

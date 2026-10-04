@@ -146,11 +146,21 @@ class OPSSessionMemoryManager:
         followup_verbs = [
             'tell me more', 'more details', 'more about', 'what else',
             'continue', 'explain further', 'elaborate', 'what did he',
-            'what did she', 'who was he', 'who was she', 'where is he', 'where is she'
+            'what did she', 'who was he', 'who was she', 'where is he', 'where is she',
+            'tell more', 'give more info', 'give more information', 'expand',
+            'tell more about the chat', 'tell me more about the chat', 'tell more about it',
+            'tell me more about it', 'give me more info', 'more info', 'go on', 'deep dive'
         ]
         p_lower = prompt.lower().strip()
 
-        is_followup = bool(re.search(pronoun_pattern, p_lower)) or any(p_lower.startswith(v) for v in followup_verbs) or p_lower in followup_verbs
+        is_followup = (
+            bool(re.search(pronoun_pattern, p_lower)) or 
+            any(p_lower.startswith(v) for v in followup_verbs) or 
+            p_lower in followup_verbs or
+            bool(re.search(r'tell\s+.*more', p_lower)) or
+            bool(re.search(r'give\s+.*more\s+info', p_lower)) or
+            bool(re.search(r'explain\s+.*more', p_lower))
+        )
 
         if not is_followup:
             return prompt, None

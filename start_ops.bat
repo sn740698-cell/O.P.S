@@ -32,8 +32,14 @@ start "O.P.S Desktop Overlay" cmd /k "cd /d "%ROOT_DIR%" && call .\backend\venv\
 echo [4/4] Waiting for servers to initialize...
 ping 127.0.0.1 -n 4 >nul
 
-echo Opening O.P.S. Ambient Overlay Dashboard in default browser...
-start http://localhost:3000
+echo Opening O.P.S. Ambient Overlay Dashboard in Microsoft Edge...
+if exist "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" (
+    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --autoplay-policy=no-user-gesture-required http://localhost:3000
+) else if exist "C:\Program Files\Microsoft\Edge\Application\msedge.exe" (
+    start "" "C:\Program Files\Microsoft\Edge\Application\msedge.exe" --autoplay-policy=no-user-gesture-required http://localhost:3000
+) else (
+    start microsoft-edge:http://localhost:3000
+)
 
 echo.
 echo ======================================================================
@@ -56,6 +62,11 @@ ping 127.0.0.1 -n 3 >nul
 start /min "O.P.S Backend Django" cmd /k "cd /d "%ROOT_DIR%backend" && call .\venv\Scripts\activate.bat && python manage.py runserver 0.0.0.0:8000"
 start /min "O.P.S Frontend Vite" cmd /k "cd /d "%ROOT_DIR%frontend" && npm run dev"
 start "O.P.S Desktop Overlay" cmd /k "cd /d "%ROOT_DIR%" && call .\backend\venv\Scripts\activate.bat && python local_agent\desktop_overlay.py"
-ping 127.0.0.1 -n 4 >nul
-start http://localhost:3000
+if exist "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" (
+    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --autoplay-policy=no-user-gesture-required http://localhost:3000
+) else if exist "C:\Program Files\Microsoft\Edge\Application\msedge.exe" (
+    start "" "C:\Program Files\Microsoft\Edge\Application\msedge.exe" --autoplay-policy=no-user-gesture-required http://localhost:3000
+) else (
+    start microsoft-edge:http://localhost:3000
+)
 exit /b 0

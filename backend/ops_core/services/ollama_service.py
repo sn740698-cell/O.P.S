@@ -169,7 +169,8 @@ class OPSOllamaService:
             res = self.client.generate(
                 model=self.reasoning_model,
                 prompt=f"{system_instruction}\n{ctx_str}User Task: {prompt}",
-                format="json"
+                format="json",
+                options={"num_predict": 768}
             )
             plan_data = json.loads(res.get('response', '{}'))
             return {
@@ -211,7 +212,8 @@ class OPSOllamaService:
             res = self.client.generate(
                 model=self.reasoning_model,
                 prompt=f"{system_instruction}{ctx_str}\nTask: {task}",
-                format="json"
+                format="json",
+                options={"num_predict": 768}
             )
             result = json.loads(res.get('response', '{}'))
             return {
@@ -248,7 +250,8 @@ class OPSOllamaService:
         try:
             res = self.client.generate(
                 model=self.conversation_model,
-                prompt=f"{system_instruction}\n\nTask: {task}\nType: {content_type}\nOutput:"
+                prompt=f"{system_instruction}\n\nTask: {task}\nType: {content_type}\nOutput:",
+                options={"num_predict": 768}
             )
             return res.get("response", "").strip()
         except Exception as e:
@@ -260,29 +263,135 @@ class OPSOllamaService:
         """
         Ensures response is formatted in authentic '90s retro style tactical bullet points.
         Tags items with [•], [>], [STATUS], or [INTEL].
+        Strips leading role headers and trailing continuation prompts without discarding valid content.
         """
-        lines = [l.strip() for l in text.split("\n") if l.strip()]
-        if not lines:
+        if not text or not text.strip():
             return "[•] Standby: Ready for instructions."
 
-        formatted_lines = []
-        has_intro = False
+        raw_lines = [l.strip() for l in text.split("\n") if l.strip()]
+        
+        # Strip leading assistant prefixes
+        cleaned_lines = []
+        for l in raw_lines:
+            low = l.lower()
+            if low.startswith(("o.p.s.:", "ops:", "assistant:", "synthesized knowledge dossier:")):
+                remainder = re.sub(r'^(o\.p\.s\.:|ops:|assistant:|synthesized knowledge dossier:)\s*', '', l, flags=re.IGNORECASE).strip()
+                if remainder:
+                    cleaned_lines.append(remainder)
+                continue
+            cleaned_lines.append(l)
 
-        for i, line in enumerate(lines):
-            # Preserve existing retro brackets, code blocks, dividers
-            if line.startswith(("[•]", "[>]", "[STATUS]", "[DATA]", "[INTEL]", "[ACTION]", "[SYS]", "•", "-", "*", "#", "```", "──")):
-                if line.startswith(("- ", "* ", "• ")):
-                    clean_line = line[2:].strip()
-                    formatted_lines.append(f"[•] {clean_line}")
-                else:
-                    formatted_lines.append(line)
-            elif not has_intro and (line.endswith(":") or (i == 0 and len(line) < 70)):
+        # Truncate if subsequent conversational hallucination triggers occur
+        lines = []
+        for i, l in enumerate(cleaned_lines):
+            low = l.lower()
+            if i > 0 and any(low.startswith(p) for p in [
+                "user:", "human:", "active conversation memory", "task execution context"
+            ]):
+                break
+            lines.append(l)
+
+        if not lines:
+            lines = raw_lines if raw_lines else [text.strip()]
+
+        formatted_lines = []
+        for line in lines:
+            # If already bulleted with [•], [>], etc.
+            if line.startswith(("[•]", "[>]", "[STATUS]", "[DATA]", "[INTEL]", "[ACTION]", "[SYS]", "#", "```", "──", "**")):
                 formatted_lines.append(line)
-                has_intro = True
+            elif line.startswith(("- ", "* ", "• ")):
+                formatted_lines.append(f"[•] {line[2:].strip()}")
+            elif re.match(r'^\d+[\.\)]\s*', line):
+                clean_num = re.sub(r'^\d+[\.\)]\s*', '', line).strip()
+                formatted_lines.append(f"[•] {clean_num}")
             else:
                 formatted_lines.append(f"[•] {line}")
 
         return "\n".join(formatted_lines)
+
+    def _synthesize_from_context(self, query: str, context: str) -> str:
+        """
+        Robust deterministic knowledge extractor from verified web context when LLM is offline or busy.
+        """
+        if not context or not context.strip():
+            return f"[•] STATUS: Web intelligence completed for '{query}'.\n[•] INTEL: Verified public knowledge indexed."
+
+        bullets = []
+        raw_lines = [l.strip() for l in context.split("\n") if l.strip()]
+        for l in raw_lines:
+            if any(l.startswith(prefix) for prefix in ["Person / Subject:", "Description:", "Summary / Extract:", "Wire Update:", "Principle:", "Overview:", "Source:"]):
+                cleaned = re.sub(r'^(Person / Subject:|Description:|Summary / Extract:|Wire Update:|Principle:|Overview:|Source:)\s*', '', l).strip()
+                if cleaned and len(cleaned) > 20 and not cleaned.startswith("http"):
+                    bullets.append(f"[•] {cleaned}")
+            elif len(l) > 35 and not l.startswith("===") and not l.startswith("http"):
+                bullets.append(f"[•] {l}")
+            if len(bullets) >= 6:
+                break
+
+        if bullets:
+            return "\n".join(bullets)
+
+        # Fallback to sentence split
+        sentences = [s.strip() for s in re.split(r'\.\s+', context) if len(s.strip()) > 20]
+        if sentences:
+            return "\n".join([f"[•] {s}." for s in sentences[:5]])
+
+        return f"[•] INTEL: {context[:500]}"
+
+    def synthesize_crawled_knowledge(self, query: str, context: str) -> str:
+        """
+        Uses Model 2 (Qwen3 1.7B Reasoning Engine) to synthesize rich live web crawling
+        data into authoritative, structured, and factual dotted points with zero hallucination.
+        """
+        if not context or not context.strip():
+            return f"[•] STATUS: Web crawling concluded for '{query}'.\n[•] INTEL: No verified records found in active indexes."
+
+        sys_msg = (
+            "You are O.P.S. Knowledge Synthesizer (Model 2: Qwen3 1.7B) created and developed by Suraj.\n"
+            "Analyze the verified real-time web intelligence and synthesize a thorough, highly accurate, "
+            "and informative explanation for the user directive.\n\n"
+            "MANDATORY INSTRUCTIONS:\n"
+            "1. Answer strictly using the facts in the context. Do NOT speculate or invent facts.\n"
+            "2. Present 4-6 distinct, detailed, and informative bullet points.\n"
+            "3. Prefix each bullet point with '[•] '.\n"
+            "4. Do NOT repeat phrases or loop sentences."
+        )
+
+        user_msg = (
+            f"=== VERIFIED WEB CONTEXT ===\n{context[:3200]}\n===========================\n\n"
+            f"Directive: {query}\n"
+            "Synthesize a clear, detailed bullet-point dossier based strictly on the verified context."
+        )
+
+        try:
+            res = self.client.chat(
+                model=self.reasoning_model,
+                messages=[
+                    {"role": "system", "content": sys_msg},
+                    {"role": "user", "content": user_msg}
+                ],
+                options={
+                    "temperature": 0.2,
+                    "top_p": 0.8,
+                    "repeat_penalty": 1.25,
+                    "repeat_last_n": 128,
+                    "num_predict": 768
+                }
+            )
+            msg = res.get("message", {})
+            text = (msg.get("content") or "").strip()
+            if not text:
+                thinking = (msg.get("thinking") or "").strip()
+                if thinking and len(thinking) > 50:
+                    lines = [l.strip() for l in thinking.split("\n") if l.strip().startswith(("-", "*", "•", "[•]"))]
+                    if lines:
+                        text = "\n".join(lines)
+            if not text:
+                return self._synthesize_from_context(query, context)
+            return self.format_as_retro_bullets(text)
+        except Exception as e:
+            logger.error(f"Knowledge synthesis error: {e}")
+            return self._synthesize_from_context(query, context)
 
     def generate_jarvis_response(
         self, 
@@ -292,47 +401,95 @@ class OPSOllamaService:
         history: Optional[str] = None
     ) -> str:
         """
-        Model 3: Llama 3.2 1B Instruct (Shared O.P.S. Personality Layer)
+        Model 3: Llama 3.2 1B / Qwen3 1.7B (Shared O.P.S. Personality Layer)
         Maintains the unified J.A.R.V.I.S. voice and personality across all system tasks:
         - Polite, calm, articulate, context-aware.
         - Addresses the user with dignified respect ('sir', 'certainly', 'at your service').
         - Formatted in '90s retro tactical HUD bullet points.
+        - Created, developed, and engineered by Suraj.
         - Seamlessly references previous turns in the temporary conversation memory.
         """
+        p_lower = user_prompt.lower().strip().strip("?!.,'\"")
+        
+        # Direct identity response
+        if any(p_lower == q for q in [
+            "who are you", "what are you", "who made you", "who created you",
+            "who is your creator", "who is your developer", "tell me about yourself",
+            "who built you", "introduce yourself"
+        ]) and not context:
+            return (
+                "At your service, sir.\n"
+                "[•] DESIGNATION: O.P.S. (Over-Engineered Programmed System)\n"
+                "[•] CREATOR: Suraj\n"
+                "[•] CLASSIFICATION: Ultra-Intelligent Local-First Tactical AI Operating System\n"
+                "[•] ARCHITECTURE: Tri-Model LangGraph Multi-Agent Engine (Qwen3 0.6B Intent Router, Qwen3 1.7B Reasoning & Dev Core, Llama 3.2 1B J.A.R.V.I.S. Persona)\n"
+                "[•] CAPABILITIES: Real-time autonomous web crawling, PostgreSQL workstation memory vault, safe terminal execution sandbox, and OS desktop automation."
+            )
+
+        # For rich factual web research, use Qwen3 1.7B reasoning model for synthesis
+        chosen_model = self.reasoning_model if (context and len(context) > 100) else self.conversation_model
+
         system_instruction = (
-            "You are O.P.S. (Over-Engineered Programmed System), an ultra-intelligent tactical AI Operating System, "
-            "modeled in tone after J.A.R.V.I.S. with a 1990s retro tactical HUD terminal aesthetic.\n\n"
-            "MANDATORY FORMATTING & MEMORY INSTRUCTIONS:\n"
-            "1. Address the user with dignified respect ('sir', 'certainly', 'at your service').\n"
-            "2. Understand all follow-up questions and pronouns ('him', 'her', 'it', 'that', 'this', 'tell me more') "
-            "by connecting to the Active Conversation Memory provided below.\n"
-            "3. Begin with a concise acknowledgment header (e.g. 'At your service, sir. Additional intelligence on [Subject]:').\n"
-            "4. Present all facts, updates, explanations, steps, and telemetry in distinct bullet points prefixed with '[•]' or '[>]'.\n"
-            "5. For key domains, use tactical brackets, e.g.:\n"
-            "   [•] STATUS: ...\n"
-            "   [•] INTEL: ...\n"
-            "   [•] ACTION: ...\n"
-            "6. Keep bullet points crisp, articulate, and punchy. Never write unbroken walls of unstructured text."
+            "You are O.P.S. (Over-Engineered Programmed System), an ultra-intelligent, local-first tactical AI Operating System "
+            "and autonomous workstation assistant created, developed, and engineered by Suraj.\n\n"
+            "MANDATORY IDENTITY & ATTRIBUTION RULES:\n"
+            "- You were created and engineered by Suraj.\n"
+            "- Address the user with dignified respect ('sir', 'certainly', 'at your service').\n"
+            "- Formulate all answers in structured tactical bullet points prefixed with '[•]'.\n"
+            "- If the user asks for more details, elaboration, or follow-ups, synthesize thorough expanded information from the conversation history.\n"
+            "- Do NOT repeat sentences or loop text. Keep output articulate, crisp, and factual.\n"
+            "- If Task Execution Context is provided, ground your entire response strictly in that context."
         )
 
-        history_str = f"\nActive Conversation Memory (Temporary Session):\n{history}\n" if history else ""
-        ctx_str = f"\nTask Execution Context:\n{context}\n" if context else ""
-        intent_str = f"Intent: {intent}\n" if intent else ""
+        messages = [{"role": "system", "content": system_instruction}]
+
+        if history:
+            messages.append({"role": "system", "content": f"=== ACTIVE CONVERSATION HISTORY ===\n{history}\n================================="})
+
+        if context:
+            messages.append({"role": "system", "content": f"=== TASK EXECUTION CONTEXT ===\n{context}\n============================="})
+
+        messages.append({"role": "user", "content": user_prompt})
 
         try:
-            res = self.client.generate(
-                model=self.conversation_model,
-                prompt=f"{system_instruction}\n{history_str}{intent_str}{ctx_str}\nUser: {user_prompt}\nO.P.S.:"
+            res = self.client.chat(
+                model=chosen_model,
+                messages=messages,
+                options={
+                    "temperature": 0.25,
+                    "top_p": 0.8,
+                    "repeat_penalty": 1.25,
+                    "repeat_last_n": 128,
+                    "num_predict": 768
+                }
             )
-            text = res.get("response", "").strip()
+            msg = res.get("message", {})
+            text = (msg.get("content") or "").strip()
+            if not text:
+                thinking = (msg.get("thinking") or "").strip()
+                if thinking and len(thinking) > 50:
+                    lines = [l.strip() for l in thinking.split("\n") if l.strip().startswith(("-", "*", "•", "[•]"))]
+                    if lines:
+                        text = "\n".join(lines)
+            if not text:
+                if context:
+                    return f"Certainly, sir. Operations concluded for '{user_prompt}':\n\n{context[:600]}"
+                return f"At your service, sir. Directive '{user_prompt}' processed successfully."
             return self.format_as_retro_bullets(text)
         except Exception as e:
             logger.error(f"Jarvis response generation failed: {e}")
+            if any(k in p_lower for k in ["who are you", "who created you", "who made you", "creator", "suraj"]):
+                return (
+                    "At your service, sir.\n"
+                    "[•] SYSTEM: O.P.S. (Over-Engineered Programmed System)\n"
+                    "[•] CREATOR: Suraj\n"
+                    "[•] STATUS: Operational in offline tactical mode."
+                )
             if context:
                 return (
                     f"At your service, sir. Directive processed:\n"
                     f"[•] STATUS: Operations concluded for '{user_prompt}'.\n"
-                    f"[•] INTEL: {context}\n"
+                    f"[•] INTEL: {context[:500]}\n"
                     f"[•] WORKSTATION: Ready for follow-up directive."
                 )
             return (
@@ -340,3 +497,7 @@ class OPSOllamaService:
                 f"[•] STATUS: Directive processed: '{user_prompt}'\n"
                 f"[•] ACTION: Telemetry logged in workstation audit records."
             )
+
+
+ollama_service = OPSOllamaService()
+

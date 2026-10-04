@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -186,10 +187,11 @@ class PermissionResolveView(APIView):
 
         resolved_in_memory = OPSPermissionManager.resolve_permission(str(request_id), decision)
 
-        status_val = "APPROVED" if "ALLOW" in decision else "DENIED"
+        status_val = "APPROVED" if "ALLOW" in decision.upper() else "DENIED"
         PermissionRequest.objects.filter(request_id=request_id).update(
             status=status_val,
-            decision=decision
+            decision=decision,
+            resolved_at=timezone.now()
         )
 
         return Response({
@@ -403,12 +405,13 @@ class AgentRunWorkflowView(APIView):
         prompt = request.data.get("prompt", "")
         task_id = request.data.get("task_id")
         session_id = request.data.get("session_id")
+        source = request.data.get("source", "workstation")
 
         if not prompt:
             return Response({"error": "Prompt parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Execute async LangGraph workflow synchronously for REST client
-        result = async_to_sync(agent_orchestrator.run_task_async)(prompt, task_id=task_id, session_id=session_id)
+        result = async_to_sync(agent_orchestrator.run_task_async)(prompt, task_id=task_id, session_id=session_id, source=source)
         return Response(result)
 
 

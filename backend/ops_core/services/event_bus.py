@@ -140,6 +140,90 @@ class OPSEventBus:
         }
         cls._send_to_group_sync(cls.GROUP_AGENT, payload)
 
+    @classmethod
+    def emit_task_started(cls, prompt: str, task_id: Optional[str] = None, source: str = "cockpit", agent: str = "Directive & Hotkey Ingestion"):
+        """Broadcasts task execution start across Django Channels to Web HUD and overlays."""
+        payload = {
+            "event": "task_started",
+            "task_id": task_id or str(uuid.uuid4()),
+            "prompt": prompt,
+            "source": source,
+            "agent": agent,
+            "thought": f"Directive received: \"{prompt}\". Initializing multi-agent sensory routing...",
+            "status": "EXECUTING",
+            "timestamp": time.time()
+        }
+        cls._send_to_group_sync(cls.GROUP_AGENT, payload)
+
+    @classmethod
+    async def emit_task_started_async(cls, prompt: str, task_id: Optional[str] = None, source: str = "cockpit", agent: str = "Directive & Hotkey Ingestion"):
+        """Async broadcast of task start to all connected WebSocket clients."""
+        payload = {
+            "event": "task_started",
+            "task_id": task_id or str(uuid.uuid4()),
+            "prompt": prompt,
+            "source": source,
+            "agent": agent,
+            "thought": f"Directive received: \"{prompt}\". Initializing multi-agent sensory routing...",
+            "status": "EXECUTING",
+            "timestamp": time.time()
+        }
+        await cls._send_to_group_async(cls.GROUP_AGENT, payload)
+
+    @classmethod
+    def emit_task_completed(cls, task_id: str, final_answer: str, category: str = "EXECUTED", plan: list = None, details: dict = None):
+        """Broadcasts task completion across all listening clients."""
+        payload = {
+            "event": "task_completed",
+            "task_id": task_id,
+            "category": category,
+            "final_answer": final_answer,
+            "plan": plan or [],
+            "details": details or {},
+            "status": "COMPLETED",
+            "timestamp": time.time()
+        }
+        cls._send_to_group_sync(cls.GROUP_AGENT, payload)
+
+    @classmethod
+    async def emit_task_completed_async(cls, task_id: str, final_answer: str, category: str = "EXECUTED", plan: list = None, details: dict = None):
+        """Async broadcast of task completion across all listening clients."""
+        payload = {
+            "event": "task_completed",
+            "task_id": task_id,
+            "category": category,
+            "final_answer": final_answer,
+            "plan": plan or [],
+            "details": details or {},
+            "status": "COMPLETED",
+            "timestamp": time.time()
+        }
+        await cls._send_to_group_async(cls.GROUP_AGENT, payload)
+
+    @classmethod
+    def emit_task_failed(cls, task_id: str, error: str):
+        """Broadcasts task failure across all listening clients."""
+        payload = {
+            "event": "task_failed",
+            "task_id": task_id,
+            "error": error,
+            "status": "FAILED",
+            "timestamp": time.time()
+        }
+        cls._send_to_group_sync(cls.GROUP_AGENT, payload)
+
+    @classmethod
+    async def emit_task_failed_async(cls, task_id: str, error: str):
+        """Async broadcast of task failure across all listening clients."""
+        payload = {
+            "event": "task_failed",
+            "task_id": task_id,
+            "error": error,
+            "status": "FAILED",
+            "timestamp": time.time()
+        }
+        await cls._send_to_group_async(cls.GROUP_AGENT, payload)
+
     # ==================== Permission Gate Broadcasts ====================
 
     @classmethod

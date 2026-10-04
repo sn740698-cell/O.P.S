@@ -651,3 +651,7 @@ class OPSAutomationService:
         except Exception as e:
             logger.error(f"PyAutoGUI action error: {e}")
             return {"status": "error", "action": action, "error": str(e)}
+
+
+automation_service = OPSAutomationService()
+

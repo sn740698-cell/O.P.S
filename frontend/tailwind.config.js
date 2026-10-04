@@ -6,6 +6,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        mono: ['"JetBrains Mono"', '"Geist Mono"', 'monospace'],
+        sans: ['Geist', 'Inter', 'sans-serif'],
+      },
       colors: {
         ops: {
           bg: '#090d16',

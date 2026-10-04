@@ -39,7 +39,7 @@ With a single global keystroke (`Ctrl + Alt`) or an ambient wake-word (`"Hey OPS
    - Automatically surfaces the overlay window and primes the prompt input field when spoken.
 7. **'90s Retro Typewriter Streaming Animation:**
    - Real-time word-by-word streaming effect running at 22ms intervals.
-   - Authentic retro terminal monospace typography (`Consolas`) rendered in silver-white on pitch-black.
+   - Authentic retro terminal monospace typography (`JetBrains Mono`) rendered in silver-white on pitch-black.
    - Features an animated, blinking block cursor (`█`) that pulses smoothly.
    - Includes **instant skip-on-click**: clicking the response box immediately reveals the entire text.
 8. **Frameless Draggable Cyber HUD:**

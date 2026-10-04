@@ -93,7 +93,21 @@ Implementation strictly follows [`OPS_Local_LLM_Model_Roles.md`](file:///d:/Proj
 
 ---
 
-### 4. 🧠 Multi-Tier Memory Engine
+### 4. 🛡️ Human-in-the-Loop (HITL) Security & Dynamic Permission Gatekeeper
+* **Mandatory Authorization for Sensitive Operations:** Opening native applications, executing terminal commands, navigating external browser automation, or accessing local disk directories strictly requires prior human authorization before execution.
+* **Dual-Surface Real-Time Modals:**
+  * **Web Cockpit HUD:** Surfaces an interactive tactical Crimson Red alert modal via `/ws/permissions/` WebSocket stream with real-time audit telemetry.
+  * **System-Wide Pop-Up Cockpit (`Ctrl + Alt`):** Surfaces inline approval badges directly over any active desktop application.
+* **3-Tier Scoped Decision Controls:**
+  * **`[ ⚠️ ALLOW ONCE ]`:** Authorizes strictly that single operation without altering persistent policies or bypassing future checks.
+  * **`[ 🛡️ ALLOW TASK ]`:** Scopes authorization to that specific task session whitelist.
+  * **`[ ❌ DENY / BLOCK ]`:** Halts the directive immediately, records the denial to the database audit log, and notifies J.A.R.V.I.S. to abort cleanly.
+* **Thread-Safe Multi-Channel Resolution:** Thread-safe asynchronous future resolution ensures decisions submitted via WebSockets, REST APIs (`/api/v1/permissions/resolve/`), or Mobile Companion sync resolve instantly without race conditions or deadlocks.
+* **Immutable Audit Trail:** Every attempt—whether approved, blocked by policy, or denied by human decision—is permanently saved with timestamps, parameters, risk levels, and stderr logs.
+
+---
+
+### 5. 🧠 Multi-Tier Memory Engine
 
 #### A. Temporary Chat Session Memory (RAM)
 * Retains conversational turns only during the active browser session.
@@ -115,7 +129,7 @@ Implementation strictly follows [`OPS_Local_LLM_Model_Roles.md`](file:///d:/Proj
 
 ---
 
-### 5. 🎛️ 3-Tab Tactical Iron Man HUD Cockpit
+### 6. 🎛️ 3-Tab Tactical Iron Man HUD Cockpit
 
 * **Tab 01: [ 01: COMMAND COCKPIT ]**
   * Central JARVIS command console with retro typewriter streaming.
@@ -134,7 +148,7 @@ Implementation strictly follows [`OPS_Local_LLM_Model_Roles.md`](file:///d:/Proj
 
 ---
 
-### 6. 🎧 '90s Retro Audio Synthesizer
+### 7. 🎧 '90s Retro Audio Synthesizer
 * **Client-Side Web Audio Engine ([`retroSounds.js`](file:///d:/Projects/O.P.S/frontend/src/utils/retroSounds.js)):**
   * Zero-latency acoustic chimes for cockpit appearance (`playAppear`), disappearance (`playDisappear`), memory purge (`playMemoryErase`), memory store (`playMemoryStore`), and memory execution (`playMemoryExecute`).
 * **Native Workstation Audio ([`local_agent/sounds/`](file:///d:/Projects/O.P.S/local_agent/sounds/)):**

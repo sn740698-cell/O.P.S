@@ -14,10 +14,53 @@ import re
 import time
 import threading
 import json
+import logging
 import urllib.request
 import urllib.error
+import ctypes
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, font as tkfont
+
+logger = logging.getLogger("OPSDesktopOverlay")
+
+def _register_bundled_fonts():
+    """
+    Registers bundled fonts (.ttf) with Windows GDI so Tkinter can render JetBrains Mono.
+    """
+    if os.name == "nt":
+        fonts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+        if os.path.exists(fonts_dir):
+            for filename in os.listdir(fonts_dir):
+                if filename.lower().endswith((".ttf", ".otf")):
+                    font_path = os.path.join(fonts_dir, filename)
+                    try:
+                        ctypes.windll.gdi32.AddFontResourceExW(font_path, 0x10, 0)
+                    except Exception as e:
+                        logger.warning(f"Failed to register font {filename}: {e}")
+
+_register_bundled_fonts()
+
+def _resolve_primary_font():
+    """
+    Resolves the primary desktop cockpit font:
+    1. Primary (Bundled .ttf): JetBrains Mono
+    2. Windows Native Fallback: Cascadia Code
+    3. Monospace Fallback: monospace
+    """
+    try:
+        temp_root = tk.Tk()
+        temp_root.withdraw()
+        available = set(tkfont.families(temp_root))
+        temp_root.destroy()
+        if "JetBrains Mono" in available:
+            return "JetBrains Mono"
+        elif "Cascadia Code" in available:
+            return "Cascadia Code"
+    except Exception:
+        pass
+    return "monospace"
+
+PRIMARY_FONT = _resolve_primary_font()
 
 try:
     import keyboard
@@ -82,46 +125,77 @@ class OPSDesktopOverlay:
         )
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 1. Minimal Header Bar
-        header_frame = tk.Frame(main_frame, bg="#18181b", height=32, bd=1, relief=tk.RAISED)
+        # 1. Header Bar matching Ambient Pop-Up Cockpit
+        header_frame = tk.Frame(main_frame, bg="#18181b", height=36, bd=1, relief=tk.RAISED)
         header_frame.pack(fill=tk.X, side=tk.TOP)
         header_frame.bind("<B1-Motion>", self._on_drag)
         header_frame.bind("<Button-1>", self._start_drag)
 
         badge_label = tk.Label(
             header_frame,
-            text="[OPS]",
-            font=("Consolas", 9, "bold"),
+            text="OPS",
+            font=(PRIMARY_FONT, 10, "bold"),
             fg="#ffffff",
             bg="#dc2626",
-            padx=6,
-            pady=1
+            padx=8,
+            pady=2
         )
         badge_label.pack(side=tk.LEFT, padx=(8, 6), pady=4)
 
+        title_container = tk.Frame(header_frame, bg="#18181b")
+        title_container.pack(side=tk.LEFT, pady=2)
+
         title_label = tk.Label(
-            header_frame,
-            text="O.P.S. POP-UP COCKPIT",
-            font=("Consolas", 8, "bold"),
+            title_container,
+            text="=== O.P.S. AMBIENT POP-UP ===",
+            font=(PRIMARY_FONT, 8, "bold"),
             fg="#f4f4f5",
             bg="#18181b"
         )
-        title_label.pack(side=tk.LEFT, pady=4)
+        title_label.pack(anchor="w")
+
+        subtitle_label = tk.Label(
+            title_container,
+            text="[CTRL+ALT: OPEN] [CTRL+ALT+SPACE: CLOSE]",
+            font=(PRIMARY_FONT, 7),
+            fg="#a1a1aa",
+            bg="#18181b"
+        )
+        subtitle_label.pack(anchor="w")
 
         close_btn = tk.Button(
             header_frame,
-            text="[X]",
-            font=("Consolas", 8, "bold"),
+            text="[x]",
+            font=(PRIMARY_FONT, 8, "bold"),
             fg="#a1a1aa",
             bg="#18181b",
-            bd=0,
+            bd=1,
+            relief=tk.RAISED,
             activeforeground="#ffffff",
             activebackground="#27272a",
+            padx=6,
+            pady=1,
             command=self.hide_overlay
         )
-        close_btn.pack(side=tk.RIGHT, padx=8)
+        close_btn.pack(side=tk.RIGHT, padx=6, pady=4)
 
-        # 2. Control + Windows / Wispr Flow Indicator Banner
+        erase_btn = tk.Button(
+            header_frame,
+            text="[ 🔄 ERASE MEMORY ]",
+            font=(PRIMARY_FONT, 8, "bold"),
+            fg="#ffffff",
+            bg="#27272a",
+            activebackground="#3f3f46",
+            activeforeground="#ffffff",
+            bd=1,
+            relief=tk.RAISED,
+            padx=6,
+            pady=1,
+            command=self.erase_memory
+        )
+        erase_btn.pack(side=tk.RIGHT, padx=(0, 4), pady=4)
+
+        # 2. Control + Windows / Wispr Flow & HITL Active Banner
         self.wispr_banner = tk.Frame(
             main_frame,
             bg="#18181b",
@@ -136,8 +210,8 @@ class OPSDesktopOverlay:
 
         self.wispr_icon_badge = tk.Label(
             self.wispr_banner,
-            text="🎙️ [CTRL + WIN]",
-            font=("Consolas", 8, "bold"),
+            text="🎙️ WISPR FLOW (CTRL+WIN):",
+            font=(PRIMARY_FONT, 8, "bold"),
             fg="#ef4444",
             bg="#18181b",
             padx=6,
@@ -149,35 +223,35 @@ class OPSDesktopOverlay:
 
         self.wispr_status_label = tk.Label(
             self.wispr_banner,
-            text="WISPR FLOW: STANDBY (Press Ctrl+Win to Speak)",
-            font=("Consolas", 8),
-            fg="#a1a1aa",
-            bg="#18181b",
+            text="STANDBY READY",
+            font=(PRIMARY_FONT, 8, "bold"),
+            fg="#f4f4f5",
+            bg="#09090b",
+            padx=6,
+            pady=1,
             cursor="hand2"
         )
         self.wispr_status_label.pack(side=tk.LEFT, padx=4)
         self.wispr_status_label.bind("<Button-1>", lambda e: self.toggle_wispr_flow())
 
-        self.wispr_state_badge = tk.Label(
+        self.hitl_badge = tk.Label(
             self.wispr_banner,
-            text="[ IDLE ]",
-            font=("Consolas", 7, "bold"),
-            fg="#71717a",
-            bg="#27272a",
-            padx=5,
-            pady=1,
-            cursor="hand2"
+            text="🛡️ HITL PERMISSION ACTIVE",
+            font=(PRIMARY_FONT, 7, "bold"),
+            fg="#fca5a5",
+            bg="#18181b",
+            padx=6,
+            pady=1
         )
-        self.wispr_state_badge.pack(side=tk.RIGHT, padx=6)
-        self.wispr_state_badge.bind("<Button-1>", lambda e: self.toggle_wispr_flow())
+        self.hitl_badge.pack(side=tk.RIGHT, padx=6)
 
-        # 3. Sleek Prompt Bar (Text Input + Send Button)
+        # 3. Prompt Input Box + Dispatch Button
         input_container = tk.Frame(main_frame, bg="#09090b")
         input_container.pack(fill=tk.X, padx=10, pady=(6, 4))
 
         self.text_area = tk.Text(
             input_container,
-            font=("Consolas", 9),
+            font=(PRIMARY_FONT, 9),
             bg="#000000",
             fg="#ffffff",
             insertbackground="#ef4444",
@@ -191,12 +265,18 @@ class OPSDesktopOverlay:
         self.text_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 6))
         self.text_area.bind("<Return>", self._on_enter_press)
 
+        # Placeholder text support
+        self._placeholder_text = "Command O.P.S. (e.g. 'Open Instagram', 'Search web for...')"
+        self._set_placeholder()
+        self.text_area.bind("<FocusIn>", self._on_focus_in)
+        self.text_area.bind("<FocusOut>", self._on_focus_out)
+
         send_btn = tk.Button(
             input_container,
-            text="[ ⚡ SEND ]",
-            font=("Consolas", 8, "bold"),
+            text="[ 🚀 DISPATCH ]",
+            font=(PRIMARY_FONT, 8, "bold"),
             fg="#ffffff",
-            bg="#dc2626",
+            bg="#7f1d1d",
             activebackground="#991b1b",
             activeforeground="#ffffff",
             bd=1,
@@ -212,7 +292,7 @@ class OPSDesktopOverlay:
 
         self.response_text = tk.Text(
             resp_container,
-            font=("Consolas", 9),
+            font=(PRIMARY_FONT, 9),
             bg="#000000",
             fg="#f4f4f5",
             bd=1,
@@ -222,7 +302,7 @@ class OPSDesktopOverlay:
             wrap=tk.WORD,
             state=tk.DISABLED
         )
-        self.response_text.tag_configure("cursor", foreground="#ef4444", font=("Consolas", 10, "bold"))
+        self.response_text.tag_configure("cursor", foreground="#ef4444", font=(PRIMARY_FONT, 10, "bold"))
         self.response_text.tag_configure("text_body", foreground="#f4f4f5")
         self.response_text.bind("<Button-1>", self._on_response_clicked)
         self.response_text.pack(fill=tk.BOTH, expand=True)
@@ -243,7 +323,7 @@ class OPSDesktopOverlay:
         self.perm_title_label = tk.Label(
             perm_title_row,
             text="🚨 [SECURITY APPROVAL REQUIRED]",
-            font=("Consolas", 8, "bold"),
+            font=(PRIMARY_FONT, 8, "bold"),
             fg="#ef4444",
             bg="#18181b"
         )
@@ -252,7 +332,7 @@ class OPSDesktopOverlay:
         self.perm_risk_badge = tk.Label(
             perm_title_row,
             text="[RISK: HIGH]",
-            font=("Consolas", 8, "bold"),
+            font=(PRIMARY_FONT, 8, "bold"),
             fg="#ffffff",
             bg="#7f1d1d",
             padx=4,
@@ -263,7 +343,7 @@ class OPSDesktopOverlay:
         self.perm_desc_label = tk.Label(
             self.permission_frame,
             text="",
-            font=("Consolas", 8),
+            font=(PRIMARY_FONT, 8),
             fg="#e4e4e7",
             bg="#18181b",
             justify=tk.LEFT,
@@ -278,31 +358,47 @@ class OPSDesktopOverlay:
 
         self.perm_accept_btn = tk.Button(
             perm_btn_row,
-            text="[ ✅ ACCEPT / ALLOW ]",
-            font=("Consolas", 8, "bold"),
+            text="[ ⚠️ ALLOW ONCE ]",
+            font=(PRIMARY_FONT, 8, "bold"),
             fg="#ffffff",
             bg="#3f3f46",
             activebackground="#52525b",
             activeforeground="#ffffff",
             bd=1,
             relief=tk.RAISED,
-            padx=10,
+            padx=8,
             pady=3,
             command=lambda: self.resolve_current_permission("ALLOW_ONCE")
         )
-        self.perm_accept_btn.pack(side=tk.LEFT, padx=(0, 6))
+        self.perm_accept_btn.pack(side=tk.LEFT, padx=(0, 4))
+
+        self.perm_task_btn = tk.Button(
+            perm_btn_row,
+            text="[ 🛡️ ALLOW TASK ]",
+            font=(PRIMARY_FONT, 8, "bold"),
+            fg="#ffffff",
+            bg="#27272a",
+            activebackground="#3f3f46",
+            activeforeground="#ffffff",
+            bd=1,
+            relief=tk.RAISED,
+            padx=8,
+            pady=3,
+            command=lambda: self.resolve_current_permission("ALLOW_TASK")
+        )
+        self.perm_task_btn.pack(side=tk.LEFT, padx=(0, 4))
 
         self.perm_deny_btn = tk.Button(
             perm_btn_row,
             text="[ ❌ DENY / BLOCK ]",
-            font=("Consolas", 8, "bold"),
+            font=(PRIMARY_FONT, 8, "bold"),
             fg="#ffffff",
             bg="#991b1b",
             activebackground="#dc2626",
             activeforeground="#ffffff",
             bd=1,
             relief=tk.RAISED,
-            padx=10,
+            padx=8,
             pady=3,
             command=lambda: self.resolve_current_permission("DENY")
         )
@@ -315,7 +411,7 @@ class OPSDesktopOverlay:
         self.status_label = tk.Label(
             footer_frame,
             text="Ctrl+Alt: Open • Ctrl+Win: Wispr Flow • Ctrl+Alt+Space: Close",
-            font=("Consolas", 8),
+            font=(PRIMARY_FONT, 8),
             fg="#71717a",
             bg="#09090b"
         )
@@ -440,6 +536,63 @@ class OPSDesktopOverlay:
         except Exception as e:
             logger.debug(f"Audio memory_added play failed: {e}")
 
+    def play_sound_memory_erase(self):
+        """Plays retro sci-fi memory purge/reset sound."""
+        try:
+            import winsound
+            sound_file = os.path.join(os.path.dirname(__file__), "sounds", "memory_erase.wav")
+            if os.path.exists(sound_file):
+                winsound.PlaySound(sound_file, winsound.SND_FILENAME | winsound.SND_ASYNC)
+            else:
+                winsound.Beep(1200, 70)
+                winsound.Beep(600, 100)
+        except Exception as e:
+            logger.debug(f"Audio memory_erase play failed: {e}")
+
+    def _set_placeholder(self):
+        """Displays placeholder text in text_area when input is empty."""
+        current = self.text_area.get("1.0", tk.END).strip()
+        if not current:
+            self.text_area.delete("1.0", tk.END)
+            self.text_area.insert("1.0", self._placeholder_text)
+            self.text_area.config(fg="#71717a")
+
+    def _on_focus_in(self, event=None):
+        """Clears placeholder text when user clicks or focuses input."""
+        current = self.text_area.get("1.0", tk.END).strip()
+        if current == self._placeholder_text:
+            self.text_area.delete("1.0", tk.END)
+            self.text_area.config(fg="#ffffff")
+
+    def _on_focus_out(self, event=None):
+        """Restores placeholder text if input was left blank."""
+        current = self.text_area.get("1.0", tk.END).strip()
+        if not current:
+            self._set_placeholder()
+
+    def erase_memory(self):
+        """Erases active conversation memory and clears session history."""
+        self.play_sound_memory_erase()
+        self._chat_history_text = ""
+        self.status_label.config(text="Purging Conversation Memory...", fg="#ef4444")
+
+        def do_purge():
+            try:
+                req = urllib.request.Request(
+                    f"{self.backend_url}/memory/",
+                    method="DELETE",
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req) as resp:
+                    pass
+                self.root.after(0, lambda: self.set_response_content("[MEMORY PURGED] Active conversation memory and vector session history have been reset.\n[•] Standby: Ready for new directives.", append=False))
+                self.root.after(0, lambda: self.status_label.config(text="Active Conversation Memory Cleared!", fg="#34d399"))
+            except Exception as e:
+                self.root.after(0, lambda: self.set_response_content(f"[LOCAL RESET] Session display cleared.\n[•] Backend status: {e}", append=False))
+                self.root.after(0, lambda: self.status_label.config(text="Memory Cleared (Offline Mode)", fg="#eab308"))
+
+        threading.Thread(target=do_purge, daemon=True).start()
+
     def _setup_hotkeys(self):
         """
         Global hotkey listeners:
@@ -452,13 +605,18 @@ class OPSDesktopOverlay:
                 # 1. Disappear Hotkey: Ctrl + Alt + Space
                 keyboard.add_hotkey('ctrl+alt+space', lambda: self.root.after(0, self.hide_overlay))
 
-                # 2. Appear Hotkey: Ctrl + Alt (checked when space is not held)
+                # 2. Appear Hotkey: Ctrl + Alt (checked with micro-delay so Space is not missed)
                 def on_ctrl_alt_pressed():
                     try:
+                        time.sleep(0.06)
                         if not keyboard.is_pressed('space'):
-                            self.root.after(0, self.show_overlay)
+                            if not self.is_open:
+                                self.root.after(0, self.show_overlay)
+                            else:
+                                self.root.after(0, lambda: (self.root.lift(), self.text_area.focus_set()))
                     except Exception:
-                        self.root.after(0, self.show_overlay)
+                        if not self.is_open:
+                            self.root.after(0, self.show_overlay)
 
                 keyboard.add_hotkey('ctrl+alt', on_ctrl_alt_pressed)
                 keyboard.add_hotkey('ctrl+alt+o', lambda: self.root.after(0, self.show_overlay))
@@ -506,33 +664,36 @@ class OPSDesktopOverlay:
                                 self.root.after(0, self.toggle_wispr_flow)
                                 last_win_trigger = now
                                 was_win_active = True
-                        else:
-                            if not ctrl and not win:
-                                was_win_active = False
+                        elif not (ctrl and win):
+                            was_win_active = False
 
                         # Check Ctrl + Alt & Ctrl + Alt + Space
                         if ctrl and alt:
                             if not was_active and (now - last_trigger > 0.28):
                                 if space:
                                     # Control + Alt + Space -> Disappear
-                                    self.root.after(0, self.hide_overlay)
+                                    if self.is_open:
+                                        self.root.after(0, self.hide_overlay)
                                     last_trigger = now
                                     was_active = True
                                 else:
-                                    # Tiny debounce to verify if Space was pressed simultaneously
-                                    time.sleep(0.04)
+                                    # Buffer check (70ms) to ensure Space was not pressed simultaneously
+                                    time.sleep(0.07)
                                     space_second_check = bool(user32.GetAsyncKeyState(VK_SPACE) & 0x8000)
                                     if space_second_check:
-                                        self.root.after(0, self.hide_overlay)
+                                        if self.is_open:
+                                            self.root.after(0, self.hide_overlay)
                                     else:
-                                        self.root.after(0, self.show_overlay)
+                                        if not self.is_open:
+                                            self.root.after(0, self.show_overlay)
+                                        else:
+                                            self.root.after(0, lambda: (self.root.lift(), self.text_area.focus_set()))
                                     last_trigger = now
                                     was_active = True
-                        else:
-                            if not ctrl and not alt:
-                                was_active = False
+                        elif not (ctrl and alt):
+                            was_active = False
 
-                        time.sleep(0.03)
+                        time.sleep(0.025)
                     except Exception:
                         time.sleep(0.1)
             except Exception:
@@ -559,14 +720,17 @@ class OPSDesktopOverlay:
 
                         try:
                             text = recognizer.recognize_google(audio).lower()
-                            wake_phrases = ['hey ops', 'he ops', 'hey opps', 'hi ops', 'hey office', 'ops']
-                            if any(w in text for w in wake_phrases):
-                                cleaned = text
-                                for w in wake_phrases:
-                                    cleaned = cleaned.replace(w, '')
-                                cleaned = cleaned.strip()
+                            if getattr(self, "_is_wispr_active", False) and text.strip():
+                                self.root.after(0, lambda t=text.strip(): self._on_wispr_dictation_received(t))
+                            else:
+                                wake_phrases = ['hey ops', 'he ops', 'hey opps', 'hi ops', 'hey office', 'ops']
+                                if any(w in text for w in wake_phrases):
+                                    cleaned = text
+                                    for w in wake_phrases:
+                                        cleaned = cleaned.replace(w, '')
+                                    cleaned = cleaned.strip()
 
-                                self.root.after(0, lambda c=cleaned: self._on_hey_ops_wake(c))
+                                    self.root.after(0, lambda c=cleaned: self._on_hey_ops_wake(c))
                         except Exception:
                             pass
                 except Exception:
@@ -574,6 +738,15 @@ class OPSDesktopOverlay:
 
         t = threading.Thread(target=wake_word_loop, daemon=True)
         t.start()
+
+    def _on_wispr_dictation_received(self, text: str):
+        """Processes spoken speech received while Wispr Flow (Ctrl+Win) was active."""
+        if not text:
+            return
+        self.deactivate_wispr_flow()
+        self.text_area.delete("1.0", tk.END)
+        self.text_area.insert(tk.END, text)
+        self.dispatch_prompt()
 
     def _on_hey_ops_wake(self, prompt_text=""):
         """Triggered automatically when 'Hey OPS' is spoken."""
@@ -651,36 +824,44 @@ class OPSDesktopOverlay:
         self.response_text.config(state=tk.DISABLED)
         self.response_text.see(tk.END)
 
-    def stream_typewriter_response(self, text: str, speed_ms: int = 22):
-        """Streams LLM response word-by-word with a 90s retro blinking block cursor."""
+    def stream_typewriter_response(self, text: str, speed_ms: int = 6, append: bool = True):
+        """Streams LLM response word-by-word with a 90s retro blinking block cursor, preserving chat history."""
         self._cancel_typewriter()
-        self._current_full_text = text
+
+        if not hasattr(self, "_chat_history_text"):
+            self._chat_history_text = ""
+
+        if append:
+            base_history = self._chat_history_text
+            self._current_full_text = f"{base_history}{text}"
+        else:
+            self._chat_history_text = ""
+            base_history = ""
+            self._current_full_text = text
 
         tokens = re.findall(r'\S+|\s+', text) if text else []
         if not tokens:
-            self._render_text_immediate("")
+            self._render_text_immediate(self._current_full_text)
             return
-
-        self.response_text.config(state=tk.NORMAL)
-        self.response_text.delete("1.0", tk.END)
-        self.response_text.config(state=tk.DISABLED)
 
         accumulated = []
 
         def type_step(index: int):
             if index < len(tokens):
                 accumulated.append(tokens[index])
-                current_str = "".join(accumulated)
+                current_stream = "".join(accumulated)
+                full_display = f"{base_history}{current_stream}"
 
                 self.response_text.config(state=tk.NORMAL)
                 self.response_text.delete("1.0", tk.END)
-                self.response_text.insert(tk.END, current_str, "text_body")
+                self.response_text.insert(tk.END, full_display, "text_body")
                 self.response_text.insert(tk.END, " █", "cursor")
                 self.response_text.config(state=tk.DISABLED)
                 self.response_text.see(tk.END)
 
                 self._typewriter_job = self.root.after(speed_ms, lambda: type_step(index + 1))
             else:
+                self._chat_history_text = self._current_full_text
                 self._typewriter_job = None
                 self._start_cursor_blink()
 
@@ -704,9 +885,9 @@ class OPSDesktopOverlay:
 
         self._cursor_blink_job = self.root.after(700, blink)
 
-    def set_response_content(self, text: str):
+    def set_response_content(self, text: str, append: bool = True):
         """Displays LLM response in the overlay window using retro typewriter streaming."""
-        self.stream_typewriter_response(text, speed_ms=22)
+        self.stream_typewriter_response(text, speed_ms=16, append=append)
 
     def speak_audio_response(self, text: str):
         """Calls TTS endpoint to speak response aloud (optional)."""
@@ -726,15 +907,21 @@ class OPSDesktopOverlay:
 
     def dispatch_prompt(self):
         prompt_text = self.text_area.get("1.0", tk.END).strip()
-        if not prompt_text:
+        if not prompt_text or prompt_text == self._placeholder_text:
             return
 
         self.status_label.config(text="Deploying Multi-Agent Team...", fg="#f87171")
-        self.set_response_content("Thinking & formulating multi-agent plan...")
+        
+        # Append user turn to persistent chat screen
+        user_header = f"\n[👤 USER]: {prompt_text}\n"
+        if not hasattr(self, "_chat_history_text"):
+            self._chat_history_text = ""
+        self._chat_history_text += user_header
+        self.set_response_content("[🤖 O.P.S.]: Formulating tactical response...", append=False)
         
         def send_req():
             try:
-                payload = json.dumps({"prompt": prompt_text}).encode("utf-8")
+                payload = json.dumps({"prompt": prompt_text, "source": "desktop_cockpit"}).encode("utf-8")
                 # Routes to LangGraph multi-agent pipeline (which broadcasts to Web HUD simultaneously)
                 req = urllib.request.Request(
                     f"{self.backend_url}/agent/run/",
@@ -757,14 +944,16 @@ class OPSDesktopOverlay:
                         self.play_sound_memory_added()
 
                     # Update response text in overlay with typewriter streaming animation
-                    self.root.after(0, lambda: self.set_response_content(answer))
+                    formatted_assistant_turn = f"[🤖 O.P.S.]:\n{answer}\n\n"
+                    self.root.after(0, lambda: self.set_response_content(formatted_assistant_turn, append=False))
                     status_badge = f"Completed! [{category}]" if not flow else f"Completed! [{category} • {flow}]"
                     self.root.after(0, lambda: self.status_label.config(
                         text=status_badge, fg="#34d399"
                     ))
 
             except Exception as err:
-                self.root.after(0, lambda: self.set_response_content(f"Error: {err}"))
+                err_msg = f"[🤖 O.P.S. ERROR]: {err}\n\n"
+                self.root.after(0, lambda: self.set_response_content(err_msg, append=False))
                 self.root.after(0, lambda: self.status_label.config(
                     text=f"Error: {err}", fg="#ef4444"
                 ))

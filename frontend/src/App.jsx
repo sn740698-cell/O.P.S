@@ -8,8 +8,7 @@ import {
   Volume2,
   Terminal,
   Radio,
-  Eye,
-  ShieldAlert
+  Eye
 } from 'lucide-react';
 
 import LiveConnectionStatus from './components/LiveConnectionStatus';
@@ -18,16 +17,19 @@ import OpsTriModelStatus from './components/OpsTriModelStatus';
 import OpsBrowserFeed from './components/OpsBrowserFeed';
 import OpsTerminalConsole from './components/OpsTerminalConsole';
 import OpsBriefingCard from './components/OpsBriefingCard';
-import OpsSecurityModal from './components/OpsSecurityModal';
 import OpsMobileDrawer from './components/OpsMobileDrawer';
 import OpsLiveOrchestrationTab from './components/OpsLiveOrchestrationTab';
 import OpsUserMemoriesTab from './components/OpsUserMemoriesTab';
 import OpsHeart from './components/OpsHeart';
-import FloatingAvatar from './components/FloatingAvatar';
+import OpsSplashClean from './components/OpsSplashClean';
+import OpsSecurityModal from './components/OpsSecurityModal';
 import { retroSoundEngine } from './utils/retroSounds';
 
 
 export default function App() {
+  // Splash Screen Display State (5 second retro intro on boot)
+  const [showSplash, setShowSplash] = useState(true);
+
   // Temporary Chat Session Identifier (RAM-only; reloads create a fresh ID automatically)
   const [sessionId, setSessionId] = useState(() => 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
 
@@ -113,13 +115,29 @@ export default function App() {
         ws.onmessage = (e) => {
           try {
             const data = JSON.parse(e.data);
-            if (data.event === 'agent_thought') {
+            if (data.event === 'task_started') {
+              setIsLoading(true);
+              setActiveAgent(data.agent || 'Directive & Hotkey Ingestion');
+              setCurrentThought(data.thought || `Directive received: "${data.prompt}"`);
+              setBriefingText('');
+              setPlanSteps([]);
+            } else if (data.event === 'agent_thought') {
+              setIsLoading(true);
               setCurrentThought(`${data.agent}: ${data.thought}`);
               setActiveAgent(data.agent || '');
             } else if (data.event === 'agent_plan') {
-              setPlanSteps(data.plan || []);
+              setPlanSteps(data.plan || data.plan_steps || []);
+            } else if (data.event === 'agent_status') {
+              if (data.status === 'EXECUTING' || data.status === 'THINKING') {
+                setIsLoading(true);
+              } else if (data.status === 'IDLE' || data.status === 'COMPLETED') {
+                setIsLoading(false);
+              }
             } else if (data.event === 'task_completed') {
               setBriefingText(data.final_answer || '');
+              if (data.plan && data.plan.length > 0) {
+                setPlanSteps(data.plan);
+              }
               if (
                 data.intent === 'WORKSTATION_MEMORY_CAPTURE' ||
                 data.category === 'WORKSTATION_MEMORY_CAPTURE' ||
@@ -139,6 +157,7 @@ export default function App() {
               setBriefingText(`Execution Error: ${data.error}`);
               setIsLoading(false);
               setActiveAgent('');
+              setCurrentThought(`Execution Failed: ${data.error}`);
             }
           } catch (err) {
             console.error(err);
@@ -376,7 +395,7 @@ export default function App() {
   };
 
   // Resolve Permission
-  const handleResolvePermission = (requestId, decision) => {
+  const handleResolvePermission = async (requestId, decision) => {
     if (permWs.current && permWs.current.readyState === WebSocket.OPEN) {
       permWs.current.send(JSON.stringify({
         action: 'permission_response',
@@ -384,49 +403,64 @@ export default function App() {
         decision: decision
       }));
     }
+    try {
+      await fetch('/api/v1/permissions/resolve/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: requestId, decision: decision })
+      });
+    } catch (err) {
+      console.warn('REST permission resolve fallback notice:', err);
+    }
     setActivePermissionReq(null);
+    loadAuditLogs();
   };
 
   return (
-    <div className="retro-scanlines min-h-screen bg-[#050505] text-zinc-100 flex flex-col font-mono selection:bg-red-600 selection:text-white">
-      {/* 90s Retro Tactical HUD Header */}
-      <header className="border-b border-zinc-800 bg-black sticky top-0 z-40 px-4 py-2">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          {/* Logo & Subtitle */}
-          <div className="flex items-center gap-2.5">
-            <div className="px-2 py-0.5 bg-red-600 text-white font-black text-xs border border-red-500 shadow-sm">
-              OPS
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm tracking-wider text-white">=== O.P.S. TACTICAL HUD ===</span>
-                <span className="text-[10px] text-zinc-500 hidden sm:inline">
-                  // LOCAL-FIRST IRON MAN OS
-                </span>
+    <>
+      {showSplash && <OpsSplashClean onDone={() => setShowSplash(false)} />}
+      <OpsSecurityModal
+        activeRequest={activePermissionReq}
+        onResolvePermission={handleResolvePermission}
+        auditLogs={auditLogs}
+      />
+      <div className="retro-scanlines min-h-screen bg-[#050505] text-zinc-100 flex flex-col font-mono selection:bg-red-600 selection:text-white">
+        {/* 90s Retro Tactical HUD Header */}
+        <header className="border-b border-zinc-800 bg-black sticky top-0 z-40 px-4 py-2">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            {/* Logo & Subtitle */}
+            <div className="flex items-center gap-2.5">
+              <div className="px-2 py-0.5 bg-red-600 text-white font-black text-xs border border-red-500 shadow-sm">
+                OPS
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-sm tracking-wider text-white">O.P.S an over engineered program system</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Quick HUD Actions */}
-          <div className="flex items-center gap-2 text-xs">
-            <button
-              onClick={() => setIsMobileOpen(true)}
-              className="retro-btn px-2.5 py-1 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5"
-            >
-              <Smartphone className="w-3.5 h-3.5 text-red-500" />
-              <span>[ MOBILE SYNC ]</span>
-            </button>
+            {/* Quick HUD Actions */}
+            <div className="flex items-center gap-2 text-xs">
+              <button
+                onClick={() => setShowSplash(true)}
+                className="retro-btn px-2.5 py-1 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5"
+                title="Replay 5-second retro title card"
+              >
+                <Power className="w-3.5 h-3.5 text-red-500" />
+                <span>[ REPLAY BOOT ]</span>
+              </button>
 
-            <button
-              onClick={handleEmergencyHalt}
-              className="retro-btn-red px-3 py-1 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
-            >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>[ KILL SWITCH ]</span>
-            </button>
+              <button
+                onClick={() => setIsMobileOpen(true)}
+                className="retro-btn px-2.5 py-1 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-red-500" />
+                <span>[ MOBILE SYNC ]</span>
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       {/* 90s Retro Navigation Tab Bar */}
       <nav className="bg-black border-b border-zinc-800 px-4 py-1.5 sticky top-[45px] z-30">
@@ -543,21 +577,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Ambient Floating Avatar Pop-Up Cockpit */}
-      <FloatingAvatar
-        onPromptSubmit={handleDispatchCommand}
-        agentOutput={briefingText}
-        isLoading={isLoading}
-        onClearMemory={handleClearMemory}
-      />
-
-      {/* Interactive Human-In-The-Loop Security Authorization Modal */}
-      <OpsSecurityModal
-        activeRequest={activePermissionReq}
-        onResolvePermission={handleResolvePermission}
-        auditLogs={auditLogs}
-      />
-
       {/* Mobile Companion Pairing Drawer */}
       <OpsMobileDrawer
         isOpen={isMobileOpen}
@@ -566,8 +585,9 @@ export default function App() {
 
       {/* 90s Retro Footer */}
       <footer className="border-t border-zinc-900 py-3 text-center text-zinc-500 text-[11px] font-mono bg-black">
-        [ O.P.S. // TACTICAL IRON MAN AMBIENT OS // 100% LOCAL WORKSTATION CONTROL // PALETTE: RED, WHITE, BLACK & GRAY ]
+        [ O.P.S. // AN OVER ENGINEERED PROGRAM SYSTEM // 100% LOCAL WORKSTATION CONTROL ]
       </footer>
     </div>
+    </>
   );
 }

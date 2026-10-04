@@ -30,6 +30,7 @@ from ops_core.services.tool_sandbox import OPSToolSandbox
 from ops_core.services.event_bus import OPSEventBus
 from ops_core.services.session_memory import OPSSessionMemoryManager
 from ops_core.services.workstation_memory_service import OPSWorkstationMemoryService
+from ops_core.services.scraping_service import GROUNDING_INSTRUCTION
 
 logger = logging.getLogger("ops.agent_orchestrator")
 
@@ -307,8 +308,41 @@ class OPSMultiAgentOrchestrator:
         clean = re.sub(r'^(?:[:, -]+|is\s+)', '', clean).strip(" '\",.:;?!")
         return clean or "Workstation Memory Item"
 
+    @staticmethod
+    def is_identity_query(prompt: str) -> bool:
+        """
+        Detects self-identity, creator, and origin questions to prevent
+        unwanted external web scrapes and ensure accurate attribution to Suraj.
+        """
+        p = prompt.lower().strip().strip("?!.,'\"")
+        identity_exact = {
+            "who are you", "who r u", "who are u", "what are you", "what r u",
+            "who made you", "who created you", "who built you", "who programmed you",
+            "who developed you", "who is your creator", "who is your developer",
+            "who is your maker", "who is your author", "who is your master",
+            "who is your owner", "who owns you", "what is your name",
+            "tell me about yourself", "introduce yourself", "describe yourself",
+            "who is ops", "what is ops", "who is o.p.s.", "what is o.p.s.",
+            "who is suraj", "who is your boss"
+        }
+        if p in identity_exact:
+            return True
+        if any(p.startswith(prefix) for prefix in [
+            "who are you", "what are you", "who made you", "who created you",
+            "who built you", "who is your creator", "who is your developer",
+            "tell me about yourself", "introduce yourself", "who programmed you"
+        ]):
+            return True
+        if ("who are you" in p or "who created you" in p or "who made you" in p or "tell me about yourself" in p) and len(p.split()) <= 8:
+            return True
+        return False
+
     def route_router_decision(self, state: AgentWorkflowState) -> str:
         prompt = state.get("prompt", "").lower().strip()
+
+        # -1. Self-Identity & Creator Intent (Direct J.A.R.V.I.S. Persona with Suraj Attribution)
+        if self.is_identity_query(prompt):
+            return "JARVIS_DIRECT"
 
         # 0. User Workstation Memory Persistence & Recall (PostgreSQL ops_db)
         if self.is_memory_capture_command(prompt) or self.is_memory_recall_command(prompt):
@@ -648,6 +682,21 @@ class OPSMultiAgentOrchestrator:
 
         research_res = await self.tools.auto_research_web(prompt, task_id=task_id)
 
+        # If the scrape failed (bot block, empty/JS page, network error), surface
+        # an explicit failure state instead of handing blank or fabricated context
+        # to the response model.
+        if research_res.get("status") not in ("success", None):
+            research_res["markdown"] = (
+                f"[•] SCRAPE FAILED: {research_res.get('error', 'Unknown scrape error')}\n"
+                f"[•] URL: {research_res.get('url', prompt)}"
+            )
+            research_res.setdefault("voice_briefing", "Scrape failed - no source text available.")
+            research_res["category"] = "SCRAPE_FAILED"
+
+        # Inject the closed-domain grounding preamble so the response model can
+        # only cite what the scraped source actually contains.
+        research_res["markdown"] = GROUNDING_INSTRUCTION + research_res.get("markdown", "")
+
         # Connect live crawled knowledge to voice calling / speech synthesis layer
         voice_briefing = research_res.get("voice_briefing", "")
         if voice_briefing:
@@ -670,7 +719,7 @@ class OPSMultiAgentOrchestrator:
             "crawling_output": research_res,
             "active_agent": "WebCrawlingAgent",
             "plan": [
-                f"Live autonomous web crawl: '{prompt}' via Crawlee & ScrapeGraphAI pipeline",
+                f"Live autonomous web crawl: '{prompt}' via ScrapingBee, Playwright, Selenium, Scrapy, Crawlee & BeautifulSoup",
                 f"Extracted real-time structured knowledge dossier ({research_res.get('category')})",
                 "Synthesized voice audio stream via local Piper TTS engine"
             ]
@@ -773,25 +822,30 @@ class OPSMultiAgentOrchestrator:
         crawl_out = state.get("crawling_output", {})
 
         if tool_out:
-            msg = tool_out.get("result", {}).get("message") or tool_out.get("message")
-            if msg:
-                details.append(msg)
-            elif tool_out.get("action") == "launch_application":
-                details.append(f"{tool_out.get('target', 'Application').title()} is open and ready on your workstation.")
-            elif tool_out.get("action") == "run_claude_routine":
-                details.append(r"Claude workflow executed: initialized 'npm run dev' in D:\freellmapi and launched Claude CLI.")
-            elif tool_out.get("action") == "open_in_vscode":
-                details.append(f"Visual Studio Code launched with target '{tool_out.get('target', 'workspace')}'.")
-            elif tool_out.get("action") == "browser_dom_task":
-                details.append(f"Executed browser DOM task on {tool_out.get('site')} for '{tool_out.get('query')}'.")
-            elif tool_out.get("action") == "open_file_or_folder":
-                details.append(f"Opened file or folder: '{tool_out.get('target')}'.")
-            elif tool_out.get("action") == "run_terminal_cmd":
-                cmd = tool_out.get("command", "")
-                stdout = tool_out.get("result", {}).get("stdout", "")
-                details.append(f"Terminal execution finished for `{cmd}`:\n```\n{stdout[:200]}\n```" if stdout else f"Executed terminal command `{cmd}`.")
-            elif tool_out.get("action") == "web_search":
-                details.append(f"Web search executed for '{tool_out.get('query')}'.")
+            res_dict = tool_out.get("result") if isinstance(tool_out.get("result"), dict) else {}
+            if res_dict.get("status") == "BLOCKED" or tool_out.get("status") == "BLOCKED":
+                block_reason = res_dict.get("reason") or res_dict.get("stderr") or tool_out.get("reason") or "Action authorization was denied by user or blocked by safety policy."
+                details.append(f"⛔ [SECURITY ALERT] Execution Denied / Action Blocked:\n  - Reason: {block_reason}\n  - Target: {tool_out.get('target') or tool_out.get('command') or tool_out.get('action')}")
+            else:
+                msg = res_dict.get("message") or tool_out.get("message")
+                if msg:
+                    details.append(msg)
+                elif tool_out.get("action") == "launch_application":
+                    details.append(f"{tool_out.get('target', 'Application').title()} is open and ready on your workstation.")
+                elif tool_out.get("action") == "run_claude_routine":
+                    details.append(r"Claude workflow executed: initialized 'npm run dev' in D:\freellmapi and launched Claude CLI.")
+                elif tool_out.get("action") == "open_in_vscode":
+                    details.append(f"Visual Studio Code launched with target '{tool_out.get('target', 'workspace')}'.")
+                elif tool_out.get("action") == "browser_dom_task":
+                    details.append(f"Executed browser DOM task on {tool_out.get('site')} for '{tool_out.get('query')}'.")
+                elif tool_out.get("action") == "open_file_or_folder":
+                    details.append(f"Opened file or folder: '{tool_out.get('target')}'.")
+                elif tool_out.get("action") == "run_terminal_cmd":
+                    cmd = tool_out.get("command", "")
+                    stdout = res_dict.get("stdout", "")
+                    details.append(f"Terminal execution finished for `{cmd}`:\n```\n{stdout[:200]}\n```" if stdout else f"Executed terminal command `{cmd}`.")
+                elif tool_out.get("action") == "web_search":
+                    details.append(f"Web search executed for '{tool_out.get('query')}'.")
 
         if crawl_out:
             md = crawl_out.get("markdown")
@@ -814,30 +868,40 @@ class OPSMultiAgentOrchestrator:
                 details.append(dev_out["build_output"])
 
         if browser_out:
+            scrape_res = browser_out.get("scrape_result")
             search_data = browser_out.get("search_result")
-            if search_data and search_data.get("results"):
-                details.append("Key findings:")
-                for r in search_data["results"][:3]:
+            if scrape_res and scrape_res.get("text"):
+                details.append(
+                    f"{GROUNDING_INSTRUCTION}"
+                    f"Scraped Web Intelligence from [{scrape_res.get('title', browser_out.get('target_url'))}]({browser_out.get('target_url')}):\n"
+                    f"{scrape_res.get('text')[:3500]}"
+                )
+            elif search_data and search_data.get("results"):
+                details.append("Key search findings:")
+                for r in search_data["results"][:4]:
                     details.append(f"• [{r.get('title')}]({r.get('url')}): {r.get('snippet')}")
             elif browser_out.get("target_url"):
-                details.append(f"Scraped DOM content from: {browser_out.get('target_url')}")
+                details.append(f"Target URL: {browser_out.get('target_url')}")
 
         if auto_out:
-            msg = auto_out.get("message") or f"Executed {auto_out.get('action', 'automation')}"
-            details.append(msg)
+            if auto_out.get("status") == "BLOCKED":
+                details.append(f"⛔ [SECURITY ALERT] System automation was DENIED / BLOCKED: {auto_out.get('reason', 'Action rejected by safety gatekeeper or user.')}")
+            else:
+                msg = auto_out.get("message") or f"Executed {auto_out.get('action', 'automation')}"
+                details.append(msg)
 
         context_summary = "\n\n".join(details)
+        is_action_denied = any("DENIED" in d or "BLOCKED" in d for d in details)
 
         # Generate J.A.R.V.I.S. conversational response
-        if content_out:
-            # For direct content generation, deliver content with polite framing
-            jarvis_text = f"Certainly, sir. Here is the requested draft:\n\n{content_out}"
         session_id = state.get("session_id", task_id)
         history_str = self.memory.get_formatted_history(session_id, limit=6)
 
         # Generate J.A.R.V.I.S. conversational response with temporary chat memory
         if tool_out.get("action") in ["workstation_memory_capture", "workstation_memory_recall"]:
             jarvis_text = f"Workstation memory directive acknowledged and processed, sir.\n\n{context_summary}"
+        elif is_action_denied:
+            jarvis_text = f"Directive aborted, sir. The action was blocked or permission was denied by human authorization.\n\n{context_summary}"
         elif content_out:
             jarvis_text = f"Certainly, sir. Here is the requested draft:\n\n{content_out}"
         else:
@@ -847,6 +911,17 @@ class OPSMultiAgentOrchestrator:
                 intent=intent,
                 history=history_str
             )
+
+        # Anti-standby guard: Never leave user with a blank standby prompt when directive was executed
+        if not jarvis_text or jarvis_text.strip() == "[•] Standby: Ready for instructions.":
+            if is_action_denied:
+                jarvis_text = f"Directive aborted, sir. The action was blocked or permission was denied by human authorization.\n\n{context_summary}"
+            elif context_summary:
+                jarvis_text = f"Certainly, sir. Here is the verified intelligence for your directive:\n\n{context_summary}"
+            elif crawl_out and crawl_out.get("markdown"):
+                jarvis_text = f"Certainly, sir. Live web intelligence report:\n\n{crawl_out.get('markdown')}"
+            else:
+                jarvis_text = f"At your service, sir. Directive '{prompt}' executed successfully."
 
         # Append execution footer in 90s retro tactical HUD style
         plan_summary = "\n".join([f"    [>] {step}" for step in plan]) if plan else "    [>] Fast-path direct execution"
@@ -879,7 +954,7 @@ class OPSMultiAgentOrchestrator:
     # Public Execution Entry Point
     # =========================================================================
 
-    async def run_task_async(self, prompt: str, task_id: Optional[str] = None, session_id: Optional[str] = None) -> Dict[str, Any]:
+    async def run_task_async(self, prompt: str, task_id: Optional[str] = None, session_id: Optional[str] = None, source: str = "workstation") -> Dict[str, Any]:
         """
         Executes the full Tri-Model LangGraph workflow asynchronously with temporary chat session memory.
         """
@@ -915,5 +990,35 @@ class OPSMultiAgentOrchestrator:
         # Record user prompt in dedicated chatbot vector database memory partition (ops_chatbot_memory)
         self.memory.add_turn(session_id=sid, role="user", content=prompt, save_to_vector_db=True)
 
-        final_state = await self._workflow_app.ainvoke(initial_state)
-        return final_state
+        # Broadcast task started to the entire O.P.S ecosystem (Web HUD Tab 2, Mobile, Overlays)
+        origin_label = "Desktop Pop-Up Cockpit" if source == "desktop_cockpit" else "Directive & Hotkey Ingestion"
+        await OPSEventBus.emit_task_started_async(
+            prompt=prompt,
+            task_id=tid,
+            source=source,
+            agent=origin_label
+        )
+
+        try:
+            final_state = await self._workflow_app.ainvoke(initial_state)
+
+            # Broadcast task completed across all connected WebSocket clients (including Tab 2)
+            await OPSEventBus.emit_task_completed_async(
+                task_id=tid,
+                final_answer=final_state.get("final_answer", ""),
+                category=final_state.get("intent") or final_state.get("category", "EXECUTED"),
+                plan=final_state.get("plan", []),
+                details={
+                    "tool_output": final_state.get("tool_output"),
+                    "developer_output": final_state.get("developer_output"),
+                    "browser_output": final_state.get("browser_output"),
+                    "automation_output": final_state.get("automation_output"),
+                    "content_output": final_state.get("content_output"),
+                    "intent": final_state.get("intent"),
+                    "status": final_state.get("status")
+                }
+            )
+            return final_state
+        except Exception as e:
+            await OPSEventBus.emit_task_failed_async(task_id=tid, error=str(e))
+            raise

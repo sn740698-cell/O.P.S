@@ -79,10 +79,11 @@ class OPSSafetyGatekeeper:
                 if re.search(pattern, cmd, re.IGNORECASE):
                     return "CRITICAL", f"Command matched critical security blacklist pattern: '{pattern}'"
 
-        # 2. Check for URL validity
-        if action in ["web_scrape", "dom_click", "dom_type"] or url:
-            if url and not (url.startswith("http://") or url.startswith("https://") or url.startswith("file://")):
-                return "CRITICAL", f"Invalid or unsafe URL protocol: '{url}'"
+        # 2. Check for Dangerous URL protocols
+        if url:
+            low_u = url.lower().strip()
+            if any(low_u.startswith(proto) for proto in ["javascript:", "data:", "vbscript:"]):
+                return "CRITICAL", f"Dangerous or prohibited URL protocol: '{url}'"
 
         # 3. Check action category risk
         if action == "run_claude_routine":
@@ -219,6 +220,16 @@ class OPSSafetyGatekeeper:
                 "decision": "AUTO_APPROVED",
                 "risk_level": risk_level,
                 "reason": "Low risk read-only action."
+            }
+
+        # 2.5 Fast Pre-Approval Check (Human-in-the-Loop granted once)
+        if OPSPermissionManager.is_action_pre_approved(action, command_str, task_id):
+            logger.info(f"[O.P.S. Safety] Action '{action}' / target '{command_str[:50]}' pre-approved (Human-in-the-Loop granted once).")
+            return {
+                "approved": True,
+                "decision": "PRE_APPROVED",
+                "risk_level": risk_level,
+                "reason": "Pre-authorized by user (Human-in-the-Loop granted once)."
             }
 
         # 3. Interactive Human-in-the-Loop for Medium & High Risk
