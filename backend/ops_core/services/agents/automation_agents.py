@@ -139,27 +139,22 @@ class HITLApprovalGate(BaseOPSAgent):
             decision = "ACCEPTED"
             reason = "Pre-authorized by user policy."
         else:
-            # For low-risk non-destructive navigation in fast mode or sandbox, auto-allow unless high risk
-            # In strict HITL, prompt user via permission manager
-            if risk_level == "HIGH":
-                perm_res = await OPSPermissionManager.request_permission(
-                    agent=self.agent_name,
-                    action=action_desc,
-                    command=plan_summary,
-                    reason=f"Automation Action Plan requires user confirmation:\n{plan_summary}",
-                    risk_level=risk_level,
-                    task_id=task_id,
-                    timeout_seconds=30
-                )
-                if perm_res.get("approved"):
-                    decision = "ACCEPTED"
-                    reason = "User approved action plan via UI."
-                else:
-                    decision = "DECLINED"
-                    reason = perm_res.get("reason", "User declined action plan.")
-            else:
+            # Enforce mandatory Human-in-the-Loop authorization before execution
+            perm_res = await OPSPermissionManager.request_permission(
+                agent=self.agent_name,
+                action=action_desc,
+                command=plan_summary,
+                reason=f"Automation Action Plan requires user confirmation:\n{plan_summary}",
+                risk_level=risk_level or "HIGH",
+                task_id=task_id,
+                timeout_seconds=45
+            )
+            if perm_res.get("approved"):
                 decision = "ACCEPTED"
-                reason = "Verified safe execution sequence."
+                reason = f"User approved action plan via UI ({perm_res.get('decision', 'ALLOW')})."
+            else:
+                decision = "DECLINED"
+                reason = perm_res.get("reason", "User declined action plan.")
 
         await self.emit_thought(task_id, f"HITL Decision -> [{decision}]: {reason}")
         await self.emit_status(task_id, "COMPLETED", {"hitl_decision": decision})

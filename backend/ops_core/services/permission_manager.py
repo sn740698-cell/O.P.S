@@ -19,7 +19,6 @@ class OPSPermissionManager:
     _task_whitelists: Dict[str, set] = {}  # task_id -> set of allowed actions/commands
     _approved_actions: set = set()
     _approved_targets: set = set()
-    _hitl_once_approved: bool = False  # Set to True once user grants permission; subsequent actions execute seamlessly
 
     def __new__(cls):
         if cls._instance is None:
@@ -29,25 +28,20 @@ class OPSPermissionManager:
             cls._task_whitelists = {}
             cls._approved_actions = set()
             cls._approved_targets = set()
-            cls._hitl_once_approved = False
         return cls._instance
 
     @classmethod
     def is_action_pre_approved(cls, action: str, command: str = "", task_id: Optional[str] = None) -> bool:
         """
-        Checks if Human-in-the-Loop permission was already granted for this task or globally.
+        Checks if Human-in-the-Loop permission was already granted for this specific task or persistent action.
         """
-        # 1. Global HITL authorization override if explicitly set
-        if cls._hitl_once_approved:
-            return True
-
-        # 2. Specific persistent whitelist
+        # 1. Specific persistent whitelist
         if action in cls._approved_actions:
             return True
         if command and command in cls._approved_targets:
             return True
 
-        # 3. Task-specific whitelist (e.g. from prior ALLOW_TASK)
+        # 2. Task-specific whitelist (e.g. from prior ALLOW_TASK)
         if task_id and task_id in cls._task_whitelists:
             whitelist = cls._task_whitelists[task_id]
             if "*" in whitelist or action in whitelist or (command and command in whitelist):
