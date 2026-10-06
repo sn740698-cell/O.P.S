@@ -326,6 +326,36 @@ class SessionMemoryView(APIView):
         })
 
 
+class SessionRefreshView(APIView):
+    """
+    Implements the Cockpit Refresh contract:
+    Resets the active conversation context in RAM and issues a fresh session_id.
+    Leaves persistent knowledge base records intact.
+    """
+    def post(self, request):
+        old_session_id = request.data.get("session_id", "")
+        new_session_id = memory_manager.reset_session(old_session_id)
+        return Response({
+            "status": "success",
+            "old_session_id": old_session_id,
+            "new_session_id": new_session_id,
+            "message": "Active session context reset. Fresh session initialized."
+        })
+
+
+class SessionStateView(APIView):
+    """
+    Retrieves the current multi-turn session state (application, query, topic, selected object).
+    """
+    def get(self, request):
+        session_id = request.query_params.get("session_id", "default_session")
+        state = memory_manager.get_session_state(session_id)
+        return Response({
+            "status": "success",
+            "session": state
+        })
+
+
 class ChatbotVectorMemoryView(APIView):
     """
     Dedicated REST endpoint for the isolated 'ops_chatbot_memory' ChromaDB vector partition.

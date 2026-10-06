@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Activity,
   Shield,
@@ -14,7 +14,6 @@ import {
 import LiveConnectionStatus from './components/LiveConnectionStatus';
 import OpsCommandCore from './components/OpsCommandCore';
 import OpsTriModelStatus from './components/OpsTriModelStatus';
-import OpsBrowserFeed from './components/OpsBrowserFeed';
 import OpsTerminalConsole from './components/OpsTerminalConsole';
 import OpsBriefingCard from './components/OpsBriefingCard';
 import OpsMobileDrawer from './components/OpsMobileDrawer';
@@ -29,6 +28,7 @@ import { retroSoundEngine } from './utils/retroSounds';
 export default function App() {
   // Splash Screen Display State (5 second retro intro on boot)
   const [showSplash, setShowSplash] = useState(true);
+  const handleSplashDone = useCallback(() => setShowSplash(false), []);
 
   // Temporary Chat Session Identifier (RAM-only; reloads create a fresh ID automatically)
   const [sessionId, setSessionId] = useState(() => 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
@@ -49,6 +49,8 @@ export default function App() {
   const [planSteps, setPlanSteps] = useState([]);
   const [activeCategory, setActiveCategory] = useState('');
   const [briefingText, setBriefingText] = useState('');
+  const [currentTaskPrompt, setCurrentTaskPrompt] = useState('');
+  const [conversationHistory, setConversationHistory] = useState([]);
 
   // Feeds
   const [searchResults, setSearchResults] = useState([]);
@@ -115,18 +117,32 @@ export default function App() {
         ws.onmessage = (e) => {
           try {
             const data = JSON.parse(e.data);
+            const timeStr = new Date().toLocaleTimeString();
             if (data.event === 'task_started') {
               setIsLoading(true);
-              setActiveAgent(data.agent || 'Directive & Hotkey Ingestion');
+              setActiveAgent(data.agent || 'Prompt Template Agent');
               setCurrentThought(data.thought || `Directive received: "${data.prompt}"`);
+              if (data.prompt) setCurrentTaskPrompt(data.prompt);
               setBriefingText('');
               setPlanSteps([]);
+              setTerminalLogs((prev) => [
+                ...prev.slice(-150),
+                { stream: 'ops_event', data: `>> [TASK INITIATED] "${data.prompt || 'Directive'}"`, timestamp: timeStr }
+              ]);
             } else if (data.event === 'agent_thought') {
               setIsLoading(true);
               setCurrentThought(`${data.agent}: ${data.thought}`);
               setActiveAgent(data.agent || '');
+              setTerminalLogs((prev) => [
+                ...prev.slice(-150),
+                { stream: 'ops_thought', data: `[${data.agent || 'AGENT'}] ${data.thought}`, timestamp: timeStr }
+              ]);
             } else if (data.event === 'agent_plan') {
               setPlanSteps(data.plan || data.plan_steps || []);
+              setTerminalLogs((prev) => [
+                ...prev.slice(-150),
+                { stream: 'ops_thought', data: `[PLAN] ${(data.plan || []).join(' -> ')}`, timestamp: timeStr }
+              ]);
             } else if (data.event === 'agent_status') {
               if (data.status === 'EXECUTING' || data.status === 'THINKING') {
                 setIsLoading(true);
@@ -138,6 +154,10 @@ export default function App() {
               if (data.plan && data.plan.length > 0) {
                 setPlanSteps(data.plan);
               }
+              setTerminalLogs((prev) => [
+                ...prev.slice(-150),
+                { stream: 'ops_success', data: `[TASK COMPLETED] ${data.intent || 'SUCCESS'}`, timestamp: timeStr }
+              ]);
               if (
                 data.intent === 'WORKSTATION_MEMORY_CAPTURE' ||
                 data.category === 'WORKSTATION_MEMORY_CAPTURE' ||
@@ -158,6 +178,10 @@ export default function App() {
               setIsLoading(false);
               setActiveAgent('');
               setCurrentThought(`Execution Failed: ${data.error}`);
+              setTerminalLogs((prev) => [
+                ...prev.slice(-150),
+                { stream: 'stderr', data: `[ERROR] ${data.error}`, timestamp: timeStr }
+              ]);
             }
           } catch (err) {
             console.error(err);
@@ -267,10 +291,20 @@ export default function App() {
   // Universal Command Dispatcher
   const handleDispatchCommand = async (prompt) => {
     setIsLoading(true);
+    setCurrentTaskPrompt(prompt);
     setBriefingText('');
     setPlanSteps([]);
-    setActiveAgent('Supervisor');
+    setActiveAgent('Prompt Template Agent');
     setCurrentThought(`Routing directive: "${prompt}"...`);
+    
+    // Add user turn immediately to conversation history
+    setConversationHistory((prev) => [...prev, { role: 'user', text: prompt }]);
+
+    const timeStr = new Date().toLocaleTimeString();
+    setTerminalLogs((prev) => [
+      ...prev.slice(-150),
+      { stream: 'ops_event', data: `>> [USER DIRECTIVE] "${prompt}"`, timestamp: timeStr }
+    ]);
 
     try {
       const resp = await fetch('/api/v1/agent/run/', {
@@ -279,9 +313,16 @@ export default function App() {
         body: JSON.stringify({ prompt, session_id: sessionId })
       });
       const data = await resp.json();
-      setBriefingText(data.final_answer || JSON.stringify(data, null, 2));
+      const botAnswer = data.final_answer || JSON.stringify(data, null, 2);
+      setBriefingText(botAnswer);
       setActiveCategory(data.category || '');
       setPlanSteps(data.plan || []);
+
+      // Add bot turn to conversation history
+      setConversationHistory((prev) => [
+        ...prev,
+        { role: 'bot', text: botAnswer, category: data.category, plan: data.plan }
+      ]);
 
       // Play retro sound whenever something is added to memory
       if (
@@ -303,7 +344,9 @@ export default function App() {
 
       loadAuditLogs();
     } catch (err) {
-      setBriefingText(`Error: ${err.message}`);
+      const errMsg = `Error: ${err.message}`;
+      setBriefingText(errMsg);
+      setConversationHistory((prev) => [...prev, { role: 'bot', text: errMsg, isError: true }]);
     } finally {
       setIsLoading(false);
       setActiveAgent('');
@@ -316,6 +359,11 @@ export default function App() {
     try {
       await fetch(`/api/v1/memory/?session_id=${sessionId}`, { method: 'DELETE' });
       await fetch(`/api/v1/memory/chatbot-vector/?session_id=${sessionId}`, { method: 'DELETE' });
+      await fetch(`/api/v1/memory/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      });
     } catch (e) {
       console.warn('Memory purge error:', e);
     }
@@ -323,7 +371,13 @@ export default function App() {
     setSessionId(newSessionId);
     setBriefingText('');
     setPlanSteps([]);
+    setCurrentTaskPrompt('');
+    setConversationHistory([]);
     setCurrentThought('[•] MEMORY PURGED // FRESH SESSION INITIALIZED');
+    setTerminalLogs((prev) => [
+      ...prev.slice(-150),
+      { stream: 'ops_event', data: `[SESSION REFRESH] Active context wiped. New session: ${newSessionId}`, timestamp: new Date().toLocaleTimeString() }
+    ]);
     retroSoundEngine.playMemoryErase();
   };
 
@@ -418,7 +472,7 @@ export default function App() {
 
   return (
     <>
-      {showSplash && <OpsSplashClean onDone={() => setShowSplash(false)} />}
+      {showSplash && <OpsSplashClean onDone={handleSplashDone} />}
       <OpsSecurityModal
         activeRequest={activePermissionReq}
         onResolvePermission={handleResolvePermission}
@@ -438,26 +492,6 @@ export default function App() {
                   <span className="font-extrabold text-sm tracking-wider text-white">O.P.S an over engineered program system</span>
                 </div>
               </div>
-            </div>
-
-            {/* Quick HUD Actions */}
-            <div className="flex items-center gap-2 text-xs">
-              <button
-                onClick={() => setShowSplash(true)}
-                className="retro-btn px-2.5 py-1 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5"
-                title="Replay 5-second retro title card"
-              >
-                <Power className="w-3.5 h-3.5 text-red-500" />
-                <span>[ REPLAY BOOT ]</span>
-              </button>
-
-              <button
-                onClick={() => setIsMobileOpen(true)}
-                className="retro-btn px-2.5 py-1 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5"
-              >
-                <Smartphone className="w-3.5 h-3.5 text-red-500" />
-                <span>[ MOBILE SYNC ]</span>
-              </button>
             </div>
           </div>
         </header>
@@ -505,13 +539,10 @@ export default function App() {
         {/* TAB 1: Main Operational Cockpit */}
         {activeTab === 'cockpit' && (
           <div className="space-y-4">
-            {/* Real-Time WebSocket Connectivity Ribbon */}
-            <LiveConnectionStatus wsStatuses={wsStatuses} backendHealth={backendHealth} />
-
             {/* Top Dashboard Row: Command & Tri-Model Telemetry on Left, Ops Heart Brain on Right */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-              <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-4">
-                {/* Local-First Tri-Model Architecture (OPS_Local_LLM_Model_Roles.md) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+              <div className="lg:col-span-9 xl:col-span-9 flex flex-col gap-2.5">
+                {/* Local-First Tri-Model Architecture */}
                 <OpsTriModelStatus />
 
                 {/* Central JARVIS-Style Command & Voice Core */}
@@ -523,35 +554,45 @@ export default function App() {
                   onToggleVoice={handleToggleVoice}
                   isListening={isListening}
                   onEmergencyHalt={handleEmergencyHalt}
+                  sessionId={sessionId}
+                  onRefreshSession={handleClearMemory}
                 />
               </div>
 
               {/* Right-Top Corner: Ops Heart (Neural Living Brain of O.P.S.) */}
-              <div className="lg:col-span-4 xl:col-span-3 flex flex-col min-h-[300px]">
+              <div className="lg:col-span-3 xl:col-span-3 flex flex-col min-h-[190px]">
                 <OpsHeart className="h-full" />
               </div>
             </div>
 
-            {/* Tri-Split Live Ambient Telemetry Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Column 1: Live Browser & Web Intelligence */}
-              <OpsBrowserFeed
-                searchResults={searchResults}
-                lastScrape={lastScrape}
-              />
-
-              {/* Column 2: Live Sandbox Terminal & Process Console */}
+            {/* Dual Live Workstation Grid: Terminal on Left, Query Output on Right */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Column 1: Live Sandbox Terminal & Process Console */}
               <OpsTerminalConsole
                 terminalLogs={terminalLogs}
                 onExecuteCommand={handleExecuteTerminal}
+                onClearLogs={() => setTerminalLogs([])}
+                activeTaskPrompt={currentTaskPrompt}
+                activeAgent={activeAgent}
+                currentThought={currentThought}
+                isLoading={isLoading}
+                planSteps={planSteps}
+                sessionId={sessionId}
               />
 
-              {/* Column 3: Synthesized Executive Briefing */}
+              {/* Column 2: Synthesized Executive Briefing & HITL Inline Surface */}
               <OpsBriefingCard
                 briefingText={briefingText}
+                activeTaskPrompt={currentTaskPrompt}
+                isLoading={isLoading}
+                currentThought={currentThought}
+                activeAgent={activeAgent}
                 planSteps={planSteps}
                 activeCategory={activeCategory}
                 onSpeakText={handleSpeakText}
+                activePermissionReq={activePermissionReq}
+                onResolvePermission={handleResolvePermission}
+                conversationHistory={conversationHistory}
               />
             </div>
           </div>
@@ -582,11 +623,6 @@ export default function App() {
         isOpen={isMobileOpen}
         onClose={() => setIsMobileOpen(false)}
       />
-
-      {/* 90s Retro Footer */}
-      <footer className="border-t border-zinc-900 py-3 text-center text-zinc-500 text-[11px] font-mono bg-black">
-        [ O.P.S. // AN OVER ENGINEERED PROGRAM SYSTEM // 100% LOCAL WORKSTATION CONTROL ]
-      </footer>
     </div>
     </>
   );

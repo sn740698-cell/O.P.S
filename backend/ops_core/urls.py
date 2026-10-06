@@ -19,6 +19,8 @@ from ops_core.views import (
     RAGIndexDirectoryView,
     RAGStatsView,
     SessionMemoryView,
+    SessionRefreshView,
+    SessionStateView,
     ChatbotVectorMemoryView,
     AgentRunWorkflowView,
     IntelligenceEscalationView,
@@ -70,6 +72,8 @@ urlpatterns = [
     path('rag/index/', RAGIndexDirectoryView.as_view(), name='rag_index'),
     path('rag/stats/', RAGStatsView.as_view(), name='rag_stats'),
     path('memory/', SessionMemoryView.as_view(), name='session_memory'),
+    path('memory/refresh/', SessionRefreshView.as_view(), name='session_refresh'),
+    path('memory/state/', SessionStateView.as_view(), name='session_state'),
     path('memory/chatbot-vector/', ChatbotVectorMemoryView.as_view(), name='chatbot_vector_memory'),
 
     # LangGraph Multi-Agent Orchestration

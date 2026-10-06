@@ -102,6 +102,8 @@ class OPSDesktopOverlay:
         self.input_mode = "text"
         self._is_wispr_active = False
         self.backend_url = "http://localhost:8000/api/v1"
+        self.session_id = f"sess_{int(time.time())}_{os.urandom(3).hex()}"
+        self.conversation_history = []
         self._typewriter_job = None
         self._cursor_blink_job = None
         self._current_full_text = ""
@@ -147,7 +149,7 @@ class OPSDesktopOverlay:
 
         title_label = tk.Label(
             title_container,
-            text="=== O.P.S. AMBIENT POP-UP ===",
+            text="=== O.P.S. POP-UP COCKPIT ===",
             font=(PRIMARY_FONT, 8, "bold"),
             fg="#f4f4f5",
             bg="#18181b"
@@ -156,7 +158,7 @@ class OPSDesktopOverlay:
 
         subtitle_label = tk.Label(
             title_container,
-            text="[CTRL+ALT: OPEN] [CTRL+ALT+SPACE: CLOSE]",
+            text="[CTRL+ALT / CTRL+SPACE: OPEN] [CTRL+ALT+SPACE: CLOSE]",
             font=(PRIMARY_FONT, 7),
             fg="#a1a1aa",
             bg="#18181b"
@@ -179,9 +181,9 @@ class OPSDesktopOverlay:
         )
         close_btn.pack(side=tk.RIGHT, padx=6, pady=4)
 
-        erase_btn = tk.Button(
+        refresh_btn = tk.Button(
             header_frame,
-            text="[ 🔄 ERASE MEMORY ]",
+            text="[ ↻ REFRESH ]",
             font=(PRIMARY_FONT, 8, "bold"),
             fg="#ffffff",
             bg="#27272a",
@@ -191,9 +193,9 @@ class OPSDesktopOverlay:
             relief=tk.RAISED,
             padx=6,
             pady=1,
-            command=self.erase_memory
+            command=self.refresh_session
         )
-        erase_btn.pack(side=tk.RIGHT, padx=(0, 4), pady=4)
+        refresh_btn.pack(side=tk.RIGHT, padx=(0, 4), pady=4)
 
         # 2. Control + Windows / Wispr Flow & HITL Active Banner
         self.wispr_banner = tk.Frame(
@@ -286,9 +288,12 @@ class OPSDesktopOverlay:
         )
         send_btn.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # 3. Streamlined Response Screen
+        # 3. Streamlined Scrollable Conversation Screen
         resp_container = tk.Frame(main_frame, bg="#09090b")
         resp_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 4))
+
+        scrollbar = tk.Scrollbar(resp_container, bg="#18181b", troughcolor="#09090b", bd=0, highlightthickness=0)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.response_text = tk.Text(
             resp_container,
@@ -300,12 +305,19 @@ class OPSDesktopOverlay:
             highlightthickness=1,
             highlightbackground="#27272a",
             wrap=tk.WORD,
-            state=tk.DISABLED
+            state=tk.DISABLED,
+            yscrollcommand=scrollbar.set
         )
-        self.response_text.tag_configure("cursor", foreground="#ef4444", font=(PRIMARY_FONT, 10, "bold"))
+        scrollbar.config(command=self.response_text.yview)
+        self.response_text.tag_configure("user_header", foreground="#ef4444", font=(PRIMARY_FONT, 9, "bold"))
+        self.response_text.tag_configure("user_text", foreground="#ffffff", font=(PRIMARY_FONT, 9))
+        self.response_text.tag_configure("bot_header", foreground="#38bdf8", font=(PRIMARY_FONT, 9, "bold"))
+        self.response_text.tag_configure("bot_text", foreground="#f4f4f5", font=(PRIMARY_FONT, 9))
+        self.response_text.tag_configure("status_text", foreground="#a1a1aa", font=(PRIMARY_FONT, 8, "italic"))
+        self.response_text.tag_configure("cursor", foreground="#ef4444", font=(PRIMARY_FONT, 9, "bold"))
         self.response_text.tag_configure("text_body", foreground="#f4f4f5")
         self.response_text.bind("<Button-1>", self._on_response_clicked)
-        self.response_text.pack(fill=tk.BOTH, expand=True)
+        self.response_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # 4. Human-in-the-Loop Security Approval Frame (Packed only when permission is requested)
         self.permission_frame = tk.Frame(
@@ -570,28 +582,36 @@ class OPSDesktopOverlay:
         if not current:
             self._set_placeholder()
 
-    def erase_memory(self):
-        """Erases active conversation memory and clears session history."""
+    def refresh_session(self):
+        """Implements the Cockpit Refresh contract: resets active session context and gets fresh session ID."""
         self.play_sound_memory_erase()
-        self._chat_history_text = ""
-        self.status_label.config(text="Purging Conversation Memory...", fg="#ef4444")
+        self.conversation_history = []
+        self._cancel_typewriter()
+        self.status_label.config(text="Refreshing Cockpit Session...", fg="#ef4444")
 
-        def do_purge():
+        def do_refresh():
             try:
+                payload = json.dumps({"session_id": getattr(self, "session_id", "")}).encode("utf-8")
                 req = urllib.request.Request(
-                    f"{self.backend_url}/memory/",
-                    method="DELETE",
+                    f"{self.backend_url}/memory/refresh/",
+                    data=payload,
+                    method="POST",
                     headers={"Content-Type": "application/json"}
                 )
                 with urllib.request.urlopen(req) as resp:
-                    pass
-                self.root.after(0, lambda: self.set_response_content("[MEMORY PURGED] Active conversation memory and vector session history have been reset.\n[•] Standby: Ready for new directives.", append=False))
-                self.root.after(0, lambda: self.status_label.config(text="Active Conversation Memory Cleared!", fg="#34d399"))
-            except Exception as e:
-                self.root.after(0, lambda: self.set_response_content(f"[LOCAL RESET] Session display cleared.\n[•] Backend status: {e}", append=False))
-                self.root.after(0, lambda: self.status_label.config(text="Memory Cleared (Offline Mode)", fg="#eab308"))
+                    data = json.loads(resp.read().decode("utf-8"))
+                    new_sid = data.get("new_session_id")
+                    if new_sid:
+                        self.session_id = new_sid
 
-        threading.Thread(target=do_purge, daemon=True).start()
+                self.root.after(0, lambda: self.set_response_content("[SESSION REFRESHED] Active conversational context has been reset.\n[•] New Clean Session Initialized.\n[•] Ready for new directives.", append=False))
+                self.root.after(0, lambda: self.status_label.config(text="Fresh Session Active!", fg="#34d399"))
+            except Exception as e:
+                self.session_id = f"sess_{int(time.time())}_{os.urandom(3).hex()}"
+                self.root.after(0, lambda: self.set_response_content(f"[LOCAL RESET] Session context cleared.\n[•] Status: {e}", append=False))
+                self.root.after(0, lambda: self.status_label.config(text="Session Reset (Local)", fg="#eab308"))
+
+        threading.Thread(target=do_refresh, daemon=True).start()
 
     def _setup_hotkeys(self):
         """
@@ -812,82 +832,103 @@ class OPSDesktopOverlay:
 
     def _on_response_clicked(self, event=None):
         """Clicking the response box instantly finishes typewriter animation."""
-        if self._typewriter_job and self._current_full_text:
+        if self._typewriter_job:
             self._cancel_typewriter()
-            self._render_text_immediate(self._current_full_text)
+            self._render_history_static()
 
-    def _render_text_immediate(self, text: str):
+    def _render_history_static(self):
+        """Renders all conversation turns in order."""
+        self._cancel_typewriter()
         self.response_text.config(state=tk.NORMAL)
         self.response_text.delete("1.0", tk.END)
-        self.response_text.insert(tk.END, text, "text_body")
-        self.response_text.insert(tk.END, " █", "cursor")
+
+        for turn in self.conversation_history:
+            if turn["role"] == "user":
+                self.response_text.insert(tk.END, "user :\n", "user_header")
+                self.response_text.insert(tk.END, f"{turn['text']}\n\n", "user_text")
+            elif turn["role"] == "bot":
+                self.response_text.insert(tk.END, "bot :\n", "bot_header")
+                self.response_text.insert(tk.END, f"{turn['text']}\n\n", "bot_text")
+
         self.response_text.config(state=tk.DISABLED)
         self.response_text.see(tk.END)
 
-    def stream_typewriter_response(self, text: str, speed_ms: int = 6, append: bool = True):
-        """Streams LLM response word-by-word with a 90s retro blinking block cursor, preserving chat history."""
+    def _render_history_with_pending(self, pending_msg: str):
+        """Renders history plus a pending status message at the bottom."""
+        self._cancel_typewriter()
+        self.response_text.config(state=tk.NORMAL)
+        self.response_text.delete("1.0", tk.END)
+
+        for turn in self.conversation_history:
+            if turn["role"] == "user":
+                self.response_text.insert(tk.END, "user :\n", "user_header")
+                self.response_text.insert(tk.END, f"{turn['text']}\n\n", "user_text")
+            elif turn["role"] == "bot":
+                self.response_text.insert(tk.END, "bot :\n", "bot_header")
+                self.response_text.insert(tk.END, f"{turn['text']}\n\n", "bot_text")
+
+        self.response_text.insert(tk.END, "bot :\n", "bot_header")
+        self.response_text.insert(tk.END, f"{pending_msg}\n\n", "status_text")
+        self.response_text.config(state=tk.DISABLED)
+        self.response_text.see(tk.END)
+
+    def _stream_latest_bot_turn(self, bot_text: str, speed_ms: int = 12):
+        """Streams the latest bot turn with typewriter effect while keeping all previous user/bot turns intact!"""
         self._cancel_typewriter()
 
-        if not hasattr(self, "_chat_history_text"):
-            self._chat_history_text = ""
+        # Render all turns except the last one (which is the current bot turn)
+        self.response_text.config(state=tk.NORMAL)
+        self.response_text.delete("1.0", tk.END)
 
-        if append:
-            base_history = self._chat_history_text
-            self._current_full_text = f"{base_history}{text}"
-        else:
-            self._chat_history_text = ""
-            base_history = ""
-            self._current_full_text = text
+        for turn in self.conversation_history[:-1]:
+            if turn["role"] == "user":
+                self.response_text.insert(tk.END, "user :\n", "user_header")
+                self.response_text.insert(tk.END, f"{turn['text']}\n\n", "user_text")
+            elif turn["role"] == "bot":
+                self.response_text.insert(tk.END, "bot :\n", "bot_header")
+                self.response_text.insert(tk.END, f"{turn['text']}\n\n", "bot_text")
 
-        tokens = re.findall(r'\S+|\s+', text) if text else []
+        self.response_text.insert(tk.END, "bot :\n", "bot_header")
+
+        tokens = re.findall(r'\S+|\s+', bot_text) if bot_text else []
         if not tokens:
-            self._render_text_immediate(self._current_full_text)
+            self.response_text.insert(tk.END, f"{bot_text}\n\n", "bot_text")
+            self.response_text.config(state=tk.DISABLED)
+            self.response_text.see(tk.END)
             return
 
-        accumulated = []
-
-        def type_step(index: int):
-            if index < len(tokens):
-                accumulated.append(tokens[index])
-                current_stream = "".join(accumulated)
-                full_display = f"{base_history}{current_stream}"
-
+        def type_step(idx: int):
+            if idx < len(tokens):
                 self.response_text.config(state=tk.NORMAL)
-                self.response_text.delete("1.0", tk.END)
-                self.response_text.insert(tk.END, full_display, "text_body")
+                content = self.response_text.get("1.0", tk.END)
+                if content.endswith(" █\n") or content.endswith(" █"):
+                    self.response_text.delete("end-2c", "end-1c")
+
+                self.response_text.insert(tk.END, tokens[idx], "bot_text")
                 self.response_text.insert(tk.END, " █", "cursor")
                 self.response_text.config(state=tk.DISABLED)
                 self.response_text.see(tk.END)
-
-                self._typewriter_job = self.root.after(speed_ms, lambda: type_step(index + 1))
+                self._typewriter_job = self.root.after(speed_ms, lambda: type_step(idx + 1))
             else:
-                self._chat_history_text = self._current_full_text
+                self.response_text.config(state=tk.NORMAL)
+                content = self.response_text.get("1.0", tk.END)
+                if content.endswith(" █\n") or content.endswith(" █"):
+                    self.response_text.delete("end-2c", "end-1c")
+                self.response_text.insert(tk.END, "\n\n", "bot_text")
+                self.response_text.config(state=tk.DISABLED)
+                self.response_text.see(tk.END)
                 self._typewriter_job = None
-                self._start_cursor_blink()
 
         type_step(0)
 
-    def _start_cursor_blink(self):
-        """Subtle blinking cursor when response streaming is complete."""
-        self._cursor_visible = True
-
-        def blink():
-            if not self._current_full_text:
-                return
-            self._cursor_visible = not self._cursor_visible
-            self.response_text.config(state=tk.NORMAL)
-            self.response_text.delete("1.0", tk.END)
-            self.response_text.insert(tk.END, self._current_full_text, "text_body")
-            if self._cursor_visible:
-                self.response_text.insert(tk.END, " █", "cursor")
-            self.response_text.config(state=tk.DISABLED)
-            self._cursor_blink_job = self.root.after(700, blink)
-
-        self._cursor_blink_job = self.root.after(700, blink)
-
     def set_response_content(self, text: str, append: bool = True):
-        """Displays LLM response in the overlay window using retro typewriter streaming."""
-        self.stream_typewriter_response(text, speed_ms=16, append=append)
+        """Displays status message in the overlay window."""
+        self._cancel_typewriter()
+        self.response_text.config(state=tk.NORMAL)
+        self.response_text.delete("1.0", tk.END)
+        self.response_text.insert(tk.END, f"{text}\n\n", "status_text")
+        self.response_text.config(state=tk.DISABLED)
+        self.response_text.see(tk.END)
 
     def speak_audio_response(self, text: str):
         """Calls TTS endpoint to speak response aloud (optional)."""
@@ -910,19 +951,20 @@ class OPSDesktopOverlay:
         if not prompt_text or prompt_text == self._placeholder_text:
             return
 
+        self.text_area.delete("1.0", tk.END)
         self.status_label.config(text="Deploying Multi-Agent Team...", fg="#f87171")
-        
-        # Append user turn to persistent chat screen
-        user_header = f"\n[👤 USER]: {prompt_text}\n"
-        if not hasattr(self, "_chat_history_text"):
-            self._chat_history_text = ""
-        self._chat_history_text += user_header
-        self.set_response_content("[🤖 O.P.S.]: Formulating tactical response...", append=False)
-        
+
+        # Append user turn to persistent conversation history
+        self.conversation_history.append({"role": "user", "text": prompt_text})
+        self._render_history_with_pending("Formulating tactical response...")
+
         def send_req():
             try:
-                payload = json.dumps({"prompt": prompt_text, "source": "desktop_cockpit"}).encode("utf-8")
-                # Routes to LangGraph multi-agent pipeline (which broadcasts to Web HUD simultaneously)
+                payload = json.dumps({
+                    "prompt": prompt_text,
+                    "session_id": getattr(self, "session_id", "default_session"),
+                    "source": "desktop_cockpit"
+                }).encode("utf-8")
                 req = urllib.request.Request(
                     f"{self.backend_url}/agent/run/",
                     data=payload,
@@ -934,7 +976,6 @@ class OPSDesktopOverlay:
                     flow = res_data.get("target_flow", "")
                     answer = res_data.get("final_answer", "Execution completed.")
 
-                    # Play retro sound whenever something is added to memory
                     if (
                         category == "WORKSTATION_MEMORY_CAPTURE" or
                         res_data.get("tool_output", {}).get("action") == "workstation_memory_capture" or
@@ -943,23 +984,33 @@ class OPSDesktopOverlay:
                     ):
                         self.play_sound_memory_added()
 
-                    # Update response text in overlay with typewriter streaming animation
-                    formatted_assistant_turn = f"[🤖 O.P.S.]:\n{answer}\n\n"
-                    self.root.after(0, lambda: self.set_response_content(formatted_assistant_turn, append=False))
+                    # Add bot turn to history
+                    self.conversation_history.append({
+                        "role": "bot",
+                        "text": answer,
+                        "category": category
+                    })
+
+                    # Stream bot turn at the bottom of the scrollable conversation
+                    self.root.after(0, lambda: self._stream_latest_bot_turn(answer))
                     status_badge = f"Completed! [{category}]" if not flow else f"Completed! [{category} • {flow}]"
                     self.root.after(0, lambda: self.status_label.config(
                         text=status_badge, fg="#34d399"
                     ))
 
             except Exception as err:
-                err_msg = f"[🤖 O.P.S. ERROR]: {err}\n\n"
-                self.root.after(0, lambda: self.set_response_content(err_msg, append=False))
+                err_msg = f"Execution error: {err}"
+                self.conversation_history.append({
+                    "role": "bot",
+                    "text": err_msg,
+                    "is_error": True
+                })
+                self.root.after(0, lambda: self._stream_latest_bot_turn(err_msg))
                 self.root.after(0, lambda: self.status_label.config(
                     text=f"Error: {err}", fg="#ef4444"
                 ))
 
         threading.Thread(target=send_req, daemon=True).start()
-        self.text_area.delete("1.0", tk.END)
 
     def show_permission_request(self, perm: dict):
         """Displays the Human-in-the-Loop Security Approval prompt inside the Pop-Up Cockpit."""

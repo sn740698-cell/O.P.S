@@ -34,9 +34,9 @@ ping 127.0.0.1 -n 4 >nul
 
 echo Opening O.P.S. Ambient Overlay Dashboard in Microsoft Edge...
 if exist "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" (
-    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --autoplay-policy=no-user-gesture-required http://localhost:3000
+    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --user-data-dir="%LOCALAPPDATA%\Microsoft\Edge\OPSProfile" --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check http://localhost:3000
 ) else if exist "C:\Program Files\Microsoft\Edge\Application\msedge.exe" (
-    start "" "C:\Program Files\Microsoft\Edge\Application\msedge.exe" --autoplay-policy=no-user-gesture-required http://localhost:3000
+    start "" "C:\Program Files\Microsoft\Edge\Application\msedge.exe" --user-data-dir="%LOCALAPPDATA%\Microsoft\Edge\OPSProfile" --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check http://localhost:3000
 ) else (
     start microsoft-edge:http://localhost:3000
 )
@@ -63,9 +63,9 @@ start /min "O.P.S Backend Django" cmd /k "cd /d "%ROOT_DIR%backend" && call .\ve
 start /min "O.P.S Frontend Vite" cmd /k "cd /d "%ROOT_DIR%frontend" && npm run dev"
 start "O.P.S Desktop Overlay" cmd /k "cd /d "%ROOT_DIR%" && call .\backend\venv\Scripts\activate.bat && python local_agent\desktop_overlay.py"
 if exist "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" (
-    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --autoplay-policy=no-user-gesture-required http://localhost:3000
+    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --user-data-dir="%LOCALAPPDATA%\Microsoft\Edge\OPSProfile" --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check http://localhost:3000
 ) else if exist "C:\Program Files\Microsoft\Edge\Application\msedge.exe" (
-    start "" "C:\Program Files\Microsoft\Edge\Application\msedge.exe" --autoplay-policy=no-user-gesture-required http://localhost:3000
+    start "" "C:\Program Files\Microsoft\Edge\Application\msedge.exe" --user-data-dir="%LOCALAPPDATA%\Microsoft\Edge\OPSProfile" --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check http://localhost:3000
 ) else (
     start microsoft-edge:http://localhost:3000
 )

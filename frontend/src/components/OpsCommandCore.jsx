@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Mic, Send, Sparkles, Terminal, Globe, Code2, Play, Loader2, Volume2, ShieldAlert } from 'lucide-react';
+import {
+  Mic, Send, RefreshCw, Terminal, Globe, Play, Loader2, Volume2, ShieldAlert, Cpu, Sparkles
+} from 'lucide-react';
 
 export default function OpsCommandCore({
   onDispatchCommand,
@@ -8,23 +10,26 @@ export default function OpsCommandCore({
   currentThought,
   onToggleVoice,
   isListening,
-  onEmergencyHalt
+  onEmergencyHalt,
+  sessionId,
+  onRefreshSession
 }) {
   const [inputPrompt, setInputPrompt] = useState('');
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!inputPrompt.trim() || isLoading) return;
     onDispatchCommand(inputPrompt);
     setInputPrompt('');
   };
 
   const quickDirectives = [
-    { label: "[ OPEN INSTAGRAM ]", prompt: "Open Instagram" },
-    { label: "[ OPEN LEETCODE ]", prompt: "Open LeetCode" },
-    { label: "[ OPEN CALC ]", prompt: "Open Calculator" },
-    { label: "[ SYSTEM HEALTH ]", prompt: "Check system health and running processes" },
-    { label: "[ SEARCH WEB ]", prompt: "Search web for latest open source AI agent frameworks" }
+    { label: "[ 1. YOUTUBE ]", prompt: "Open YouTube and search for Believer" },
+    { label: "[ 2. INSTAGRAM ]", prompt: "Open Instagram and take me to Reels" },
+    { label: "[ 3. VIRAT KOHLI ]", prompt: "Who is Virat Kohli?" },
+    { label: "[ 4. AI NEWS ]", prompt: "Tell me the latest AI news." },
+    { label: "[ 5. DESKTOP FOLDER ]", prompt: "Create an O.P.S. folder on Desktop" },
+    { label: "[ 6. OPEN VLC ]", prompt: "Open VLC" }
   ];
 
   return (
@@ -33,10 +38,9 @@ export default function OpsCommandCore({
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-red-600 to-transparent"></div>
 
       <div className="flex flex-col md:flex-row items-center gap-4 justify-between">
-        {/* Glowing O.P.S. Core Reactor Orb */}
+        {/* Glowing O.P.S. Core Reactor Orb & Telemetry */}
         <div className="flex items-center gap-3">
           <div className="relative group cursor-pointer" onClick={onToggleVoice}>
-            {/* Pulsing rings */}
             <div className={`absolute -inset-1 rounded-full bg-red-600 opacity-60 blur-sm ${isLoading || isListening ? 'animate-ping duration-1000' : 'animate-pulse'}`}></div>
             <div className="relative w-14 h-14 rounded-full bg-black border-2 border-red-500 flex flex-col items-center justify-center shadow-lg">
               <div className="w-4 h-4 rounded-full bg-red-600 flex items-center justify-center">
@@ -47,8 +51,8 @@ export default function OpsCommandCore({
           </div>
 
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-white tracking-wider">=== O.P.S. COMMAND CORE ===</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-extrabold text-white tracking-wider">=== O.P.S. POP-UP COCKPIT ===</span>
               <span className={`px-2 py-0.5 text-[10px] font-mono font-bold tracking-wider border ${
                 isLoading
                   ? 'bg-red-950 text-red-400 border-red-800 animate-pulse'
@@ -56,24 +60,29 @@ export default function OpsCommandCore({
                   ? 'bg-red-600 text-white border-red-500 animate-bounce'
                   : 'bg-black text-zinc-400 border-zinc-800'
               }`}>
-                {isLoading ? `[BUSY: ${activeAgent || 'ORCHESTRATOR'}]` : isListening ? '[LISTENING: WISPR FLOW]' : '[STANDBY: READY]'}
+                {isLoading ? `[BUSY: ${activeAgent || 'PIPELINE'}]` : isListening ? '[LISTENING: WISPR FLOW]' : '[STANDBY: READY]'}
               </span>
             </div>
             <p className="text-xs text-zinc-400 max-w-md truncate font-mono mt-0.5">
-              &gt; {currentThought || "Autonomous workstation intelligence. Speak or type directive."}
+              &gt; {currentThought || "Continuous session context active. Speak or type directive."}
             </p>
           </div>
         </div>
 
-        {/* Emergency Halt Button */}
-        <button
-          type="button"
-          onClick={onEmergencyHalt}
-          className="retro-btn-red px-3 py-1.5 text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1.5 self-end md:self-center"
-        >
-          <ShieldAlert className="w-3.5 h-3.5" />
-          <span>[ EMERGENCY KILL SWITCH ]</span>
-        </button>
+        {/* Action Controls: Refresh Session */}
+        <div className="flex items-center gap-2 self-end md:self-center">
+          {/* Refresh / Reset Session Button */}
+          <button
+            type="button"
+            onClick={onRefreshSession}
+            disabled={isLoading}
+            className="retro-btn px-2.5 py-1.5 text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1.5 hover:border-red-600 hover:text-white"
+            title="Reset active conversational context and start clean session"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-red-400" />
+            <span>[ ↻ REFRESH SESSION ]</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Directive Command Bar */}
@@ -83,7 +92,7 @@ export default function OpsCommandCore({
             type="text"
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
-            placeholder="Command O.P.S. (e.g. 'Open Instagram', 'Open Calculator', 'Search web for...')"
+            placeholder="Command O.P.S. (e.g. 'Open YouTube', 'Search for Believer', 'Open the first result', 'Play it')..."
             disabled={isLoading}
             className="w-full bg-black border border-zinc-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-none px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 outline-none pr-28 transition font-mono shadow-inner"
           />
@@ -97,7 +106,7 @@ export default function OpsCommandCore({
                   ? 'bg-red-600 text-white border-red-500 animate-pulse'
                   : 'bg-zinc-900 text-zinc-400 hover:text-white border-zinc-700 hover:border-zinc-600'
               }`}
-              title="Voice Input (Wispr Flow)"
+              title="Voice Input (Wispr Flow / Ctrl+Space)"
             >
               <Mic className="w-3.5 h-3.5" />
             </button>
@@ -115,13 +124,14 @@ export default function OpsCommandCore({
         </div>
 
         {/* Tactical Directive Shortcuts */}
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          <span className="text-[10px] font-mono text-zinc-500 self-center mr-1">QUICK_LAUNCH:</span>
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          <span className="text-[10px] font-mono text-zinc-500 mr-1">PRESETS:</span>
           {quickDirectives.map((d, i) => (
             <button
               key={i}
               type="button"
               onClick={() => onDispatchCommand(d.prompt)}
+              disabled={isLoading}
               className="retro-btn px-2 py-0.5 text-[10px] font-mono hover:border-red-600 hover:text-white"
             >
               {d.label}

@@ -1,159 +1,196 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Play, Loader2, Globe, Terminal, Cpu, Activity, Info
+  Play, Loader2, Globe, Terminal, Cpu, Activity, Info, RefreshCw, ShieldAlert
 } from 'lucide-react';
 import { retroSoundEngine } from '../utils/retroSounds';
 
 // ==================== O.P.S. MULTI-AGENT ARCHITECTURE TOPOLOGY ====================
+// Strictly conforms to O.P.S. — Agent Architecture & Build Specification
 
-// 5 Hierarchical Stages:
-// Layer 0: Sensory Inputs (2 nodes: Hotkey/CLI, Wispr Voice)
-// Layer 1: Fast Gateway & Memory (2 nodes: Supervisor Router, Workstation Vector Memory)
-// Layer 2: Cognitive Core (2 nodes: Reasoning & DAG Planner, Safety Sentinel)
-// Layer 3: Autonomous Action Fleet (6 nodes: Direct Tools, Developer, Crawler, Browser DOM, Desktop Automation, Content Writer)
-// Layer 4: Executive Voice & Synthesis (1 node: J.A.R.V.I.S. Persona)
-const LAYERS = [2, 2, 2, 6, 1];
+// 4 Hierarchical Stages:
+// Stage 01: Core Agents (2 nodes: Prompt Template Agent, Router Agent)
+// Stage 02: Superior Domains (2 nodes: Web Superior Agent, Automation Superior Agent)
+// Stage 03: Specialist Sub-Agents & HITL (11 nodes):
+//   - Web Sub-tree: Web Prompt Understanding, ScrapeGraphAI, BeautifulSoup4, Crawlee, Retrieval Quality
+//   - Automation Sub-tree: Automation Prompt Understanding, HITL Gate, Open Web, Installed Apps, Open File, Desktop Control
+// Stage 04: Final Processing (2 nodes: Result Agent, Jarvis Persona Agent)
+const LAYERS = [2, 2, 11, 2];
 const LAST = LAYERS.length - 1;
 const LABELS = [
-  "STAGE 01: SENSORY",
-  "STAGE 02: GATEWAY & RAG",
-  "STAGE 03: COGNITIVE CORE",
-  "STAGE 04: ACTION FLEET",
-  "STAGE 05: EXECUTIVE VOICE"
+  "STAGE 01: CORE INTERPRETATION",
+  "STAGE 02: SUPERIOR DOMAINS",
+  "STAGE 03: SPECIALIST SUB-AGENTS & HITL",
+  "STAGE 04: FINAL PROCESSING & JARVIS"
 ];
 
-// Exact Agent Metadata matching O.P.S. architecture
+// Authoritative Agent Metadata
 const AGENT_NODES = [
-  // Layer 0: Sensory Inputs
+  // Stage 01: Core Agents
   [
     {
-      id: "input_text",
-      name: "Directive & Hotkey Ingestion",
-      tag: "INPUT: KEY / CLI",
-      model: "Win32 API (Ctrl+Alt / Terminal)",
-      task: "Captures global hotkeys, shell directives, and workstation keystrokes without minimizing active windows.",
-      category: "sensor",
-      matchKeys: ["input", "user", "hotkey", "prompt", "cli", "cockpit", "desktop", "overlay", "directive", "sensory"]
+      id: "prompt_template",
+      name: "Prompt Template Agent",
+      tag: "TEMPLATE PARSER",
+      model: "Qwen3 0.6B (Local Ollama)",
+      task: "First interpretation layer. Normalizes language phrasing, extracts entities & variables, and prepares structured objective for Router.",
+      category: "core",
+      matchKeys: ["prompt template", "template", "normalize", "pattern", "directive", "prompt"]
     },
-    {
-      id: "input_voice",
-      name: "Wispr Voice Dictation",
-      tag: "INPUT: VOICE",
-      model: "Wispr Flow Acoustic Stream (Ctrl+Win)",
-      task: "Real-time acoustic listener streaming workstation microphone audio and wake directives ('Hey OPS').",
-      category: "sensor",
-      matchKeys: ["voice", "audio", "mic", "wispr", "dictation", "speech"]
-    }
-  ],
-  // Layer 1: Fast Gateway & Memory
-  [
     {
       id: "router",
-      name: "Supervisor Router Node",
-      tag: "FAST ROUTER",
-      model: "Qwen3 0.6B (Local Ollama)",
-      task: "Sub-50ms intent detection & parameter extraction. Bypasses heavy models for simple actions and routes complex tasks.",
-      category: "router",
-      matchKeys: ["router", "supervisor", "intent", "classify"]
-    },
-    {
-      id: "memory",
-      name: "Workstation Vector Memory",
-      tag: "SEMANTIC RAG",
-      model: "ChromaDB (all-MiniLM-L6-v2 384-d)",
-      task: "Indexes conversation turns, codebase symbols, and user preferences locally with zero cloud data leakage.",
-      category: "memory",
-      matchKeys: ["memory", "vector", "chroma", "rag"]
+      name: "Understand Prompt / Router Agent",
+      tag: "GLOBAL ROUTER",
+      model: "Qwen3 1.7B (Local Ollama)",
+      task: "Understands structured request and routes top-level domain to exactly WEB or AUTOMATION. Does not select low-level tools.",
+      category: "core",
+      matchKeys: ["router", "understand prompt", "domain", "route", "classify"]
     }
   ],
-  // Layer 2: Cognitive Core
+  // Stage 02: Superior Domain Agents
   [
     {
-      id: "planner",
-      name: "Reasoning & DAG Planner",
-      tag: "DAG PLANNER",
+      id: "web_superior",
+      name: "Web Superior Agent",
+      tag: "WEB SUPERIOR",
       model: "Qwen3 1.7B (Local Ollama)",
-      task: "Performs deep chain-of-thought task decomposition, builds ordered dependency DAGs, and oversees error recovery.",
-      category: "cognitive",
-      matchKeys: ["reasoning", "planner", "plan", "decompose", "dag"]
+      task: "Owns web information retrieval and research. Coordinates extractors, crawlers, and the quality re-planning loop.",
+      category: "superior",
+      matchKeys: ["web agent", "web superior", "web research", "web retrieval", "web"]
     },
     {
-      id: "safety",
-      name: "Safety Policy Sentinel",
-      tag: "HITL SENTINEL",
-      model: "Win32 Sandbox Gatekeeper",
-      task: "Intercepts high-risk operations (file writes, app execution, terminal commands) and enforces mandatory human approval.",
-      category: "security",
-      matchKeys: ["safety", "permission", "gatekeeper", "sentinel"]
+      id: "automation_superior",
+      name: "Automation Superior Agent",
+      tag: "AUTO SUPERIOR",
+      model: "Qwen3 1.7B (Local Ollama)",
+      task: "Owns computer automation and desktop actions. Coordinates task decomposition, HITL safety approval, and tool execution.",
+      category: "superior",
+      matchKeys: ["automation agent", "automation superior", "automation coordinator", "automation"]
     }
   ],
-  // Layer 3: Autonomous Action Fleet
+  // Stage 03: Specialist Sub-Agents & HITL Gate
   [
+    // Web Sub-tree (0 to 4)
     {
-      id: "direct_tool",
-      name: "Direct Tool Runner",
-      tag: "DIRECT TOOL",
-      model: "OPS Native Sandbox (Sub-10ms)",
-      task: "Instantly launches apps, manages directories, or runs calculator math without LLM overhead.",
-      category: "action",
-      matchKeys: ["tool", "direct", "open ", "launch", "calc"]
-    },
-    {
-      id: "developer",
-      name: "Autonomous Developer Agent",
-      tag: "DEV AGENT",
+      id: "web_understanding",
+      name: "Web Prompt Understanding Agent",
+      tag: "WEB PLANNER",
       model: "Qwen3 1.7B (Local Ollama)",
-      task: "Queries codebase context, generates code, fixes syntax errors, and validates execution in the sandboxed shell.",
-      category: "action",
-      matchKeys: ["developer", "dev", "code", "syntax", "refactor", "git"]
+      task: "Converts research requests into retrieval instructions, extracts entity constraints, and re-plans when given gap feedback.",
+      category: "sub_web",
+      matchKeys: ["web prompt understanding", "web understanding", "retrieval plan"]
     },
     {
-      id: "crawler",
-      name: "Live Web Crawling Agent",
-      tag: "WEB CRAWLER",
-      model: "Crawlee 1.10 + ScrapeGraphAI",
-      task: "Crawls web documentation, extracts LLM-ready markdown, and searches live information (person bios, theories, news).",
-      category: "action",
-      matchKeys: ["crawl", "crawlee", "scrape", "search", "who is", "news"]
+      id: "scrapegraph",
+      name: "ScrapeGraphAI Agent",
+      tag: "STRUCTURED SCRAPER",
+      model: "Llama 3.2 1B (ScrapeGraphAI)",
+      task: "Extracts structured schemas, tabular data, pricing, and event metadata using AI extraction pipelines.",
+      category: "sub_web",
+      matchKeys: ["scrapegraph", "structured extraction", "schema"]
     },
     {
-      id: "browser",
-      name: "Browser DOM Agent",
+      id: "beautifulsoup",
+      name: "BeautifulSoup Agent",
+      tag: "HTML PARSER",
+      model: "Qwen3 0.6B (BeautifulSoup4)",
+      task: "Parses raw HTML, eliminates DOM clutter/ads, extracts headings, clean paragraphs, and links.",
+      category: "sub_web",
+      matchKeys: ["beautifulsoup", "bs4", "html parse", "dom clean"]
+    },
+    {
+      id: "crawlee",
+      name: "Crawlee Agent",
+      tag: "PAGE CRAWLER",
+      model: "Llama 3.2 1B (Crawlee 1.10)",
+      task: "Performs multi-page crawling, handles pagination across documentation/sites, and collects raw research scope.",
+      category: "sub_web",
+      matchKeys: ["crawlee", "crawl", "pagination", "spider"]
+    },
+    {
+      id: "retrieval_quality",
+      name: "Retrieval Quality Agent",
+      tag: "QUALITY & LOOP",
+      model: "Qwen3 1.7B (Local Ollama)",
+      task: "Quality control layer. Validates relevance, freshness & completeness. Triggers re-planning loop if insufficient.",
+      category: "sub_web",
+      matchKeys: ["retrieval agent", "retrieval quality", "quality control", "retrieval validated", "loop"]
+    },
+
+    // Automation Sub-tree (5 to 10)
+    {
+      id: "automation_understanding",
+      name: "Automation Prompt Understanding Agent",
+      tag: "ACTION PLANNER",
+      model: "Qwen3 1.7B (Local Ollama)",
+      task: "Understands automation directives and generates step-by-step task sequences and domain classifications.",
+      category: "sub_auto",
+      matchKeys: ["automation prompt understanding", "automation understanding", "action plan", "task plan"]
+    },
+    {
+      id: "hitl_gate",
+      name: "HITL / Approval Gate",
+      tag: "HITL GATE",
+      model: "Deterministic (No LLM)",
+      task: "Safety gatekeeper. Intercepts action plan BEFORE execution and requires user approval. Aborts cleanly if declined.",
+      category: "sub_auto_safety",
+      matchKeys: ["hitl", "approval", "permission", "gatekeeper", "sentinel"]
+    },
+    {
+      id: "open_web",
+      name: "Open Web Agent",
       tag: "PLAYWRIGHT DOM",
-      model: "Playwright Headless/Headed",
-      task: "Automates browser navigation, DOM button clicks, video searches (YouTube), and dynamic site interactions (Instagram).",
-      category: "action",
-      matchKeys: ["browser", "playwright", "instagram", "youtube", "dom"]
+      model: "Llama 3.2 1B (Playwright)",
+      task: "Automates web apps and browser interaction (Instagram Reels, YouTube search, Gemini, Claude, DOM clicks).",
+      category: "sub_auto",
+      matchKeys: ["open web", "browser", "playwright", "instagram", "youtube", "web app"]
     },
     {
-      id: "automation",
-      name: "System Automation Agent",
-      tag: "DESKTOP GUI",
-      model: "PyAutoGUI + Win32 API",
-      task: "Controls desktop GUI windows, clicks screen coordinates, simulates keystrokes, and switches active windows.",
-      category: "action",
-      matchKeys: ["automation", "gui", "pyautogui", "desktop", "window"]
+      id: "installed_apps",
+      name: "Installed Apps Agent",
+      tag: "NATIVE APPS",
+      model: "Llama 3.2 1B (PyAutoGUI)",
+      task: "Controls native installed software (VLC media player, Spotify, WhatsApp Desktop, VS Code, Calculator).",
+      category: "sub_auto",
+      matchKeys: ["installed apps", "vlc", "spotify", "whatsapp", "vscode", "launch application"]
     },
     {
-      id: "writer",
-      name: "Content Writer Agent",
-      tag: "CONTENT WRITER",
-      model: "Llama 3.2 1B Instruct (Local Ollama)",
-      task: "Drafts formal emails, summaries, structured notes, and documents with clean tone and coherent structure.",
-      category: "action",
-      matchKeys: ["content", "writer", "email", "summary", "draft"]
+      id: "open_file",
+      name: "Open File Agent",
+      tag: "FILE RESOLVER",
+      model: "Qwen3 0.6B (OS File APIs)",
+      task: "Locates and opens files/folders (Downloads, PDFs, project directory) and accurately reports if not found.",
+      category: "sub_auto",
+      matchKeys: ["open file", "open folder", "downloads", "documents", "path resolver"]
+    },
+    {
+      id: "desktop_control",
+      name: "Desktop Control Agent",
+      tag: "DESKTOP CONTROL",
+      model: "Llama 3.2 1B (PyAutoGUI + OS)",
+      task: "Broad desktop operations: create folders/files, write notes, refresh, move, rename, and system actions.",
+      category: "sub_auto",
+      matchKeys: ["desktop control", "create folder", "create file", "notes.txt", "desktop", "pyautogui"]
     }
   ],
-  // Layer 4: Executive Voice & Synthesis
+  // Stage 04: Final Processing
   [
     {
-      id: "jarvis",
-      name: "J.A.R.V.I.S. Persona Synthesizer",
-      tag: "JARVIS SYNTHESIZER",
-      model: "Llama 3.2 1B Instruct + Piper Neural Voice",
-      task: "Translates multi-agent tool telemetry into calm, dignified J.A.R.V.I.S. briefings formatted in '90s retro bullets.",
-      category: "output",
-      matchKeys: ["jarvis", "synthesizer", "response", "speech", "tts"]
+      id: "result_agent",
+      name: "Result Agent",
+      tag: "FACT STRUCTURER",
+      model: "Qwen3 0.6B (Local Ollama)",
+      task: "Structures raw execution facts & retrieval data into clean schemas (INFORMATION, AUTOMATION, RESEARCH, FAILURE).",
+      category: "final",
+      matchKeys: ["result agent", "structuring", "result schema", "task completed", "task not completed"]
+    },
+    {
+      id: "jarvis_persona",
+      name: "Jarvis Persona Agent",
+      tag: "JARVIS PERSONA",
+      model: "Llama 3.2 1B (Piper Neural Voice)",
+      task: "Final communication layer. Speaks structured outcomes in a calm, humble, concise, polite, natural JARVIS voice.",
+      category: "final",
+      matchKeys: ["jarvis persona", "jarvis", "persona", "synthesizer", "speech"]
     }
   ]
 ];
@@ -242,7 +279,7 @@ export default function OpsLiveOrchestrationTab({
     const C = LAYERS.slice(1).map((n, l) =>
       Array.from({ length: n }, () =>
         Array.from({ length: LAYERS[l] }, () => ({
-          bend: (Math.random() - 0.5) * 24,
+          bend: (Math.random() - 0.5) * 20,
           ph: Math.random() * TAU,
           ph2: Math.random() * TAU,
           f: 1.2 + Math.random() * 1.1,
@@ -267,21 +304,24 @@ export default function OpsLiveOrchestrationTab({
       Array.from({ length: n }, () => new Array(LAYERS[l]).fill(0))
     );
 
-    // Cross-links matching O.P.S real-time architecture:
+    // Cross-links and quality loops matching O.P.S specification:
+    // Web Quality Loop: Stage 2 (Retrieval Quality Node index 4) loops back to (Web Prompt Understanding Node index 0)
+    // HITL Gate: Stage 2 (HITL Gate Node index 6) intercepts before Open Web (index 7), Installed Apps (index 8), Open File (index 9), Desktop Control (index 10)
     const ARCHITECTURAL_CROSS_LINKS = [
-      { l1: 1, i: 0, l2: 3, j: 0, bow: -35, f: 1.4, sp: 0.0007, ph: 0.5, hue: 0.1 }, // Router -> Direct Tool
-      { l1: 1, i: 0, l2: 3, j: 5, bow: 40, f: 1.2, sp: 0.0006, ph: 1.2, hue: 0.2 },  // Router -> Writer
-      { l1: 0, i: 0, l2: 1, j: 1, bow: 25, f: 1.5, sp: 0.0008, ph: 2.1, hue: 0.3 },  // Key Input -> Memory
-      { l1: 0, i: 1, l2: 1, j: 1, bow: 20, f: 1.3, sp: 0.0007, ph: 0.8, hue: 0.4 },  // Voice Input -> Memory
-      { l1: 2, i: 1, l2: 3, j: 1, bow: -25, f: 1.1, sp: 0.0006, ph: 3.0, hue: 0.5 }, // Sentinel -> Dev Agent
-      { l1: 2, i: 1, l2: 3, j: 4, bow: 30, f: 1.2, sp: 0.0005, ph: 1.8, hue: 0.6 },  // Sentinel -> Desktop Auto
-      { l1: 4, i: 0, l2: 1, j: 1, bow: 65, f: 0.9, sp: 0.0005, ph: 2.7, hue: 0.7 },  // Jarvis -> Memory context
+      { l1: 2, i: 4, l2: 2, j: 0, bow: -55, f: 1.6, sp: 0.0010, ph: 0.5, hue: 0.95, isLoop: true }, // Web Quality -> Web Understanding Loop
+      { l1: 1, i: 0, l2: 2, j: 0, bow: -15, f: 1.3, sp: 0.0008, ph: 0.8, hue: 0.1 },  // Web Superior -> Web Understanding
+      { l1: 1, i: 1, l2: 2, j: 5, bow: 15, f: 1.3, sp: 0.0008, ph: 1.2, hue: 0.2 },   // Auto Superior -> Auto Understanding
+      { l1: 2, i: 5, l2: 2, j: 6, bow: 10, f: 1.4, sp: 0.0009, ph: 2.1, hue: 0.3 },   // Auto Understanding -> HITL Gate
+      { l1: 2, i: 6, l2: 2, j: 7, bow: -10, f: 1.2, sp: 0.0007, ph: 0.4, hue: 0.4 },  // HITL Gate -> Open Web
+      { l1: 2, i: 6, l2: 2, j: 8, bow: 0, f: 1.2, sp: 0.0007, ph: 1.0, hue: 0.5 },   // HITL Gate -> Installed Apps
+      { l1: 2, i: 6, l2: 2, j: 9, bow: 10, f: 1.2, sp: 0.0007, ph: 1.8, hue: 0.6 },  // HITL Gate -> Open File
+      { l1: 2, i: 6, l2: 2, j: 10, bow: 20, f: 1.2, sp: 0.0007, ph: 2.5, hue: 0.7 }, // HITL Gate -> Desktop Control
     ];
 
     const G = [...ARCHITECTURAL_CROSS_LINKS];
 
     let nodes = [];
-    let radius = 15;
+    let radius = 14;
     let width = 0;
     let height = 0;
     let pulses = [];
@@ -297,15 +337,15 @@ export default function OpsLiveOrchestrationTab({
       const rect = wrap.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       width = rect.width;
-      height = Math.max(rect.height, 580);
+      height = Math.max(rect.height, 620);
       canvas.width = width * dpr;
       canvas.height = height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const maxLayerCount = Math.max(...LAYERS);
-      const gap = Math.min(74, (height * 0.72) / maxLayerCount);
-      radius = Math.max(13, Math.min(18, gap * 0.28));
-      const padX = Math.max(70, width * 0.11);
+      const gap = Math.min(48, (height * 0.78) / maxLayerCount);
+      radius = Math.max(12, Math.min(16, gap * 0.28));
+      const padX = Math.max(70, width * 0.12);
 
       nodes = LAYERS.map((n, l) =>
         Array.from({ length: n }, (_, i) => ({
@@ -405,11 +445,11 @@ export default function OpsLiveOrchestrationTab({
       const dt = Math.min(now - last, 50);
       last = now;
 
-      // Identify currently executing agent (defaults to Fast Router if generic orchestrating)
-      const activeTarget = findActiveNode(activeAgent) || (isLoading ? { l: 1, i: 0, node: AGENT_NODES[1][0] } : null);
+      // Identify currently executing agent
+      const activeTarget = findActiveNode(activeAgent) || (isLoading ? { l: 0, i: 0, node: AGENT_NODES[0][0] } : null);
       const isSystemWorking = Boolean(isLoading && activeTarget);
 
-      // ACTIVE WORKING LOGIC: Continuous streams when working
+      // Active working continuous stream
       if (isSystemWorking && activeTarget) {
         glow[activeTarget.l][activeTarget.i] = 1.0;
         act[activeTarget.l][activeTarget.i] = 1.0;
@@ -433,7 +473,7 @@ export default function OpsLiveOrchestrationTab({
         }
       }
 
-      // Gentle organic drift of nodes
+      // Drift of nodes
       nodes.forEach((layer) =>
         layer.forEach((n) => {
           n.x = n.bx + Math.sin(now * 0.0006 + n.ph) * 1.5;
@@ -533,7 +573,7 @@ export default function OpsLiveOrchestrationTab({
         ctx.stroke();
       }
 
-      // Draw Main Synaptic Connections (Filament Bundles) - CLEARLY VISIBLE!
+      // Draw Main Synaptic Connections
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.globalCompositeOperation = "lighter";
@@ -547,7 +587,6 @@ export default function OpsLiveOrchestrationTab({
             const related = hover && ((hover.l === l && hover.i === i) || (hover.l === l + 1 && hover.i === j));
             const isPathActive = isSystemWorking && activeTarget && ((activeTarget.l === l && activeTarget.i === i) || (activeTarget.l === l + 1 && activeTarget.i === j));
             
-            // Clean, clearly visible base alpha
             const rgb = tint(c.hue, h);
             const baseAlpha = isPathActive ? 0.8 : related ? 0.6 : 0.22;
             const amp = baseAlpha + h * 0.45;
@@ -576,25 +615,33 @@ export default function OpsLiveOrchestrationTab({
         }
       }
 
-      // Draw Architectural Cross-Links (Clearly visible skip connections)
+      // Draw Architectural Cross-Links (Quality loops and HITL dispatch)
       for (const g of G) {
         if (!nodes[g.l1] || !nodes[g.l1][g.i] || !nodes[g.l2] || !nodes[g.l2][g.j]) continue;
         const related = hover && ((hover.l === g.l1 && hover.i === g.i) || (hover.l === g.l2 && hover.i === g.j));
         const isPathActive = isSystemWorking && activeTarget && ((activeTarget.l === g.l1 && activeTarget.i === g.i) || (activeTarget.l === g.l2 && activeTarget.i === g.j));
-        const rgb = tint(g.hue, 0.25);
-        const alpha = isPathActive ? 0.75 : related ? 0.55 : 0.20;
+        
+        // Loops have prominent amber/cyan highlights
+        const rgb = g.isLoop ? "245, 158, 11" : tint(g.hue, 0.25);
+        const alpha = g.isLoop ? 0.85 : isPathActive ? 0.75 : related ? 0.55 : 0.20;
 
         ctx.strokeStyle = `rgba(${rgb}, ${alpha})`;
-        ctx.lineWidth = isPathActive ? 1.0 : 0.65;
+        ctx.lineWidth = g.isLoop ? 1.4 : isPathActive ? 1.0 : 0.65;
+        if (g.isLoop) {
+          ctx.setLineDash([4, 4]);
+        } else {
+          ctx.setLineDash([]);
+        }
         ctx.beginPath();
         for (let q = 0; q <= SEG; q++) {
           const [x, y] = ghostPoint(g, q / SEG, now, 0);
           q ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
         }
         ctx.stroke();
+        ctx.setLineDash([]);
       }
 
-      // Draw Travelling Action Potentials (Sparks)
+      // Draw Sparks
       ctx.globalCompositeOperation = "lighter";
       for (const p of pulses) {
         const t = (now - p.born) / p.dur;
@@ -625,7 +672,7 @@ export default function OpsLiveOrchestrationTab({
 
       ctx.globalCompositeOperation = "source-over";
 
-      // ==================== AGENT NODES RENDERING (VIBRANT & HIGH CONTRAST) ====================
+      // ==================== AGENT NODES RENDERING ====================
       for (let l = 0; l < LAYERS.length; l++) {
         for (let i = 0; i < LAYERS[l]; i++) {
           const n = nodes[l][i];
@@ -633,7 +680,7 @@ export default function OpsLiveOrchestrationTab({
           const isHovered = hover && hover.l === l && hover.i === i;
           const r = radius * (isNodeActive ? 1.2 : 1.0);
 
-          // 1. ACTIVE WORKING BLOOM GLOW: ONLY WHEN WORKING!
+          // 1. ACTIVE WORKING BLOOM GLOW
           if (isNodeActive) {
             ctx.globalCompositeOperation = "lighter";
             const bloomRadius = r * 4.8;
@@ -647,7 +694,7 @@ export default function OpsLiveOrchestrationTab({
             ctx.fill();
             ctx.globalCompositeOperation = "source-over";
 
-            // Animated pulsing beacon reticle for working agent
+            // Pulsing reticle
             ctx.strokeStyle = `rgba(255, 255, 255, ${0.8 + 0.2 * Math.sin(now * 0.009)})`;
             ctx.lineWidth = 2.0;
             ctx.beginPath();
@@ -655,7 +702,7 @@ export default function OpsLiveOrchestrationTab({
             ctx.stroke();
           }
 
-          // 2. TACTICAL HOVER RETICLE
+          // 2. HOVER RETICLE
           if (isHovered && !isNodeActive) {
             ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
             ctx.lineWidth = 1.6;
@@ -664,9 +711,8 @@ export default function OpsLiveOrchestrationTab({
             ctx.stroke();
           }
 
-          // 3. NODE SPHERE BODY (RICH, CRISP, VISIBLE RUBY-CRIMSON)
+          // 3. NODE SPHERE BODY
           if (isNodeActive) {
-            // Working State: Electrified White-Hot Neon Core
             const body = ctx.createRadialGradient(n.x - r * 0.25, n.y - r * 0.25, r * 0.05, n.x, n.y, r);
             body.addColorStop(0, "rgb(255, 245, 248)");
             body.addColorStop(0.35, "rgb(255, 80, 100)");
@@ -685,7 +731,6 @@ export default function OpsLiveOrchestrationTab({
             ctx.arc(n.x - r * 0.3, n.y - r * 0.3, r * 0.28, 0, TAU);
             ctx.fill();
           } else {
-            // Standby State: Distinct, Vibrant Polished Ruby Sphere (NOT DARK / NOT INVISIBLE!)
             const body = ctx.createRadialGradient(n.x - r * 0.35, n.y - r * 0.35, r * 0.08, n.x, n.y, r);
             body.addColorStop(0, isHovered ? "rgb(240, 50, 75)" : "rgb(175, 25, 42)");
             body.addColorStop(0.5, isHovered ? "rgb(185, 25, 42)" : "rgb(115, 12, 22)");
@@ -705,18 +750,17 @@ export default function OpsLiveOrchestrationTab({
             ctx.fill();
           }
 
-          // 4. CRISP HIGH-CONTRAST TACTICAL BADGE UNDER EACH NODE (100% VISIBLE!)
+          // 4. TACTICAL BADGE UNDER EACH NODE
           const agentMeta = AGENT_NODES[l]?.[i];
           if (agentMeta) {
             const tagText = agentMeta.tag;
-            ctx.font = "bold 10px 'JetBrains Mono', 'Geist Mono', monospace";
+            ctx.font = "bold 9px 'JetBrains Mono', 'Geist Mono', monospace";
             const textMetrics = ctx.measureText(tagText);
-            const pillW = textMetrics.width + 12;
-            const pillH = 17;
+            const pillW = textMetrics.width + 10;
+            const pillH = 15;
             const pillX = n.x - pillW / 2;
-            const pillY = n.y + r + 6;
+            const pillY = n.y + r + 5;
 
-            // Translucent glass pill background
             ctx.fillStyle = isNodeActive
               ? "rgba(220, 20, 40, 0.95)"
               : isHovered
@@ -731,7 +775,6 @@ export default function OpsLiveOrchestrationTab({
             ctx.fillRect(pillX, pillY, pillW, pillH);
             ctx.strokeRect(pillX, pillY, pillW, pillH);
 
-            // High contrast text
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = isNodeActive ? "#ffffff" : isHovered ? "#ffffff" : "#f4f4f5";
@@ -740,29 +783,6 @@ export default function OpsLiveOrchestrationTab({
         }
       }
 
-      // ==================== STAGE HEADER TITLES (TOP OF CANVAS) ====================
-      const stageY = 46;
-      LABELS.forEach((t, l) => {
-        if (nodes[l] && nodes[l][0]) {
-          const colX = nodes[l][0].bx;
-          ctx.font = "bold 10px 'JetBrains Mono', 'Geist Mono', monospace";
-          const titleWidth = ctx.measureText(t).width;
-          const badgeW = titleWidth + 14;
-          const badgeH = 18;
-
-          // Header Badge
-          ctx.fillStyle = "rgba(14, 14, 20, 0.9)";
-          ctx.strokeStyle = "rgba(239, 68, 68, 0.45)";
-          ctx.lineWidth = 1;
-          ctx.fillRect(colX - badgeW / 2, stageY - badgeH / 2, badgeW, badgeH);
-          ctx.strokeRect(colX - badgeW / 2, stageY - badgeH / 2, badgeW, badgeH);
-
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = "#fca5a5";
-          ctx.fillText(t, colX, stageY);
-        }
-      });
 
       // Canvas Tooltip Render for Hovered Agent
       if (hover && AGENT_NODES[hover.l]?.[hover.i]) {
@@ -770,8 +790,8 @@ export default function OpsLiveOrchestrationTab({
         const n = nodes[hover.l][hover.i];
         const isHoverActive = isSystemWorking && activeTarget && activeTarget.l === hover.l && activeTarget.i === hover.i;
 
-        const badgeW = 175;
-        const badgeH = 36;
+        const badgeW = 180;
+        const badgeH = 38;
         const boxX = Math.max(10, Math.min(width - badgeW - 10, n.x - badgeW / 2));
         const boxY = Math.max(10, n.y - radius - badgeH - 12);
 
@@ -788,7 +808,7 @@ export default function OpsLiveOrchestrationTab({
 
         ctx.font = "9px 'JetBrains Mono', 'Geist Mono', monospace";
         ctx.fillStyle = isHoverActive ? "#ef4444" : "#fca5a5";
-        ctx.fillText(`⚡ ${meta.model.slice(0, 26)}`, boxX + 8, boxY + 25);
+        ctx.fillText(`⚡ ${meta.model.slice(0, 26)}`, boxX + 8, boxY + 26);
       }
 
       raf = requestAnimationFrame(frame);
@@ -876,7 +896,7 @@ export default function OpsLiveOrchestrationTab({
               type="text"
               value={quickInput}
               onChange={(e) => setQuickInput(e.target.value)}
-              placeholder="e.g. 'Who is Virat Kohli?', 'Open Calculator', 'In terminal run Claude'..."
+              placeholder="e.g. 'Who is Virat Kohli?', 'Open Instagram Reels', 'Open YouTube and search Believer'..."
               disabled={isLoading}
               className="flex-1 bg-black border border-zinc-700 px-3 py-1.5 text-xs text-white placeholder-zinc-500 outline-none focus:border-red-500"
             />
@@ -893,7 +913,7 @@ export default function OpsLiveOrchestrationTab({
           {/* Active Agent Telemetry Badge */}
           <div className="flex items-center gap-2 text-xs">
             <span className={`w-2 h-2 rounded-full ${isLoading ? 'bg-red-500 animate-ping' : 'bg-emerald-500'}`} />
-            <span className="text-zinc-400 text-[11px]">ACTIVE MULTI-AGENT STATE:</span>
+            <span className="text-zinc-400 text-[11px]">ACTIVE AGENT RUNTIME:</span>
             <span className={`font-bold px-2 py-0.5 border text-[11px] ${
               isLoading
                 ? 'bg-red-950 text-red-300 border-red-600 animate-pulse'
@@ -906,61 +926,61 @@ export default function OpsLiveOrchestrationTab({
 
         {/* Real-time Agent Test Presets */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2 border-t border-zinc-800">
-          {/* Preset Bank A: Research & Crawling */}
+          {/* Preset Bank A: Web Superior Domain */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs bg-zinc-950/70 p-1.5 border border-zinc-800">
             <span className="text-red-400 font-bold text-[10px] flex items-center gap-1">
               <Globe className="w-3 h-3 text-red-500" />
-              <span>LIVE WEB RESEARCH:</span>
+              <span>WEB SUPERIOR DOMAIN:</span>
             </span>
             <button
               onClick={() => handleTestFlow('Who is Virat Kohli?')}
               disabled={isLoading}
               className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
             >
-              [1. Virat Kohli Bio]
+              [1. Who is Virat Kohli?]
             </button>
             <button
-              onClick={() => handleTestFlow('Explain quantum computing')}
+              onClick={() => handleTestFlow('Tell me the latest AI news.')}
               disabled={isLoading}
               className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
             >
-              [2. Quantum Theory]
+              [2. Latest AI News]
             </button>
             <button
-              onClick={() => handleTestFlow('Latest news on AI')}
+              onClick={() => handleTestFlow('What is the weather tomorrow?')}
               disabled={isLoading}
               className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
             >
-              [3. Live AI News]
+              [3. Weather Forecast]
             </button>
           </div>
 
-          {/* Preset Bank B: DOM & Desktop System Automation */}
+          {/* Preset Bank B: Automation Superior Domain */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs bg-zinc-950/70 p-1.5 border border-zinc-800">
             <span className="text-zinc-300 font-bold text-[10px] flex items-center gap-1">
               <Terminal className="w-3 h-3 text-red-500" />
-              <span>DOM &amp; DESKTOP ACTIONS:</span>
+              <span>AUTOMATION SUPERIOR:</span>
             </span>
             <button
-              onClick={() => handleTestFlow('In terminal run Claude')}
+              onClick={() => handleTestFlow('Open Instagram and take me to Reels.')}
               disabled={isLoading}
               className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
             >
-              [4. Terminal Claude CLI]
+              [4. Instagram Reels]
             </button>
             <button
-              onClick={() => handleTestFlow('Open Calculator')}
+              onClick={() => handleTestFlow('Open YouTube and search for Believer.')}
               disabled={isLoading}
               className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
             >
-              [5. Open Calculator]
+              [5. YouTube Search]
             </button>
             <button
-              onClick={() => handleTestFlow('Go to Instagram and search for the song')}
+              onClick={() => handleTestFlow('Create an O.P.S. folder on Desktop.')}
               disabled={isLoading}
               className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
             >
-              [6. Instagram Playwright]
+              [6. Desktop Folder]
             </button>
           </div>
         </div>
@@ -972,7 +992,7 @@ export default function OpsLiveOrchestrationTab({
           <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-[280px]">
             <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isLoading ? 'bg-red-500 animate-ping' : 'bg-emerald-500'}`} />
             <span className="text-red-400 font-bold flex-shrink-0 text-[11px] uppercase">
-              {isLoading ? '⚡ LIVE MULTI-AGENT WORKING:' : '● LAST TELEMETRY:'}
+              {isLoading ? '⚡ ACTIVE AGENT REASONING:' : '● LAST TELEMETRY:'}
             </span>
             <span className="text-zinc-200 truncate font-mono text-[11px]">
               {currentThought || (isLoading ? 'Multi-agent orchestration in progress...' : 'Task execution complete.')}
@@ -980,7 +1000,7 @@ export default function OpsLiveOrchestrationTab({
           </div>
           {planSteps && planSteps.length > 0 && (
             <div className="flex items-center gap-1.5 flex-shrink-0 text-[10px] text-zinc-400">
-              <span className="text-red-500 font-bold">[DAG PLAN:</span>
+              <span className="text-red-500 font-bold">[ACTION PLAN:</span>
               <span className="text-white font-bold">{planSteps.length} Steps</span>
               <span className="text-red-500 font-bold">]</span>
             </div>
@@ -989,7 +1009,7 @@ export default function OpsLiveOrchestrationTab({
       )}
 
       {/* ==================== 2. MAIN LIVING NEURAL TOPOLOGY CANVAS ==================== */}
-      <div className="relative bg-black border-2 border-zinc-800 rounded-lg shadow-2xl overflow-hidden min-h-[580px]">
+      <div className="relative bg-black border-2 border-zinc-800 rounded-lg shadow-2xl overflow-hidden min-h-[620px]">
         {/* Subtle retro scanlines */}
         <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.5)_50%)] bg-[length:100%_4px] z-10" />
 
@@ -997,24 +1017,24 @@ export default function OpsLiveOrchestrationTab({
         <div className="absolute top-2.5 left-4 right-4 flex items-center justify-between z-20 pointer-events-none">
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 bg-red-600 text-white font-black text-[11px] border border-red-500 shadow">
-              O.P.S. MULTI-AGENT SYNAPTIC GRAPH
+              O.P.S. AUTHORITATIVE AGENT TOPOLOGY
             </span>
             <span className="text-[10px] text-emerald-400 bg-black/90 px-2 py-0.5 border border-emerald-800/80 font-bold hidden sm:inline-block">
-              ● LIVE PREVIEW ACTIVE [PORT 3000]
+              ● 14 SPECIALIST AGENTS + HITL GATE ACTIVE
             </span>
           </div>
 
           <div className="flex items-center gap-2 text-[10px] bg-black/85 px-2.5 py-1 border border-zinc-800 text-zinc-300">
             <Activity className={`w-3.5 h-3.5 ${isLoading ? 'text-red-500 animate-pulse' : 'text-zinc-500'}`} />
-            <span>GLOW MODE:</span>
+            <span>GRAPH STATUS:</span>
             <span className={isLoading ? "text-red-400 font-bold" : "text-zinc-400 font-bold"}>
-              {isLoading ? "ACTIVE WORKSTATION GLOW" : "STANDBY (READY)"}
+              {isLoading ? "ACTIVE PIPELINE EXECUTION" : "STANDBY (READY)"}
             </span>
           </div>
         </div>
 
         {/* The Live Canvas Wrapper */}
-        <div ref={wrapRef} className="w-full h-[580px] min-h-[540px] relative">
+        <div ref={wrapRef} className="w-full h-[620px] min-h-[580px] relative">
           <canvas
             ref={canvasRef}
             className="block w-full h-full cursor-crosshair"
@@ -1040,7 +1060,7 @@ export default function OpsLiveOrchestrationTab({
                 
                 {/* Agent Task (Simple & Clear) */}
                 <p className="text-zinc-300 text-[11px] leading-snug">
-                  <strong className="text-red-400">Simple Task: </strong>
+                  <strong className="text-red-400">Responsibility: </strong>
                   {hoveredAgent.task}
                 </p>
               </div>
@@ -1084,11 +1104,11 @@ export default function OpsLiveOrchestrationTab({
                 <span className="truncate">
                   {isLoading
                     ? `⚡ [EXECUTING]: Active node ${activeAgent || 'ORCHESTRATING'} is glowing and processing directive.`
-                    : "Nodes are in active standby. Nodes glow intensely with action potential pulses when working on any directive."}
+                    : "14 Specialist Agents & HITL Gate loaded in standby. Synaptic paths and quality loops pulse live during execution."}
                 </span>
               </div>
               <div className="text-[10px] text-zinc-400 hidden sm:block flex-shrink-0 font-bold">
-                <span>[ POP-UP COCKPIT &amp; HOTKEY SYNC ACTIVE ]</span>
+                <span>[ AMBER DASHED LINE = WEB QUALITY RE-PLANNING LOOP ]</span>
               </div>
             </div>
           </div>

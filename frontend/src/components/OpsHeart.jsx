@@ -213,28 +213,21 @@ export default function OpsHeart({ className = "" }) {
   }, []);
 
   return (
-    <div className={`retro-box-red p-2.5 flex flex-col justify-between shadow-2xl relative overflow-hidden bg-black font-mono select-none ${className}`}>
+    <div className={`retro-box-red p-2 flex flex-col justify-between shadow-xl relative overflow-hidden bg-black font-mono select-none ${className}`}>
       {/* Scanline HUD Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800 pb-1.5 mb-1.5 z-10 bg-black/80 backdrop-blur-sm">
+      <div className="flex items-center justify-between border-b border-zinc-800 pb-1 mb-1 z-10 bg-black/80 backdrop-blur-sm">
         <div className="flex items-center gap-2">
-          <span className="px-1.5 py-0.5 bg-red-600 text-white font-extrabold text-[10px] tracking-wider border border-red-500 shadow-sm animate-pulse">
+          <span className="px-1.5 py-0.5 bg-red-600 text-white font-extrabold text-[9px] tracking-wider border border-red-500 shadow-sm animate-pulse">
             OPS HEART
           </span>
-          <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest hidden sm:inline">
-            // NEURAL COGNITIVE CORE
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 text-[9px] text-red-400 font-bold">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-          <span>60 FPS // RUNNING</span>
         </div>
       </div>
 
       {/* WebGL Shader Brain Container */}
-      <div className="relative w-full flex-1 min-h-[190px] rounded border border-zinc-900 overflow-hidden bg-[#030303] group">
+      <div className="relative w-full flex-1 min-h-[135px] rounded border border-zinc-900 overflow-hidden bg-[#030303] group">
         {err ? (
-          <div className="h-full flex items-center justify-center text-xs text-zinc-500 p-4 text-center">
-            WebGL is not supported or hardware accelerated in this environment.
+          <div className="h-full flex items-center justify-center text-xs text-zinc-500 p-3 text-center">
+            WebGL is not supported in this environment.
           </div>
         ) : (
           <canvas
@@ -246,25 +239,25 @@ export default function OpsHeart({ className = "" }) {
         )}
 
         {/* Ambient CRT Vignette Overlay */}
-        <div className="absolute inset-0 pointer-events-none border border-red-950/40 rounded shadow-[inset_0_0_24px_rgba(239,68,68,0.2)]" />
+        <div className="absolute inset-0 pointer-events-none border border-red-950/40 rounded shadow-[inset_0_0_20px_rgba(239,68,68,0.2)]" />
         
         {/* Subtle HUD crosshairs in corners */}
-        <div className="absolute top-1.5 left-1.5 text-[8px] text-red-500/60 font-mono pointer-events-none">⌜ 45°N</div>
-        <div className="absolute top-1.5 right-1.5 text-[8px] text-red-500/60 font-mono pointer-events-none">SYN-01 ⌝</div>
-        <div className="absolute bottom-1.5 left-1.5 text-[8px] text-zinc-600 font-mono pointer-events-none">⌞ O.P.S.</div>
-        <div className="absolute bottom-1.5 right-1.5 text-[8px] text-red-500/70 font-mono pointer-events-none">
+        <div className="absolute top-1 left-1 text-[7px] text-red-500/60 font-mono pointer-events-none">⌜ 45°N</div>
+        <div className="absolute top-1 right-1 text-[7px] text-red-500/60 font-mono pointer-events-none">SYN-01 ⌝</div>
+        <div className="absolute bottom-1 left-1 text-[7px] text-zinc-600 font-mono pointer-events-none">⌞ O.P.S.</div>
+        <div className="absolute bottom-1 right-1 text-[7px] text-red-500/70 font-mono pointer-events-none">
           {shockwaveCount > 0 ? `PULSES: ${shockwaveCount} ⌟` : `READY ⌟`}
         </div>
       </div>
 
       {/* Bottom Telemetry Bar */}
-      <div className="flex items-center justify-between text-[9px] text-zinc-500 pt-1.5 mt-1 border-t border-zinc-900 z-10">
+      <div className="flex items-center justify-between text-[8px] text-zinc-500 pt-1 mt-1 border-t border-zinc-900 z-10">
         <span className="flex items-center gap-1 text-zinc-400">
-          <Activity className="w-3 h-3 text-red-500 animate-pulse" />
+          <Activity className="w-2.5 h-2.5 text-red-500 animate-pulse" />
           <span>HOMEOSTASIS: OPTIMAL</span>
         </span>
         <span className="text-zinc-500 uppercase tracking-tight">
-          [ DRAG: 3D • CLICK: PULSE ]
+          [ 3D PULSE ]
         </span>
       </div>
     </div>
