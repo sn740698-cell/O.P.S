@@ -236,6 +236,17 @@ class OPSDesktopOverlay:
         self.wispr_status_label.pack(side=tk.LEFT, padx=4)
         self.wispr_status_label.bind("<Button-1>", lambda e: self.toggle_wispr_flow())
 
+        self.wispr_state_badge = tk.Label(
+            self.wispr_banner,
+            text="[ IDLE ]",
+            font=(PRIMARY_FONT, 8, "bold"),
+            fg="#71717a",
+            bg="#27272a",
+            padx=4,
+            pady=1
+        )
+        self.wispr_state_badge.pack(side=tk.LEFT, padx=2)
+
         self.hitl_badge = tk.Label(
             self.wispr_banner,
             text="🛡️ HITL PERMISSION ACTIVE",
@@ -286,9 +297,10 @@ class OPSDesktopOverlay:
             padx=10,
             command=self.dispatch_prompt
         )
-        send_btn.pack(side=tk.RIGHT, fill=tk.Y)
-
         # 3. Streamlined Scrollable Conversation Screen
+        resp_container = tk.Frame(main_frame, bg="#09090b")
+        resp_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 4))
+
         # Configure sleek tactical dark scrollbar style matching O.P.S. HUD
         self.style = ttk.Style()
         try:
