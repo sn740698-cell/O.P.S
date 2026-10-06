@@ -386,45 +386,13 @@ class OPSDesktopOverlay:
         )
         self.perm_desc_label.pack(fill=tk.X, pady=(2, 6))
 
-        # Accept / Deny Buttons (Strict Red, White, Black, Gray Palette)
+        # Accept / Deny Buttons (2 Clean Tactical Buttons)
         perm_btn_row = tk.Frame(self.permission_frame, bg="#18181b")
         perm_btn_row.pack(fill=tk.X)
 
-        self.perm_accept_btn = tk.Button(
-            perm_btn_row,
-            text="[ ⚠️ ALLOW ONCE ]",
-            font=(PRIMARY_FONT, 8, "bold"),
-            fg="#ffffff",
-            bg="#3f3f46",
-            activebackground="#52525b",
-            activeforeground="#ffffff",
-            bd=1,
-            relief=tk.RAISED,
-            padx=8,
-            pady=3,
-            command=lambda: self.resolve_current_permission("ALLOW_ONCE")
-        )
-        self.perm_accept_btn.pack(side=tk.LEFT, padx=(0, 4))
-
-        self.perm_task_btn = tk.Button(
-            perm_btn_row,
-            text="[ 🛡️ ALLOW TASK ]",
-            font=(PRIMARY_FONT, 8, "bold"),
-            fg="#ffffff",
-            bg="#27272a",
-            activebackground="#3f3f46",
-            activeforeground="#ffffff",
-            bd=1,
-            relief=tk.RAISED,
-            padx=8,
-            pady=3,
-            command=lambda: self.resolve_current_permission("ALLOW_TASK")
-        )
-        self.perm_task_btn.pack(side=tk.LEFT, padx=(0, 4))
-
         self.perm_deny_btn = tk.Button(
             perm_btn_row,
-            text="[ ❌ DENY / BLOCK ]",
+            text="[ ❌ DENY ACTION ]",
             font=(PRIMARY_FONT, 8, "bold"),
             fg="#ffffff",
             bg="#991b1b",
@@ -432,11 +400,27 @@ class OPSDesktopOverlay:
             activeforeground="#ffffff",
             bd=1,
             relief=tk.RAISED,
-            padx=8,
+            padx=10,
             pady=3,
             command=lambda: self.resolve_current_permission("DENY")
         )
-        self.perm_deny_btn.pack(side=tk.LEFT)
+        self.perm_deny_btn.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.perm_accept_btn = tk.Button(
+            perm_btn_row,
+            text="[ ✅ ACCEPT ACTION ]",
+            font=(PRIMARY_FONT, 8, "bold"),
+            fg="#ffffff",
+            bg="#15803d",
+            activebackground="#16a34a",
+            activeforeground="#ffffff",
+            bd=1,
+            relief=tk.RAISED,
+            padx=10,
+            pady=3,
+            command=lambda: self.resolve_current_permission("ALLOW")
+        )
+        self.perm_accept_btn.pack(side=tk.LEFT)
 
         # 5. Clean Minimal Footer
         footer_frame = tk.Frame(main_frame, bg="#09090b")

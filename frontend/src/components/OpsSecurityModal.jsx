@@ -44,28 +44,21 @@ export default function OpsSecurityModal({ activeRequest, onResolvePermission, a
           </div>
         </div>
 
-        {/* 90s Retro Tactile Decision Buttons */}
-        <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-zinc-900">
+        {/* 90s Retro Tactile Decision Buttons (Deny / Accept) */}
+        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-zinc-900">
           <button
             onClick={() => onResolvePermission(activeRequest.request_id, 'DENY')}
-            className="retro-btn-red px-3 py-1.5 text-xs font-bold flex items-center gap-1.5"
+            className="retro-btn-red px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5"
           >
             <X className="w-3.5 h-3.5 text-white" />
             <span>[ ❌ DENY ACTION ]</span>
           </button>
           <button
-            onClick={() => onResolvePermission(activeRequest.request_id, 'ALLOW_ONCE')}
-            className="retro-btn px-3 py-1.5 text-xs font-bold text-zinc-200 hover:text-white flex items-center gap-1.5"
+            onClick={() => onResolvePermission(activeRequest.request_id, 'ALLOW')}
+            className="retro-btn px-3.5 py-1.5 text-xs font-bold text-white border-red-600 bg-red-950/60 hover:bg-red-900/80 flex items-center gap-1.5"
           >
-            <Check className="w-3.5 h-3.5 text-zinc-400" />
-            <span>[ ⚠️ ALLOW ONCE ]</span>
-          </button>
-          <button
-            onClick={() => onResolvePermission(activeRequest.request_id, 'ALLOW_TASK')}
-            className="retro-btn px-3 py-1.5 text-xs font-bold text-white border-red-600 flex items-center gap-1.5"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-red-500" />
-            <span>[ ✅ ALLOW FOR TASK ]</span>
+            <Check className="w-3.5 h-3.5 text-emerald-400" />
+            <span>[ ✅ ACCEPT ACTION ]</span>
           </button>
         </div>
       </div>
