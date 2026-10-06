@@ -289,10 +289,32 @@ class OPSDesktopOverlay:
         send_btn.pack(side=tk.RIGHT, fill=tk.Y)
 
         # 3. Streamlined Scrollable Conversation Screen
-        resp_container = tk.Frame(main_frame, bg="#09090b")
-        resp_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 4))
+        # Configure sleek tactical dark scrollbar style matching O.P.S. HUD
+        self.style = ttk.Style()
+        try:
+            self.style.theme_use("clam")
+        except Exception:
+            pass
+        self.style.configure(
+            "Tactical.Vertical.TScrollbar",
+            gripcount=0,
+            background="#27272a",
+            darkcolor="#18181b",
+            lightcolor="#3f3f46",
+            troughcolor="#09090b",
+            bordercolor="#18181b",
+            arrowcolor="#ef4444",
+            relief="flat",
+            arrowsize=9,
+            width=7
+        )
+        self.style.map(
+            "Tactical.Vertical.TScrollbar",
+            background=[("active", "#dc2626"), ("pressed", "#991b1b"), ("!disabled", "#27272a")],
+            arrowcolor=[("active", "#ffffff"), ("!disabled", "#ef4444")]
+        )
 
-        scrollbar = tk.Scrollbar(resp_container, bg="#18181b", troughcolor="#09090b", bd=0, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(resp_container, orient=tk.VERTICAL, style="Tactical.Vertical.TScrollbar")
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.response_text = tk.Text(
