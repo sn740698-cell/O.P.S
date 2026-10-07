@@ -1,179 +1,158 @@
-# 🧠 O.P.S. — Over-Engineered Programmed System
+# 🧠 O.P.S. — Over-Engineered Programmed System (v3.0)
 
 > **A Local-First Agentic AI Operating System that can hear, see, think, search, code, automate, and remember your digital world.**
 
-O.P.S. is an **ambient, multimodal, agentic AI operating system** that transforms your workstation into a J.A.R.V.I.S.-class command cockpit. Built with a **'90s retro tactical Iron Man HUD aesthetic** (Crimson Red, Jet Black, Steel Gray, and Pure White), O.P.S. coordinates local lightweight LLMs, live autonomous web crawling, universal OS and DOM automation, persistent conversational multi-turn session memory, and a persistent PostgreSQL memory vault under a strict safety gatekeeper.
+O.P.S. is an **ambient, multimodal, agentic AI operating system** that transforms your workstation into a J.A.R.V.I.S.-class command cockpit. Built with a **'90s retro tactical Iron Man HUD aesthetic** (Crimson Red, Jet Black, Steel Gray, and Pure White), O.P.S. coordinates local lightweight LLMs (Qwen3 0.6B Fast Router, Qwen3 1.7B Lead Planner & Reasoning Engine, and Llama 3.2 1B Instruct Persona), autonomous web crawling, universal OS & DOM automation, stateful multi-step mission execution, ground-truth physical verification, and dual-layer isolated memory under a strict deterministic Safety Gate.
 
 ---
 
-## 🌟 Key Architecture & Multi-Agent Hierarchy
+## 🌟 Canonical Core Architecture (v3.0)
+
+The authoritative architecture strictly follows [`OPS_COMPLETE_UPGRADED_ARCHITECTURE_ANTIGRAVITY.md`](file:///d:/Projects/O.P.S/OPS_COMPLETE_UPGRADED_ARCHITECTURE_ANTIGRAVITY.md):
 
 ```text
-                                  [ USER INPUT ]
-                                        │
-                            [ O.P.S. POP-UP COCKPIT ]
-                    (Web Cockpit / Desktop Windows Overlay)
-                                        │
-                          [ SESSION & CONTEXT MANAGER ]
-                  (Contextual pronoun resolution & topic tracking)
-                                        │
-                         [ PROMPT TEMPLATE AGENT ]
-                        (Qwen3 0.6B - Pattern Normalizer)
-                                        │
-                          [ UNDERSTAND PROMPT / ROUTER ]
-                            (Qwen3 1.7B - Global Router)
-                                        │
-                    ┌───────────────────┴───────────────────┐
-                    │ [WEB]                                 │ [AUTOMATION]
-                    ▼                                       ▼
-         [ WEB SUPERIOR AGENT ]                [ AUTOMATION SUPERIOR AGENT ]
-            (Qwen3 1.7B - Superior)                (Qwen3 1.7B - Superior)
-                    │                                       │
-         [ WEB PROMPT UNDERSTANDING ]           [ AUTO PROMPT UNDERSTANDING ]
-                    │                                       │
-        ┌───────────┼───────────┐                           │
-        ▼           ▼           ▼                           ▼
-       [ScrapeGraph][BS4 Parser][Crawlee]               [ HITL APPROVAL GATE ]
-        (Llama 3.2) (Qwen 0.6B) (Llama 3.2)             (Deterministic Security)
-        └───────────┬───────────┘                           │
-                    ▼                                ┌──────┴──────┬──────────┬──────────┐
-         [ RETRIEVAL QUALITY AGENT ]                 ▼             ▼          ▼          ▼
-           (Qwen3 1.7B - Loop Gate)             [Open Web]    [Installed] [OpenFile] [Desktop]
-                    │                            (Playwright)  (PyAutoGUI)  (OS APIs) (PyAutoGUI)
-                    │ (If Insufficient -> Loop)      └──────┬──────┴──────────┴──────────┘
-                    ▼                                       ▼
-                    └───────────────────┬───────────────────┘
-                                        │
-                                [ RESULT AGENT ]
-                      (Qwen3 0.6B - Fact & Result Structurer)
-                                        │
-                            [ JARVIS PERSONA AGENT ]
-                        (Llama 3.2 1B - Neural Persona)
-                                        │
-                        [ MULTI-TURN CONTEXT STORAGE ]
-                                        │
-                            [ RETURN TO COCKPIT ]
+                       [ USER INPUT ]
+                             │
+                [ O.P.S. POP-UP COCKPIT ]
+         (Web Cockpit HUD / Desktop Windows Overlay)
+                             │
+                    [ SESSION MANAGER ]
+              (Active Volatile Session Memory)
+                             │
+                 [ QWEN3 0.6B FAST ROUTER ]
+          (Zero-latency heuristics & <50ms classification)
+        ┌─────────────┬─────────────┬─────────────┬─────────────┐
+        ▼             ▼             ▼             ▼             ▼
+     [ CHAT ]      [ TASK ]     [ MISSION ]   [ MEMORY ]  [ CLARIFY ]
+        │             │             │             │             │
+        │             └──────┬──────┘             │             │
+        │                    │                    │             │
+        │             [ SUPERVISOR ]              │             │
+        │                    │                    │             │
+        │          [ MISSION MANAGER ]            │             │
+        │       (Stateful 3-retry loops)          │             │
+        │                    │                    │             │
+        │          [ QWEN3 1.7B PLANNER ]         │             │
+        │       ( Verifiable task decomposition ) │             │
+        │                    │                    │             │
+        │        [ CAPABILITY REGISTRY ]          │             │
+        │   (filesystem, terminal, browser, web)  │             │
+        │                    │                    │             │
+        │        [ SPECIALIZED AGENTS ]           │             │
+        │    (Developer, Tester, Debugger, etc.)  │             │
+        │                    │                    │             │
+        │          [ SAFETY GATE (HITL) ]         │             │
+        │    (Deterministic policy authorization) │             │
+        │                    │                    │             │
+        │           [ TOOL EXECUTOR ]             │             │
+        │                    │                    │             │
+        │      [ GROUND-TRUTH VERIFIER ]          │             │
+        │       (Physical state assertions)       │             │
+        │                    │                    │             │
+        └────────────────────┼────────────────────┘─────────────┘
+                             ▼
+                    [ RESPONSE ENGINE ]
+            (Grounded in verified physical evidence)
+                             │
+                [ O.P.S. POP-UP COCKPIT ]
 ```
 
 ---
 
-## 🚀 Key Features & Architectural Capabilities
+## 🚀 Architectural Pillars & Subsystems
 
-### 1. 🤖 Local-First Tri-Model Architecture
-Implementation strictly follows [`OPS_Local_LLM_Model_Roles.md`](file:///d:/Projects/O.P.S/OPS_Local_LLM_Model_Roles.md) and [`OPS_COMPLETE_SYSTEM_REFERENCE.md`](file:///d:/Projects/O.P.S/OPS_COMPLETE_SYSTEM_REFERENCE.md):
-* **Model 1 — Qwen3 0.6B (Fast Pattern Matcher, HTML Parser & Fact Structurer):**
-  * Extremely low latency (`<50ms`).
-  * Powers **Prompt Template Agent**, **BeautifulSoup Agent**, **Open File Agent**, and **Result Agent**.
-* **Model 2 — Qwen3 1.7B (Global Router, Superior Coordinators & Quality Loop):**
-  * Powers **Understand Prompt / Router Agent**, **Web Superior Agent**, **Automation Superior Agent**, **Web Prompt Understanding Agent**, **Automation Prompt Understanding Agent**, and **Retrieval Quality Agent**.
-* **Model 3 — Llama 3.2 1B Instruct (Persona Layer & Complex Automators):**
-  * Powers **Jarvis Persona Agent**, **ScrapeGraphAI Agent**, **Crawlee Agent**, **Open Web Agent**, **Installed Apps Agent**, and **Desktop Control Agent**.
+### 1. 🤖 Local-First Tri-Model Allocation
+* **Model 1 — Qwen3 0.6B Q8_0 (Fast Router & Mode Classifier):**
+  * `<50ms` intent classification across 5 execution modes: `CHAT`, `TASK`, `MISSION`, `MEMORY`, `CLARIFICATION`.
+* **Model 2 — Qwen3 1.7B Q8_0 (Lead Planner, Developer, Debugger, Tester, Reviewer):**
+  * Complex reasoning, step-by-step verifiable task decomposition, root-cause diagnosis, code refactoring.
+* **Model 3 — Llama 3.2 1B Instruct (Response Engine & Voice/Persona Layer):**
+  * Tactical natural language synthesis grounded strictly in verified evidence.
 
 ---
 
-### 2. 💬 Continuous Multi-Turn Conversation Loop (`user :` / `bot :`)
-* **Persistent Dialogue Stream:** Both the **Web Cockpit HUD** and the **Desktop Windows Overlay** render a continuous, scrollable multi-turn conversation stream:
-  ```text
-  user : Open YouTube
-  bot  : Done. YouTube is open.
-  user : Search for Believer
-  bot  : Done. I have searched for 'Believer' on YouTube.
-  user : Play it
-  bot  : Done. Playing 'Believer'.
-  ```
-* **Contextual Pronoun Resolution:** Resolves pronouns (*"it"*, *"its"*, *"the first result"*, *"tell me more"*, *"try Documents"*) deterministically without hallucinating random actions.
-* **Refresh Button Contract (`[ ↻ REFRESH ]`):** Wipes active conversational RAM context and starts a clean session with a fresh `session_id` while preserving permanent memory vaults (ChromaDB and PostgreSQL).
+### 2. 🛡️ Deterministic Safety Gate & Human-in-the-Loop (HITL)
+* **Risk Levels:**
+  * `SAFE`: Read-only actions (read file, web search, system status) auto-approve immediately.
+  * `ELEVATED`: File writes, application launches, test runs.
+  * `DANGEROUS`: File deletion, hard resets, process termination — triggers interactive **2-button tactile HITL modal** (`[ ❌ DENY ACTION ]` / `[ ✅ ACCEPT ACTION ]`).
+  * `FORBIDDEN`: Destructive patterns (`rm -rf /`, `format C:`, disk wiping, bash fork bombs) are **strictly blocked**. The model can never override this gate.
 
 ---
 
-### 3. 🌐 Web Superior Domain & Self-Correcting Quality Loop
-* **Distinct Extractors:** ScrapeGraphAI for structured schemas, BeautifulSoup4 for clean HTML, and Crawlee for multi-page crawling.
-* **Self-Correcting Quality Gate:** The **Retrieval Quality Agent** validates whether retrieved data fulfills the original objective. If insufficient, it automatically triggers a re-planning cycle back to the Web Prompt Understanding Agent (up to 2 retries) before passing facts to the Result Agent.
+### 3. 🔬 Ground-Truth Verifier & Critic Engine
+* **Physical Evidence Invariant:** Models reason; tools execute; the verifier checks reality.
+* **Physical State Assertions:** File existence, non-zero file sizes, verified exit codes (`exit_code == 0`), live process verification, DOM element presence.
+* **No False Success:** The Response Engine never reports success without verified physical evidence.
 
 ---
 
-### 4. 🖱️ Automation Superior Domain & Pre-Execution HITL Gate
-* **Specialist Sub-Agents:**
-  * **Open Web Agent:** Controls browser web applications (Instagram Reels, YouTube search, Gemini, Claude, DOM actions) via Playwright.
-  * **Installed Apps Agent:** Launches and interacts with native desktop software (VLC, Spotify, WhatsApp, VS Code, Calculator) via PyAutoGUI.
-  * **Open File Agent:** Resolves and opens files/folders (Downloads, PDFs, project folders) and accurately reports missing paths.
-  * **Desktop Control Agent:** Executes desktop operations (creating folders/files, notes, move, rename, system actions).
-* **Mandatory Human-in-the-Loop Gate:** Intercepts action plans **before** low-level tool execution. Halts cleanly with 0 actions performed if declined.
+### 4. 🗄️ Dual-Layer Isolated Memory Architecture
+* **Layer 1 — Active Session Memory (Volatile):**
+  * Manages active conversation history, task/mission state, pending approvals, and temporary scratchpad context.
+* **Layer 2 — Persistent Memory Vault (Permanent):**
+  * **ChromaDB**: Semantic vector embeddings across codebase, indexed documents, and long-term knowledge.
+  * **PostgreSQL**: Structured workstation memories, app usages, user preferences, and audit logs.
+* **The `STOP` vs `REFRESH` Contract:**
+  * **`[ ⏹ STOP ]`**: Halts active mission/task execution while preserving current session ID, conversation history, and mission context for later resumption.
+  * **`[ ↻ REFRESH ]`**: Resets volatile active session state and generates a new `session_id`. **Refresh NEVER deletes ChromaDB, embeddings, or PostgreSQL memories.**
 
 ---
 
-### 5. 🎛️ 3-Tab Tactical Iron Man HUD Cockpit
-* **Tab 01: [ 01: COMMAND COCKPIT ]**
-  * **Ops Heart:** High-performance WebGL plasma brain with rhythmic synaptic pulses and electric shockwaves.
-  * **Tri-Model Status:** Live telemetry for Qwen 0.6B, Qwen 1.7B, and Llama 3.2 1B.
-  * **Briefing Card & Terminal Console:** Continuous multi-turn chat stream with Piper TTS speech synthesis and live sandbox log feed.
-* **Tab 02: [ 02: LIVE ORCHESTRATION & AGENTS ]**
-  * Live neural synaptic network animating all 14 agents and the amber quality loop in real time during directive execution.
-  * Interactive benchmark presets for Web and Automation domains.
-* **Tab 03: [ 03: MY WORKSTATION MEMORIES ]**
-  * PostgreSQL memory vault with quick-capture and automatic playback actions.
+### 5. 🎯 Specialized Agent Suite
+* **`DeveloperAgent`**: Code scaffolding, filesystem creation/modification, build orchestration.
+* **`DebuggerAgent`**: Stack trace inspection, failure root-cause analysis, automatic patch generation.
+* **`TesterAgent`**: Automated test suite execution (`pytest`, `unittest`, `npm test`), test-driven assertions.
+* **`ReviewerAgent`**: Architecture rule enforcement, security policy compliance.
+* **`WebAgent` & `ResearchAgent`**: Live web search and crawl across strict untrusted boundary (`<UNTRUSTED_EXTERNAL_WEB_CONTENT>`).
+* **`AutomationAgent` & `BrowserAgent`**: Desktop application launching, native OS interaction, Playwright browser DOM workflows.
+* **`RAGAgent`**: Semantic codebase search and persistent knowledge indexing.
+* **`ResponseAgent`**: Synthesizes verified evidence into clean, tactical natural language for the Pop-up Cockpit.
 
 ---
 
-### 6. 🎧 '90s Retro Audio Synthesizer
-* **Client-Side Web Audio Engine ([`retroSounds.js`](file:///d:/Projects/O.P.S/frontend/src/utils/retroSounds.js)):**
-  * Real-time synthesized acoustic chimes for cockpit appearance, disappearance, memory purge, and telemetry pulses.
-* **Native Workstation Audio ([`local_agent/sounds/`](file:///d:/Projects/O.P.S/local_agent/sounds/)):**
-  * 16-bit 44.1 kHz PCM audio files (`cockpit_appear.wav`, `cockpit_disappear.wav`, `memory_added.wav`) played through Windows speakers.
+## 🧪 Acceptance Test Suite (10/10 Verified)
+
+Run the automated acceptance suite verifying all 10 core architectural invariants:
+
+```powershell
+d:\Projects\O.P.S\backend\venv\Scripts\python.exe -m unittest ops_core.tests.test_ops_acceptance -v
+```
+
+| # | Acceptance Test Case | Specification Status |
+|---|---|---|
+| 1 | **Chat Fast Path** | ✅ **PASSED** (Direct response without tool execution or planning overhead) |
+| 2 | **Single Tool Task** | ✅ **PASSED** (Direct capability execution with verified ground-truth evidence) |
+| 3 | **Full Mission Flow** | ✅ **PASSED** (Multi-step plan decomposition, sequential execution, verified assertions) |
+| 4 | **Stop Behavior** | ✅ **PASSED** (Halts execution while preserving active session & conversation history) |
+| 5 | **Refresh Behavior** | ✅ **PASSED** (Resets volatile context, assigns new session ID, preserves permanent RAG) |
+| 6 | **Forbidden Safety Gate** | ✅ **PASSED** (Blocks `rm -rf /` and destructive commands with security violations) |
+| 7 | **Ground-Truth Verification** | ✅ **PASSED** (Accurately flags failure when expected physical file is missing) |
+| 8 | **Bounded Error Recovery** | ✅ **PASSED** (Debugger retry cycle bounded at max 3 attempts without infinite loops) |
+| 9 | **Dangerous Permission HITL** | ✅ **PASSED** (Classifies high-impact actions as `DANGEROUS` requiring confirmation) |
+| 10 | **Memory Layer Separation** | ✅ **PASSED** (Persistent ChromaDB knowledge survives active session refresh) |
 
 ---
 
-## 🛠️ Tech Stack & Database Architecture
+## 🛠️ Quick Start
 
-| Layer | Technology |
-| :--- | :--- |
-| **Frontend Cockpit** | React 18, Vite, Tailwind CSS, Lucide Icons, WebGL Plasma Shader, Web Audio API |
-| **Backend Core** | Django 5, ASGI Channels (WebSockets), Django REST Framework |
-| **Multi-Agent Orchestration** | LangGraph, LangChain, Pydantic |
-| **Local LLM Models** | Ollama (`qwen:0.6b`, `qwen:1.7b`, `llama3.2:1b`) |
-| **Web Crawling & Extraction** | Crawlee, ScrapeGraphAI, BeautifulSoup4, Playwright |
-| **Desktop Automation** | PyAutoGUI, Windows Win32 APIs, PowerShell `Get-StartApps`, `winsound` |
-| **Relational Database** | **PostgreSQL 18 (`ops_db`)** for Workstation Memories & Audit Logs |
-| **Vector Database** | ChromaDB (`ops_codebase` and `ops_chatbot_memory`) |
-| **Speech & Voice** | Wispr Flow (`Ctrl + Win`), Faster-Whisper, Piper TTS |
-
----
-
-## ⚡ Quick Start Guide (Windows)
-
-### 1. 1-Click Launch
-Double-click **`start_ops.bat`** in the project root to automatically start:
-1. **PostgreSQL 18 Engine** on port `5432` (`ops_db`).
-2. **Django Backend Engine** on `http://127.0.0.1:8000`.
-3. **React Cockpit HUD** on `http://localhost:3000`.
-4. **Desktop Overlay Daemon** on global hotkeys (`Ctrl + Alt`).
-
----
-
-### 2. Manual Startup
-```bash
-# 1. Start PostgreSQL 18
-"D:\Program Files\program Files (postgreSQL)\18\bin\postgres.exe" -D "D:\Program Files\program Files (postgreSQL)\18\data"
-
-# 2. Start Django Backend
-cd backend
-.\venv\Scripts\activate
+### Backend (Django + Channels + Ollama):
+```powershell
+cd d:\Projects\O.P.S\backend
+.\venv\Scripts\Activate.ps1
 python manage.py migrate
-python manage.py runserver 0.0.0.0:8000
-
-# 3. Start React Frontend
-cd frontend
-npm install
-npm run dev
-
-# 4. Start Desktop Overlay Daemon
-python local_agent\desktop_overlay.py
+python manage.py runserver 8000
 ```
 
----
+### Frontend Pop-Up Cockpit (React + Vite):
+```powershell
+cd d:\Projects\O.P.S\frontend
+npm run dev
+```
 
-## 📄 Validation & Audit Report
-For the complete architectural validation matrix, consult [`OPS_VALIDATION_REPORT.md`](file:///d:/Projects/O.P.S/OPS_VALIDATION_REPORT.md).
-
-## 📄 License
-Distributed under the **MIT License**. Built for privacy-first, local-first AI productivity.
+### Desktop HUD Overlay:
+```powershell
+cd d:\Projects\O.P.S\backend
+python desktop_overlay.py
+```
+* Press `Ctrl + Space` to toggle the tactical Pop-up Cockpit overlay anywhere on your desktop.

@@ -33,6 +33,7 @@ class OPSOllamaService:
         self.router_model = getattr(
             settings, 'OLLAMA_ROUTER_MODEL', 'hf.co/Qwen/Qwen3-0.6B-GGUF:Q8_0'
         )
+        self.fast_model = self.router_model
         # 2. Model 2: Main Reasoning, Planning, Code Gen, Debugging (Qwen3 1.7B)
         self.reasoning_model = getattr(
             settings, 'OLLAMA_REASONING_MODEL', 'hf.co/Qwen/Qwen3-1.7B-GGUF:Q8_0'

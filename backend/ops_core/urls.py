@@ -37,7 +37,11 @@ from ops_core.views import (
     MobileCameraStreamView,
     UserWorkstationMemoryListView,
     UserWorkstationMemoryDetailView,
-    UserWorkstationMemoryExecuteView
+    UserWorkstationMemoryExecuteView,
+    CanonicalExecuteView,
+    CanonicalSessionStopView,
+    CanonicalSessionRefreshView,
+    CanonicalSessionStateView
 )
 
 urlpatterns = [
@@ -96,5 +100,11 @@ urlpatterns = [
     path('workstation-memory/', UserWorkstationMemoryListView.as_view(), name='workstation_memory_list'),
     path('workstation-memory/<uuid:memory_id>/', UserWorkstationMemoryDetailView.as_view(), name='workstation_memory_detail'),
     path('workstation-memory/execute/', UserWorkstationMemoryExecuteView.as_view(), name='workstation_memory_execute'),
+
+    # Canonical O.P.S. v3.0 Core Architecture Endpoints
+    path('ops/execute/', CanonicalExecuteView.as_view(), name='ops_canonical_execute'),
+    path('ops/session/stop/', CanonicalSessionStopView.as_view(), name='ops_canonical_session_stop'),
+    path('ops/session/refresh/', CanonicalSessionRefreshView.as_view(), name='ops_canonical_session_refresh'),
+    path('ops/session/state/', CanonicalSessionStateView.as_view(), name='ops_canonical_session_state'),
 ]
 

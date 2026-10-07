@@ -96,6 +96,14 @@ class OPSEventBus:
         await cls._send_to_group_async(cls.GROUP_AGENT, payload)
 
     @classmethod
+    async def emit_thought_async(cls, thought: str, agent: str = "Router", step: int = 1, task_id: Optional[str] = None):
+        await cls.emit_agent_thought_async(thought=thought, agent=agent, step=step, task_id=task_id)
+
+    @classmethod
+    def emit_thought(cls, thought: str, agent: str = "Router", step: int = 1, task_id: Optional[str] = None):
+        cls.emit_agent_thought(thought=thought, agent=agent, step=step, task_id=task_id)
+
+    @classmethod
     def emit_agent_status(cls, status: str, details: Optional[Dict[str, Any]] = None):
         """Broadcasts agent operational state: IDLE, THINKING, EXECUTING, WAITING_PERMISSION, ERROR."""
         payload = {

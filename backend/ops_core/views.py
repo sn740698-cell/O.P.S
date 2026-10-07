@@ -735,6 +735,107 @@ class UserWorkstationMemoryExecuteView(APIView):
         return Response(res)
 
 
+# ============================================================
+# CANONICAL O.P.S. EXECUTION & SESSION VIEWS (v3.0 Architecture)
+# ============================================================
+
+from asgiref.sync import async_to_sync
+from ops_core.orchestration.supervisor import Supervisor
+from ops_core.session.session_manager import SessionManager
+
+
+class CanonicalExecuteView(APIView):
+    """
+    POST /api/ops/execute/
+    Canonical execution entrypoint for Pop-up Cockpit and CLI.
+    Runs through: SessionManager -> FastRouter -> Supervisor -> CapabilityRegistry -> SafetyGate -> ToolExecutor -> Verifier -> ResponseEngine
+    """
+    def post(self, request):
+        prompt = request.data.get("prompt", "") or request.data.get("message", "")
+        session_id = request.data.get("session_id", "default")
+        context = request.data.get("context", {})
+
+        if not prompt:
+            return Response({"error": "Prompt or message is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        session_mgr = SessionManager()
+        session = session_mgr.get_or_create_session(session_id)
+        session_mgr.add_message(session.session_id, "user", prompt)
+
+        supervisor = Supervisor()
+        response = async_to_sync(supervisor.handle_request)(
+            user_input=prompt,
+            session_id=session.session_id,
+            context=context
+        )
+
+        session_mgr.add_message(
+            session.session_id,
+            "assistant",
+            response.content,
+            metadata={"status": response.status, "mode": response.mode.value}
+        )
+
+        return Response({
+            "session_id": session.session_id,
+            "mode": response.mode.value,
+            "status": response.status,
+            "agent": response.agent,
+            "tool": response.tool,
+            "mission_id": response.mission_id,
+            "content": response.content,
+            "evidence": response.evidence,
+            "error": response.error
+        })
+
+
+class CanonicalSessionStopView(APIView):
+    """
+    POST /api/ops/session/stop/
+    STOP:
+    Halts execution, preserves active session, conversation history, and mission context.
+    """
+    def post(self, request):
+        session_id = request.data.get("session_id", "default")
+        session_mgr = SessionManager()
+        res = session_mgr.stop_execution(session_id)
+        return Response(res)
+
+
+class CanonicalSessionRefreshView(APIView):
+    """
+    POST /api/ops/session/refresh/
+    REFRESH:
+    Resets active session state and conversation context with a fresh session_id.
+    NEVER deletes ChromaDB, embeddings, or persistent knowledge.
+    """
+    def post(self, request):
+        session_id = request.data.get("session_id", "default")
+        session_mgr = SessionManager()
+        new_session = session_mgr.refresh_session(session_id)
+        return Response({
+            "status": "REFRESHED",
+            "old_session_id": session_id,
+            "new_session_id": new_session.session_id,
+            "message": "Active session reset. Persistent memory (ChromaDB/PostgreSQL) remains intact."
+        })
+
+
+class CanonicalSessionStateView(APIView):
+    """
+    GET /api/ops/session/state/?session_id=...
+    Retrieves current active session state.
+    """
+    def get(self, request):
+        session_id = request.query_params.get("session_id", "default")
+        session_mgr = SessionManager()
+        session = session_mgr.get_session(session_id)
+        if not session:
+            return Response({"error": "Session not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(session.model_dump())
+
+
+
 
 
 

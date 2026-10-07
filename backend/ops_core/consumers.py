@@ -85,13 +85,47 @@ class AgentOrchestrationConsumer(BaseOPSConsumer):
             # Async execution of tri-model pipeline
             await self._run_agent_pipeline(task_id, prompt)
 
-    async def _run_agent_pipeline(self, task_id: str, prompt: str):
+    async def _run_agent_pipeline(self, task_id: str, prompt: str, session_id: str = "default"):
         try:
-            from ops_core.services.agent_orchestrator import OPSMultiAgentOrchestrator
-            orchestrator = OPSMultiAgentOrchestrator()
-            await orchestrator.run_task_async(prompt, task_id=task_id)
+            from ops_core.orchestration.supervisor import Supervisor
+            from ops_core.session.session_manager import SessionManager
+            
+            session_mgr = SessionManager()
+            session = session_mgr.get_or_create_session(session_id)
+            session_mgr.add_message(session.session_id, "user", prompt)
+
+            supervisor = Supervisor()
+            response = await supervisor.handle_request(
+                user_input=prompt,
+                session_id=session.session_id,
+                context={"task_id": task_id}
+            )
+
+            session_mgr.add_message(
+                session.session_id,
+                "assistant",
+                response.content,
+                metadata={"status": response.status, "mode": response.mode.value}
+            )
+
+            await self.send(text_data=json.dumps({
+                "event": "task_completed",
+                "task_id": task_id,
+                "status": response.status,
+                "mode": response.mode.value,
+                "agent": response.agent,
+                "tool": response.tool,
+                "response": response.content,
+                "evidence": response.evidence,
+                "error": response.error
+            }))
         except Exception as e:
-            logger.error(f"Error executing agent pipeline: {e}", exc_info=True)
+            logger.error(f"Error executing canonical supervisor pipeline: {e}", exc_info=True)
+            await self.send(text_data=json.dumps({
+                "event": "task_failed",
+                "task_id": task_id,
+                "error": str(e)
+            }))
 
     async def emit_thought(self, thought: str, agent: str, step: int, task_id: str):
         await self.send(text_data=json.dumps({
