@@ -104,6 +104,20 @@ class OPSEventBus:
         cls.emit_agent_thought(thought=thought, agent=agent, step=step, task_id=task_id)
 
     @classmethod
+    async def emit_ops_event_async(cls, event_data: Dict[str, Any]):
+        """Broadcasts a canonical structured O.P.S. event to the agent group."""
+        payload = {
+            "type": "broadcast_event",
+            "payload": event_data
+        }
+        await cls._send_to_group_async(cls.GROUP_AGENT, event_data)
+
+    @classmethod
+    def emit_ops_event(cls, event_data: Dict[str, Any]):
+        """Broadcasts a canonical structured O.P.S. event synchronously."""
+        cls._send_to_group_sync(cls.GROUP_AGENT, event_data)
+
+    @classmethod
     def emit_agent_status(cls, status: str, details: Optional[Dict[str, Any]] = None):
         """Broadcasts agent operational state: IDLE, THINKING, EXECUTING, WAITING_PERMISSION, ERROR."""
         payload = {

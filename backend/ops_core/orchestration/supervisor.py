@@ -75,30 +75,78 @@ class Supervisor:
         """
         context = context or {}
         context["session_id"] = session_id
+        task_id = context.get("task_id") or f"task_{session_id[-6:]}"
+
+        # 0. Emit USER_INPUT_RECEIVED
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.USER_INPUT_RECEIVED,
+            session_id=session_id,
+            task_id=task_id,
+            message=user_input
+        ))
 
         # 1. Fast Router determines mode & required agent/capability
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.ROUTER_STARTED,
+            session_id=session_id,
+            task_id=task_id,
+            agent_id="router",
+            agent_name="Fast Router",
+            status="RUNNING",
+            message=f"Classifying intent for input: '{user_input[:60]}...'"
+        ))
+
         route: RoutingDecision = await self.router.route(user_input, context)
         logger.info(f"Router decision: mode={route.mode}, agent={route.suggested_agent}, capability={route.suggested_capability}")
 
-        # Broadcast routing event
-        await OPSEventBus.emit_thought_async(
-            thought=f"Input routed to [{route.mode.value}] mode (Complexity: {route.estimated_complexity})",
-            agent="Router"
-        )
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.ROUTER_COMPLETED,
+            session_id=session_id,
+            task_id=task_id,
+            agent_id="router",
+            agent_name="Fast Router",
+            status="COMPLETED",
+            message=f"Mode: {route.mode.value} | Target: {route.suggested_agent or 'response'} | Complexity: {route.estimated_complexity}",
+            metadata={"mode": route.mode.value, "target_agent": route.suggested_agent, "complexity": route.estimated_complexity}
+        ))
 
-        # 2. Dispatch based on mode
+        # 2. Supervisor takes coordination
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.SUPERVISOR_STARTED,
+            session_id=session_id,
+            task_id=task_id,
+            agent_id="supervisor",
+            agent_name="Supervisor",
+            status="RUNNING",
+            message=f"Supervisor coordinating workflow execution for mode [{route.mode.value}]"
+        ))
+
+        # 3. Dispatch based on mode
+        res: SupervisorResponse
         if route.mode == ExecutionMode.CHAT:
-            return await self._handle_chat(user_input, session_id, route, context)
+            res = await self._handle_chat(user_input, session_id, route, context)
         elif route.mode == ExecutionMode.TASK:
-            return await self._handle_task(user_input, session_id, route, context)
+            res = await self._handle_task(user_input, session_id, route, context)
         elif route.mode == ExecutionMode.MISSION:
-            return await self._handle_mission(user_input, session_id, route, context)
+            res = await self._handle_mission(user_input, session_id, route, context)
         elif route.mode == ExecutionMode.MEMORY:
-            return await self._handle_memory(user_input, session_id, route, context)
+            res = await self._handle_memory(user_input, session_id, route, context)
         elif route.mode == ExecutionMode.CLARIFICATION:
-            return await self._handle_clarification(user_input, session_id, route, context)
+            res = await self._handle_clarification(user_input, session_id, route, context)
         else:
-            return await self._handle_chat(user_input, session_id, route, context)
+            res = await self._handle_chat(user_input, session_id, route, context)
+
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.SUPERVISOR_COMPLETED,
+            session_id=session_id,
+            task_id=task_id,
+            agent_id="supervisor",
+            agent_name="Supervisor",
+            status="COMPLETED" if res.status == "SUCCESS" else "FAILED",
+            message=f"Execution completed with status: {res.status}"
+        ))
+
+        return res
 
     async def _handle_chat(
         self,
@@ -111,7 +159,28 @@ class Supervisor:
         Fast-path conversational response without executing unnecessary tools/plans.
         """
         response_agent = self.agents["response"]
+
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.AGENT_STARTED,
+            session_id=session_id,
+            agent_id="response",
+            agent_name="Response Agent",
+            parent_agent="supervisor",
+            status="RUNNING",
+            message="Generating direct conversational response."
+        ))
+
         result = await response_agent.process(user_input, context={"session_id": session_id, "evidence": {}})
+
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.RESPONSE_COMPLETED,
+            session_id=session_id,
+            agent_id="response",
+            agent_name="Response Agent",
+            status="COMPLETED",
+            message="Response synthesized."
+        ))
+
         return SupervisorResponse(
             mode=ExecutionMode.CHAT,
             status="SUCCESS",
@@ -133,10 +202,50 @@ class Supervisor:
         agent_key = route.suggested_agent or "automation"
         agent = self.agents.get(agent_key, self.agents["automation"])
 
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.AGENT_SELECTED,
+            session_id=session_id,
+            agent_id=agent_key,
+            agent_name=agent.name,
+            parent_agent="supervisor",
+            status="QUEUED",
+            message=f"Specialist agent [{agent.name}] assigned to task."
+        ))
+
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.AGENT_STARTED,
+            session_id=session_id,
+            agent_id=agent_key,
+            agent_name=agent.name,
+            parent_agent="supervisor",
+            status="RUNNING",
+            message=f"Agent {agent.name} initiating execution: '{user_input[:60]}...'"
+        ))
+
         # Execute through agent
         res = await agent.process(user_input, context)
+
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.AGENT_COMPLETED if res.status == "SUCCESS" else OPSEventType.AGENT_FAILED,
+            session_id=session_id,
+            agent_id=agent_key,
+            agent_name=agent.name,
+            parent_agent="supervisor",
+            status="COMPLETED" if res.status == "SUCCESS" else "FAILED",
+            message=res.summary,
+            metadata={"status": res.status, "evidence": res.evidence}
+        ))
         
         # Ground through Response Agent
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.RESPONSE_STARTED,
+            session_id=session_id,
+            agent_id="response",
+            agent_name="Response Agent",
+            status="RUNNING",
+            message="Synthesizing final verified outcome."
+        ))
+
         synth = await self.agents["response"].process(
             directive=user_input,
             context={
@@ -146,6 +255,15 @@ class Supervisor:
                 "error": res.error
             }
         )
+
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.RESPONSE_COMPLETED,
+            session_id=session_id,
+            agent_id="response",
+            agent_name="Response Agent",
+            status="COMPLETED",
+            message=synth.summary
+        ))
 
         return SupervisorResponse(
             mode=ExecutionMode.TASK,

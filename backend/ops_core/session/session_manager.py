@@ -12,6 +12,9 @@ from pydantic import BaseModel, Field
 
 from ops_core.orchestration.mission_manager import MissionManager
 
+from ops_core.core.events import OPSEventType, create_event
+from ops_core.services.event_bus import OPSEventBus
+
 logger = logging.getLogger("ops.session.manager")
 
 
@@ -49,6 +52,11 @@ class SessionManager:
         session = ActiveSession(session_id=session_id)
         self._sessions[session_id] = session
         logger.info(f"Created new active session: {session_id}")
+        OPSEventBus.emit_ops_event(create_event(
+            event_type=OPSEventType.SESSION_CREATED,
+            session_id=session_id,
+            message="New session created."
+        ))
         return session
 
     def get_or_create_session(self, session_id: Optional[str] = None) -> ActiveSession:
@@ -96,6 +104,13 @@ class SessionManager:
         session.current_tool = None
         session.updated_at = time.time()
         
+        OPSEventBus.emit_ops_event(create_event(
+            event_type=OPSEventType.SESSION_STOPPED,
+            session_id=session_id,
+            status="PAUSED",
+            message="Active execution stopped. Session and conversation context preserved."
+        ))
+
         logger.info(f"Session {session_id} execution stopped (Session & Context preserved).")
         return {
             "status": "STOPPED",
@@ -119,6 +134,13 @@ class SessionManager:
             mission_manager = MissionManager()
             mission_manager.cancel_mission(old_session.current_mission_id)
             old_session.is_active = False
+
+        OPSEventBus.emit_ops_event(create_event(
+            event_type=OPSEventType.SESSION_RESET,
+            session_id=session_id,
+            status="IDLE",
+            message="Active session reset. Persistent memory remains intact."
+        ))
 
         # Create brand new session
         new_session = self.create_session()

@@ -119,11 +119,36 @@ class ToolExecutor:
             verification_method=cap_def.verification_method
         )
 
+        # 0. Emit TOOL_REQUESTED
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.TOOL_REQUESTED,
+            session_id=session_id or "default",
+            task_id=task_id,
+            mission_id=mission_id,
+            agent_id=requested_by,
+            agent_name=requested_by.title(),
+            capability=capability_name,
+            tool=capability_name,
+            status="QUEUED",
+            message=f"Tool [{capability_name}] requested by {requested_by.title()}"
+        ))
+
         # 1. Safety Gate Evaluation & Authorization
         try:
             await SafetyGate.authorize_or_prompt(request)
         except OPSError as e:
             logger.warning(f"Tool call {tool_call_id} [{capability_name}] rejected by Safety Gate: {e.message}")
+            await OPSEventBus.emit_ops_event_async(create_event(
+                event_type=OPSEventType.APPROVAL_DENIED if e.code == OPSErrorCode.PERMISSION_DENIED else OPSEventType.ERROR_OCCURRED,
+                session_id=session_id or "default",
+                task_id=task_id,
+                mission_id=mission_id,
+                agent_id=requested_by,
+                capability=capability_name,
+                tool=capability_name,
+                status="BLOCKED" if e.code == OPSErrorCode.SAFETY_BLOCK else "DECLINED",
+                message=e.message
+            ))
             return ToolCallResult(
                 tool_call_id=tool_call_id,
                 capability=capability_name,
@@ -141,14 +166,29 @@ class ToolExecutor:
                 error=f"No executor registered for capability: '{capability_name}'"
             )
 
-        # 3. Execute Tool
+        # 3. Emit TOOL_STARTED
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.TOOL_STARTED,
+            session_id=session_id or "default",
+            task_id=task_id,
+            mission_id=mission_id,
+            agent_id=requested_by,
+            agent_name=requested_by.title(),
+            capability=capability_name,
+            tool=capability_name,
+            status="RUNNING",
+            message=f"Executing capability [{capability_name}]",
+            metadata={"arguments": arguments}
+        ))
+
+        # 4. Execute Tool
         t0 = time.time()
         try:
             result = await executor_fn(request)
             result.duration_ms = int((time.time() - t0) * 1000)
         except Exception as e:
             logger.error(f"Error executing tool {capability_name}: {e}", exc_info=True)
-            return ToolCallResult(
+            result = ToolCallResult(
                 tool_call_id=tool_call_id,
                 capability=capability_name,
                 status="FAILED",
@@ -156,11 +196,48 @@ class ToolExecutor:
                 duration_ms=int((time.time() - t0) * 1000)
             )
 
-        # 4. Independent Ground-Truth Verification
+        # 5. Emit Tool Completion / Failure
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.TOOL_COMPLETED if result.status == "SUCCESS" else OPSEventType.TOOL_FAILED,
+            session_id=session_id or "default",
+            task_id=task_id,
+            mission_id=mission_id,
+            agent_id=requested_by,
+            capability=capability_name,
+            tool=capability_name,
+            status="COMPLETED" if result.status == "SUCCESS" else "FAILED",
+            message=f"Tool [{capability_name}] finished in {result.duration_ms}ms with status: {result.status}"
+        ))
+
+        # 6. Independent Ground-Truth Verification
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.VERIFICATION_STARTED,
+            session_id=session_id or "default",
+            task_id=task_id,
+            mission_id=mission_id,
+            agent_id="verifier",
+            agent_name="Ground-Truth Verifier",
+            capability=capability_name,
+            status="RUNNING",
+            message=f"Asserting physical ground-truth state for [{capability_name}]"
+        ))
+
         is_verified = Verifier.verify_tool_result(request, result)
         if not is_verified and result.status == "SUCCESS":
             result.status = "FAILED"
             if not result.error:
                 result.error = "Operation failed physical ground-truth verification check."
+
+        await OPSEventBus.emit_ops_event_async(create_event(
+            event_type=OPSEventType.VERIFICATION_PASSED if is_verified else OPSEventType.VERIFICATION_FAILED,
+            session_id=session_id or "default",
+            task_id=task_id,
+            mission_id=mission_id,
+            agent_id="verifier",
+            agent_name="Ground-Truth Verifier",
+            capability=capability_name,
+            status="COMPLETED" if is_verified else "FAILED",
+            message="Physical state verified successfully." if is_verified else f"Ground-truth verification failed: {result.error}"
+        ))
 
         return result

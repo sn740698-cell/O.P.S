@@ -52,7 +52,8 @@ export default function App() {
   const [currentTaskPrompt, setCurrentTaskPrompt] = useState('');
   const [conversationHistory, setConversationHistory] = useState([]);
 
-  // Feeds
+  // Feeds & Live Orchestration Events
+  const [liveEvents, setLiveEvents] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [lastScrape, setLastScrape] = useState(null);
   const [terminalLogs, setTerminalLogs] = useState([]);
@@ -118,9 +119,48 @@ export default function App() {
           try {
             const data = JSON.parse(e.data);
             const timeStr = new Date().toLocaleTimeString();
+
+            // A. Capture Canonical Structured OPSEvent (v3.0 Architecture)
+            if (data.event_type || data.event_id || data.agent || data.status) {
+              const structuredEvt = {
+                ...data,
+                timestamp: data.timestamp || Date.now() / 1000
+              };
+              setLiveEvents((prev) => [...prev.slice(-300), structuredEvt]);
+
+              // Synchronize pipeline status & active agent dynamically
+              if (data.event_type === 'ROUTER_STARTED' || data.event_type === 'SUPERVISOR_STARTED') {
+                setIsLoading(true);
+                setActiveAgent(data.agent?.name || 'Router');
+                setCurrentThought(data.message || 'Routing directive...');
+              } else if (data.event_type === 'AGENT_STARTED' || data.event_type === 'AGENT_THINKING') {
+                setIsLoading(true);
+                setActiveAgent(data.agent?.name || data.agent?.id || 'Specialist Agent');
+                setCurrentThought(data.message || data.thought || 'Processing...');
+              } else if (data.event_type === 'PLAN_CREATED') {
+                const steps = data.metadata?.plan?.steps || data.plan || [];
+                if (steps.length > 0) setPlanSteps(steps);
+              } else if (data.event_type === 'TOOL_STARTED') {
+                setCurrentThought(`Tool: ${data.tool || data.metadata?.tool || 'Executing tool...'}`);
+              } else if (data.event_type === 'RESPONSE_COMPLETED' || data.event_type === 'MISSION_COMPLETED') {
+                setIsLoading(false);
+                setActiveAgent('');
+                setCurrentThought('Execution completed.');
+              } else if (data.event_type === 'SESSION_STOPPED') {
+                setIsLoading(false);
+                setActiveAgent('');
+                setCurrentThought('Execution halted.');
+              } else if (data.event_type === 'SESSION_RESET') {
+                setLiveEvents([]);
+                setIsLoading(false);
+                setActiveAgent('');
+              }
+            }
+
+            // B. Backward Compatible Legacy Events
             if (data.event === 'task_started') {
               setIsLoading(true);
-              setActiveAgent(data.agent || 'Prompt Template Agent');
+              setActiveAgent(data.agent || 'Fast Router');
               setCurrentThought(data.thought || `Directive received: "${data.prompt}"`);
               if (data.prompt) setCurrentTaskPrompt(data.prompt);
               setBriefingText('');
@@ -150,7 +190,7 @@ export default function App() {
                 setIsLoading(false);
               }
             } else if (data.event === 'task_completed') {
-              setBriefingText(data.final_answer || '');
+              setBriefingText(data.final_answer || data.response || '');
               if (data.plan && data.plan.length > 0) {
                 setPlanSteps(data.plan);
               }
@@ -288,13 +328,13 @@ export default function App() {
     };
   }, []);
 
-  // Universal Command Dispatcher
+  // Universal Command Dispatcher (Canonical O.P.S. Orchestration Execution)
   const handleDispatchCommand = async (prompt) => {
     setIsLoading(true);
     setCurrentTaskPrompt(prompt);
     setBriefingText('');
     setPlanSteps([]);
-    setActiveAgent('Prompt Template Agent');
+    setActiveAgent('Fast Router');
     setCurrentThought(`Routing directive: "${prompt}"...`);
     
     // Add user turn immediately to conversation history
@@ -307,21 +347,32 @@ export default function App() {
     ]);
 
     try {
-      const resp = await fetch('/api/v1/agent/run/', {
+      // Primary: Canonical O.P.S. v3.0 Execution Endpoint
+      let resp = await fetch('/api/v1/ops/execute/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, session_id: sessionId })
       });
+
+      // Fallback: Agent run workflow if canonical not matching
+      if (!resp.ok && resp.status === 404) {
+        resp = await fetch('/api/v1/agent/run/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, session_id: sessionId })
+        });
+      }
+
       const data = await resp.json();
-      const botAnswer = data.final_answer || JSON.stringify(data, null, 2);
+      const botAnswer = data.content || data.final_answer || data.response || JSON.stringify(data, null, 2);
       setBriefingText(botAnswer);
-      setActiveCategory(data.category || '');
-      setPlanSteps(data.plan || []);
+      setActiveCategory(data.mode || data.category || '');
+      if (data.plan) setPlanSteps(data.plan);
 
       // Add bot turn to conversation history
       setConversationHistory((prev) => [
         ...prev,
-        { role: 'bot', text: botAnswer, category: data.category, plan: data.plan }
+        { role: 'bot', text: botAnswer, category: data.mode || data.category, plan: data.plan }
       ]);
 
       // Play retro sound whenever something is added to memory
@@ -329,7 +380,7 @@ export default function App() {
         data.intent === 'WORKSTATION_MEMORY_CAPTURE' ||
         data.category === 'WORKSTATION_MEMORY_CAPTURE' ||
         data.tool_output?.action === 'workstation_memory_capture' ||
-        (data.final_answer && (data.final_answer.includes('COMMITTED TO POSTGRESQL') || data.final_answer.includes('WORKSTATION MEMORY COMMITTED')))
+        (botAnswer && (botAnswer.includes('COMMITTED TO POSTGRESQL') || botAnswer.includes('WORKSTATION MEMORY COMMITTED')))
       ) {
         retroSoundEngine.playMemoryStore();
         window.dispatchEvent(new CustomEvent('ops_memory_added'));
@@ -354,29 +405,32 @@ export default function App() {
     }
   };
 
-  // Erase Temporary Conversation Memory & Reset Session
+  // Erase Temporary Conversation Memory & Reset Session (Canonical Session Refresh)
   const handleClearMemory = async () => {
+    let newSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
     try {
-      await fetch(`/api/v1/memory/?session_id=${sessionId}`, { method: 'DELETE' });
-      await fetch(`/api/v1/memory/chatbot-vector/?session_id=${sessionId}`, { method: 'DELETE' });
-      await fetch(`/api/v1/memory/refresh/`, {
+      const resp = await fetch('/api/v1/ops/session/refresh/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId })
       });
+      const data = await resp.json();
+      if (data.new_session_id) {
+        newSessionId = data.new_session_id;
+      }
     } catch (e) {
-      console.warn('Memory purge error:', e);
+      console.warn('Memory refresh fallback:', e);
     }
-    const newSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
     setSessionId(newSessionId);
+    setLiveEvents([]);
     setBriefingText('');
     setPlanSteps([]);
     setCurrentTaskPrompt('');
     setConversationHistory([]);
-    setCurrentThought('[•] MEMORY PURGED // FRESH SESSION INITIALIZED');
+    setCurrentThought('[•] VOLATILE MEMORY PURGED // FRESH SESSION INITIALIZED');
     setTerminalLogs((prev) => [
       ...prev.slice(-150),
-      { stream: 'ops_event', data: `[SESSION REFRESH] Active context wiped. New session: ${newSessionId}`, timestamp: new Date().toLocaleTimeString() }
+      { stream: 'ops_event', data: `[SESSION REFRESH] Active context wiped. Persistent memory intact. New session: ${newSessionId}`, timestamp: new Date().toLocaleTimeString() }
     ]);
     retroSoundEngine.playMemoryErase();
   };
@@ -431,21 +485,21 @@ export default function App() {
     }
   };
 
-  // Emergency Halt
+  // Emergency Halt / Stop Execution (Preserves session context)
   const handleEmergencyHalt = async () => {
     try {
-      await fetch('/api/v1/mobile/emergency-halt/', {
+      await fetch('/api/v1/ops/session/stop/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: 'Emergency Halt via O.P.S. Master HUD' })
+        body: JSON.stringify({ session_id: sessionId })
       });
-      setIsLoading(false);
-      setActiveAgent('');
-      setCurrentThought('🚨 SYSTEM EMERGENCY HALT TRIGGERED');
-      loadAuditLogs();
     } catch (e) {
-      console.error(e);
+      console.error('Stop execution notice:', e);
     }
+    setIsLoading(false);
+    setActiveAgent('');
+    setCurrentThought('⏹ SYSTEM EXECUTION HALTED (Session Context Preserved)');
+    loadAuditLogs();
   };
 
   // Resolve Permission
@@ -609,6 +663,8 @@ export default function App() {
             briefingText={briefingText}
             sessionId={sessionId}
             onClearMemory={handleClearMemory}
+            onStopExecution={handleEmergencyHalt}
+            liveEvents={liveEvents}
           />
         )}
 
