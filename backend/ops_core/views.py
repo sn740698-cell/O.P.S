@@ -167,11 +167,32 @@ class PermissionRequestListView(APIView):
 class PermissionPendingListView(APIView):
     """List pending permission requests awaiting Human-In-The-Loop decision."""
     def get(self, request):
-        pending = PermissionRequest.objects.filter(status="PENDING").order_by("-created_at")[:10]
-        serializer = PermissionRequestSerializer(pending, many=True)
+        from ops_core.services.permission_manager import OPSPermissionManager
+        in_memory_pending = OPSPermissionManager.get_all_pending()
+        
+        db_pending = []
+        try:
+            pending_objs = PermissionRequest.objects.filter(status="PENDING").order_by("-created_at")[:10]
+            db_pending = PermissionRequestSerializer(pending_objs, many=True).data
+        except Exception:
+            pass
+
+        seen_ids = set()
+        merged = []
+        for p in in_memory_pending:
+            rid = str(p.get("request_id"))
+            if rid and rid not in seen_ids:
+                seen_ids.add(rid)
+                merged.append(p)
+        for p in db_pending:
+            rid = str(p.get("request_id"))
+            if rid and rid not in seen_ids:
+                seen_ids.add(rid)
+                merged.append(p)
+
         return Response({
-            "count": pending.count(),
-            "pending": serializer.data
+            "count": len(merged),
+            "pending": merged
         })
 
 

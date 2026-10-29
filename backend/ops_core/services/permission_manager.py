@@ -50,6 +50,11 @@ class OPSPermissionManager:
         return False
 
     @classmethod
+    def get_all_pending(cls) -> list:
+        """Returns a list of all currently pending permission request dicts."""
+        return list(cls._pending_metadata.values())
+
+    @classmethod
     async def request_permission(
         cls,
         agent: str,
@@ -79,11 +84,43 @@ class OPSPermissionManager:
         future = loop.create_future()
         cls._pending_requests[req_id] = (future, loop)
         cls._pending_metadata[req_id] = {
+            "request_id": req_id,
             "agent": agent,
+            "agent_name": agent,
             "action": action,
+            "action_type": action,
             "command": command,
-            "task_id": task_id
+            "command_text": command,
+            "target": command,
+            "reason": reason,
+            "risk_level": risk_level,
+            "task_id": task_id,
+            "timeout_seconds": timeout_seconds,
+            "status": "PENDING"
         }
+
+        # Persist to database if available
+        try:
+            from channels.db import database_sync_to_async
+            from ops_core.models import PermissionRequest, RiskLevel as ModelRiskLevel, PermissionStatus
+            
+            def create_db_record():
+                PermissionRequest.objects.update_or_create(
+                    request_id=req_id,
+                    defaults={
+                        "task_id": task_id,
+                        "agent_name": agent,
+                        "action_type": action,
+                        "command_text": command,
+                        "reason": reason or "",
+                        "risk_level": getattr(ModelRiskLevel, risk_level.upper(), ModelRiskLevel.MEDIUM) if hasattr(ModelRiskLevel, risk_level.upper()) else "MEDIUM",
+                        "status": PermissionStatus.PENDING,
+                        "timeout_seconds": timeout_seconds
+                    }
+                )
+            await database_sync_to_async(create_db_record)()
+        except Exception as db_err:
+            logger.debug(f"DB permission record skipped: {db_err}")
 
         # Emit over WebSockets to React UI & Desktop Overlay
         await OPSEventBus.emit_permission_request_async(

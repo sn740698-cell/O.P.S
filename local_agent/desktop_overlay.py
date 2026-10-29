@@ -398,13 +398,13 @@ class OPSDesktopOverlay:
         )
         self.perm_desc_label.pack(fill=tk.X, pady=(2, 6))
 
-        # Accept / Deny Buttons (2 Clean Tactical Buttons)
+        # Accept / Decline Buttons (2 Clean Tactical Buttons)
         perm_btn_row = tk.Frame(self.permission_frame, bg="#18181b")
         perm_btn_row.pack(fill=tk.X)
 
         self.perm_deny_btn = tk.Button(
             perm_btn_row,
-            text="[ ❌ DENY ACTION ]",
+            text="[ ❌ DECLINE ACTION ]",
             font=(PRIMARY_FONT, 8, "bold"),
             fg="#ffffff",
             bg="#991b1b",
@@ -528,6 +528,15 @@ class OPSDesktopOverlay:
         x = self.root.winfo_x() + deltax
         y = self.root.winfo_y() + deltay
         self.root.geometry(f"+{x}+{y}")
+
+    def play_sound_hitl_alert(self):
+        """Plays urgent tactical alert sound when HITL authorization is required."""
+        try:
+            import winsound
+            winsound.Beep(1800, 90)
+            winsound.Beep(2400, 140)
+        except Exception as e:
+            logger.debug(f"Audio hitl alert failed: {e}")
 
     def play_sound_appear(self):
         """Plays unique starting sound when Pop-Up Cockpit appears."""
@@ -810,6 +819,7 @@ class OPSDesktopOverlay:
             if play_sound:
                 self.play_sound_appear()
         self.root.deiconify()
+        self.root.attributes("-topmost", True)
         self.root.lift()
         self.root.focus_force()
         self.text_area.focus_set()
@@ -1033,47 +1043,52 @@ class OPSDesktopOverlay:
     def show_permission_request(self, perm: dict):
         """Displays the Human-in-the-Loop Security Approval prompt inside the Pop-Up Cockpit."""
         self._current_pending_permission = perm
-        action = perm.get("action_type", "action")
-        target = (perm.get("command_text") or perm.get("target") or "")
+        action = perm.get("action_type") or perm.get("action") or "action"
+        target = (perm.get("command_text") or perm.get("command") or perm.get("target") or "")
         reason = perm.get("reason", "")
-        agent = perm.get("agent_name", "SystemAutomationAgent")
-        risk = perm.get("risk_level", "HIGH")
+        agent = perm.get("agent_name") or perm.get("agent") or "SystemAutomationAgent"
+        risk = perm.get("risk_level") or perm.get("risk") or "HIGH"
 
         if action == "launch_app":
-            title = "🚨 [AUTHORIZATION REQUIRED: OPEN ITEM]"
-            desc = f"• Agent: {agent}\n• Request: Open '{target.upper()}'\n• Permission: Allow O.P.S. to launch this item?"
+            title = "🚨 [HITL AUTHORIZATION: OPEN APPLICATION]"
+            desc = f"• Agent: {agent}\n• Target: {target.upper()}\n• Permission: Allow O.P.S. to launch this application?"
         elif action == "run_claude_routine":
-            title = "🚨 [AUTHORIZATION REQUIRED: CLAUDE WORKFLOW]"
+            title = "🚨 [HITL AUTHORIZATION: CLAUDE WORKFLOW]"
             desc = f"• Agent: {agent}\n• Request: cd D:\\freellmapi -> npm run dev -> launch Claude\n• Permission: Allow terminal routine execution?"
         elif action == "open_in_vscode":
-            title = "🚨 [AUTHORIZATION REQUIRED: VS CODE]"
-            desc = f"• Agent: {agent}\n• Request: Open '{target}' in Visual Studio Code\n• Permission: Allow VS Code launch?"
+            title = "🚨 [HITL AUTHORIZATION: VS CODE]"
+            desc = f"• Agent: {agent}\n• Target: Open '{target}' in Visual Studio Code\n• Permission: Allow VS Code launch?"
         elif action == "browser_dom_task":
-            title = "🚨 [AUTHORIZATION REQUIRED: BROWSER DOM TASK]"
-            desc = f"• Agent: {agent}\n• Request: DOM automation for '{target}'\n• Permission: Allow browser automation?"
+            title = "🚨 [HITL AUTHORIZATION: BROWSER AUTOMATION]"
+            desc = f"• Agent: {agent}\n• Target: DOM automation for '{target}'\n• Permission: Allow browser automation?"
         elif action == "open_file_or_folder":
-            title = "🚨 [AUTHORIZATION REQUIRED: OPEN FILE/FOLDER]"
-            desc = f"• Agent: {agent}\n• Request: Open '{target}'\n• Permission: Allow file/folder access?"
+            title = "🚨 [HITL AUTHORIZATION: OPEN FILE/FOLDER]"
+            desc = f"• Agent: {agent}\n• Target: '{target}'\n• Permission: Allow file/folder access?"
         elif action == "open_browser_search":
-            title = "🚨 [AUTHORIZATION REQUIRED: WEB SEARCH]"
-            desc = f"• Agent: {agent}\n• Request: Web search for '{target}'\n• Permission: Allow browser search?"
+            title = "🚨 [HITL AUTHORIZATION: WEB SEARCH]"
+            desc = f"• Agent: {agent}\n• Target: Web search for '{target}'\n• Permission: Allow browser search?"
         elif action == "run_terminal_cmd":
-            title = "🚨 [AUTHORIZATION REQUIRED: TERMINAL]"
-            desc = f"• Agent: {agent}\n• Command: {target[:70]}\n• Permission: Execute terminal command?"
+            title = "🚨 [HITL AUTHORIZATION: TERMINAL COMMAND]"
+            desc = f"• Agent: {agent}\n• Command: {target[:80]}\n• Permission: Execute terminal command?"
         else:
-            title = "🚨 [SECURITY APPROVAL REQUIRED]"
-            desc = f"• Agent: {agent}\n• Action: {action}\n• Target: {target[:70]}"
+            title = "🚨 [HITL SECURITY APPROVAL REQUIRED]"
+            desc = f"• Agent: {agent}\n• Action: {action}\n• Target: {target[:80]}"
 
         if reason and reason not in desc:
-            desc += f"\n• Reason: {reason[:75]}"
+            desc += f"\n• Reason: {reason[:100]}"
 
         self.perm_title_label.config(text=title)
         self.perm_desc_label.config(text=desc)
         self.perm_risk_badge.config(text=f"RISK: {risk}")
 
-        # Pack above response text
+        # Pack above response text and pop up immediately
         self.permission_frame.pack(fill=tk.X, padx=10, pady=(2, 4), before=self.response_text)
-        self.show_overlay()
+        self.play_sound_hitl_alert()
+        self.show_overlay(play_sound=False)
+        self.status_label.config(
+            text="🚨 HITL ACTION AWAITING DECISION — Click [Accept] or [Decline]",
+            fg="#f87171"
+        )
 
     def hide_permission_request(self):
         """Hides the Human-in-the-Loop Security Approval prompt."""
@@ -1098,7 +1113,7 @@ class OPSDesktopOverlay:
                 )
                 with urllib.request.urlopen(req) as resp:
                     pass
-                msg = "Permission Granted: Item Launched!" if "ALLOW" in decision else "Permission Denied: Blocked!"
+                msg = "✅ Permission Granted: Action Authorized!" if "ALLOW" in decision else "❌ Permission Declined: Action Blocked!"
                 self.root.after(0, lambda: self.status_label.config(
                     text=msg, fg="#34d399" if "ALLOW" in decision else "#ef4444"
                 ))

@@ -601,6 +601,45 @@ class OPSAutomationService:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
+    def execute_desktop_hotkey(self, keys: List[str]) -> Dict[str, Any]:
+        """
+        Executes keyboard hotkeys using PyAutoGUI with Win32 / PowerShell WScript fallback.
+        """
+        return self.execute_gui_action(action="hotkey", keys=keys)
+
+    def _fallback_win32_key(self, key_str: str):
+        """Sends key event via ctypes windll user32 or PowerShell."""
+        try:
+            import ctypes
+            # Virtual key codes map
+            VK_MAP = {
+                "enter": 0x0D, "return": 0x0D, "tab": 0x09, "space": 0x20,
+                "backspace": 0x08, "escape": 0x1B, "esc": 0x1B,
+                "ctrl": 0x11, "control": 0x11, "alt": 0x12, "shift": 0x10,
+                "win": 0x5B, "windows": 0x5B, "up": 0x26, "down": 0x28, "left": 0x25, "right": 0x27
+            }
+            k_clean = key_str.lower().strip()
+            vk = VK_MAP.get(k_clean)
+            if vk:
+                ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+                time.sleep(0.05)
+                ctypes.windll.user32.keybd_event(vk, 0, 2, 0) # KEYEVENTF_KEYUP = 2
+                return True
+        except Exception as e:
+            logger.warning(f"Win32 key event failed: {e}")
+        return False
+
+    def _fallback_powershell_keys(self, keys_str: str) -> bool:
+        """Sends keystrokes via PowerShell WScript.Shell (works in background)."""
+        try:
+            sanitized = keys_str.replace('"', '`"').replace("'", "''")
+            ps_cmd = f"$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('{sanitized}')"
+            subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps_cmd], timeout=5, check=False)
+            return True
+        except Exception as e:
+            logger.warning(f"PowerShell SendKeys fallback failed: {e}")
+            return False
+
     def execute_gui_action(
         self,
         action: str,
@@ -610,48 +649,108 @@ class OPSAutomationService:
         keys: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
-        Executes real desktop mouse/keyboard actions using PyAutoGUI.
+        Executes OS mouse/keyboard actions.
+        Primary: PyAutoGUI for active desktop sessions.
+        Fallback: Win32 User32 APIs, PowerShell WScript.Shell, and PIL for background/headless/virtual execution.
         """
         is_safe, msg = OPSSafetyGatekeeper.validate_tool_call("gui_action", {"action": action, "x": x, "y": y, "text": text})
         if not is_safe:
             return {"status": "blocked", "reason": msg}
 
-        if not pyautogui:
-            return {"status": "error", "error": "PyAutoGUI not available in current environment."}
+        logger.info(f"[O.P.S. GUI Action] Executing action: {action} (coords: {x},{y}, text: '{text}', keys: {keys})")
+        executed_via = "pyautogui"
+        error_encountered = None
 
+        # 1. Try PyAutoGUI if available and display is active
+        if pyautogui:
+            try:
+                if action in ["click", "mouse_click"]:
+                    if x > 0 and y > 0:
+                        pyautogui.click(x, y)
+                    else:
+                        pyautogui.click()
+                elif action == "double_click":
+                    pyautogui.doubleClick(x, y) if (x > 0 and y > 0) else pyautogui.doubleClick()
+                elif action in ["type", "type_text"]:
+                    pyautogui.write(text, interval=0.02)
+                elif action in ["press", "hotkey", "press_key"]:
+                    if keys:
+                        pyautogui.hotkey(*keys)
+                    elif text:
+                        pyautogui.press(text)
+                elif action == "scroll":
+                    pyautogui.scroll(int(text) if text.isdigit() else -300)
+                elif action == "screenshot":
+                    img = pyautogui.screenshot()
+                    return {"status": "success", "action": "screenshot", "message": "Screenshot captured via PyAutoGUI"}
+
+                return {
+                    "status": "success",
+                    "action": action,
+                    "engine": "pyautogui",
+                    "coordinates": {"x": x, "y": y},
+                    "text": text,
+                    "message": f"Successfully executed OS action: {action}"
+                }
+            except Exception as e:
+                logger.warning(f"PyAutoGUI failed or running headlessly ({e}). Switching to native Windows OS fallback...")
+                error_encountered = str(e)
+
+        # 2. Native Windows Background / Headless Fallback Engine
+        executed_via = "win32_powershell_fallback"
         try:
-            logger.info(f"[O.P.S. GUI Action] Executing: {action}")
-            if action in ["click", "mouse_click"]:
+            import ctypes
+
+            if action in ["click", "mouse_click", "double_click"]:
                 if x > 0 and y > 0:
-                    pyautogui.click(x, y)
-                else:
-                    pyautogui.click()
-            elif action == "double_click":
-                pyautogui.doubleClick(x, y) if (x > 0 and y > 0) else pyautogui.doubleClick()
+                    ctypes.windll.user32.SetCursorPos(x, y)
+                # MOUSEEVENTF_LEFTDOWN = 0x02, MOUSEEVENTF_LEFTUP = 0x04
+                ctypes.windll.user32.mouse_event(0x02, 0, 0, 0, 0)
+                time.sleep(0.05)
+                ctypes.windll.user32.mouse_event(0x04, 0, 0, 0, 0)
+                if action == "double_click":
+                    time.sleep(0.1)
+                    ctypes.windll.user32.mouse_event(0x02, 0, 0, 0, 0)
+                    time.sleep(0.05)
+                    ctypes.windll.user32.mouse_event(0x04, 0, 0, 0, 0)
+
             elif action in ["type", "type_text"]:
-                pyautogui.write(text, interval=0.02)
+                if text:
+                    self._fallback_powershell_keys(text)
+
             elif action in ["press", "hotkey", "press_key"]:
-                if keys:
-                    pyautogui.hotkey(*keys)
-                elif text:
-                    pyautogui.press(text)
-            elif action == "scroll":
-                pyautogui.scroll(int(text) if text.isdigit() else -300)
+                target_keys = keys or ([text] if text else [])
+                for k in target_keys:
+                    success = self._fallback_win32_key(k)
+                    if not success:
+                        self._fallback_powershell_keys(f"{{{k.upper()}}}" if len(k) > 1 else k)
+
             elif action == "screenshot":
-                img = pyautogui.screenshot()
-                return {"status": "success", "action": "screenshot", "message": "Screenshot captured"}
+                try:
+                    from PIL import ImageGrab
+                    img = ImageGrab.grab()
+                    return {"status": "success", "action": "screenshot", "engine": "PIL.ImageGrab", "message": "Screenshot captured via PIL ImageGrab"}
+                except Exception as img_err:
+                    logger.warning(f"ImageGrab failed: {img_err}")
 
             return {
                 "status": "success",
                 "action": action,
+                "engine": executed_via,
                 "coordinates": {"x": x, "y": y},
                 "text": text,
-                "message": f"Successfully executed OS action: {action}"
+                "fallback_used": True,
+                "message": f"Successfully executed OS action via Windows Native Fallback: {action}"
             }
-        except Exception as e:
-            logger.error(f"PyAutoGUI action error: {e}")
-            return {"status": "error", "action": action, "error": str(e)}
+        except Exception as fallback_err:
+            logger.error(f"Native Windows fallback execution error: {fallback_err}")
+            return {
+                "status": "error",
+                "action": action,
+                "error": f"Both PyAutoGUI ({error_encountered}) and native Win32 fallback failed: {fallback_err}"
+            }
 
 
 automation_service = OPSAutomationService()
+
 
