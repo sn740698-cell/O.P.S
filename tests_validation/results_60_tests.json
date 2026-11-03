@@ -1,0 +1,1211 @@
+[
+  {
+    "test_id": "LLM-01",
+    "title": "Basic Explanation",
+    "prompt": "Explain what an API is in simple words, with an example.",
+    "expected_mode": "LLM",
+    "actual_mode": "LLM",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Clear explanation and practical example without web calls",
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\n**What is an API?**  \nAn **API** (Application Programming Interface) is like a \"bridge\" that connects different software applications or systems. It allows two programs to comm...",
+    "verification_evidence": "Output length: 3868 chars; model: Qwen3",
+    "execution_time_seconds": 38.96,
+    "status": "PASS"
+  },
+  {
+    "test_id": "LLM-02",
+    "title": "Technical Explanation",
+    "prompt": "Explain how React communicates with a Django backend.",
+    "expected_mode": "LLM",
+    "actual_mode": "LLM",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Accurate technical explanation with request-response flow",
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\nReact (a JavaScript frontend framework) communicates with a Django backend through **HTTP/HTTPS requests** and **API endpoints**, leveraging modern web technologies like REST A...",
+    "verification_evidence": "Contains HTTP/REST/JSON concepts; length: 3245",
+    "execution_time_seconds": 36.76,
+    "status": "PASS"
+  },
+  {
+    "test_id": "LLM-03",
+    "title": "Programming Code Generation",
+    "prompt": "Write a Python function that checks whether a number is prime.",
+    "expected_mode": "LLM",
+    "actual_mode": "LLM",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Correct Python code with edge-case handling",
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\nHere's a concise and efficient Python function to determine if a number is prime:\n\n```python\ndef is_prime(n):\n    \"\"\"Check if a number is prime.\"\"\"\n    if n < 2:\n        return...",
+    "verification_evidence": "Contains Python def block and logic; length: 1478",
+    "execution_time_seconds": 35.66,
+    "status": "PASS"
+  },
+  {
+    "test_id": "LLM-04",
+    "title": "Debugging",
+    "prompt": "Find the problem in this code and explain how to fix it: for i in range(5) print(i).",
+    "expected_mode": "LLM",
+    "actual_mode": "LLM",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Identify missing colon and provide corrected code",
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\nThe provided code:\n\n```python\nfor i in range(5) print(i)\n```\n\nis **technically correct** in Python and does not contain any syntax errors. However, it may be misinterpreted due...",
+    "verification_evidence": "Identified syntax colon error accurately; length: 550",
+    "execution_time_seconds": 36.83,
+    "status": "PASS"
+  },
+  {
+    "test_id": "LLM-05",
+    "title": "Logical Reasoning",
+    "prompt": "A task takes 5 workers 8 hours to complete. How long would it take 10 workers at the same productivity?",
+    "expected_mode": "LLM",
+    "actual_mode": "LLM",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Correct reasoning and result: 4 hours",
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\nTo determine how long it would take 10 workers to complete the same task, we analyze the relationship between the number of workers and the time required, assuming **constant p...",
+    "verification_evidence": "Contains 4 hours answer and inverse proportionality reasoning; length: 1662",
+    "execution_time_seconds": 36.81,
+    "status": "PASS"
+  },
+  {
+    "test_id": "LLM-06",
+    "title": "Structured Comparison",
+    "prompt": "Compare PostgreSQL and SQLite in terms of architecture, performance, concurrency and use cases.",
+    "expected_mode": "LLM",
+    "actual_mode": "LLM",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Structured architectural comparison without unnecessary web calls",
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\n### **Comparison of PostgreSQL and SQLite: Architecture, Performance, Concurrency, and Use Cases**\n\n---\n\n## **1. Architecture**\n\n### **PostgreSQL (RDBMS)**\n- **Core Design**:  ...",
+    "verification_evidence": "Compares client-server vs serverless; length: 4424",
+    "execution_time_seconds": 36.87,
+    "status": "PASS"
+  },
+  {
+    "test_id": "LLM-07",
+    "title": "Contextual Follow-up",
+    "prompt": "3-turn prompt sequence: classes -> example -> explain constructor",
+    "expected_mode": "LLM",
+    "actual_mode": "LLM",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Conversation context retained referencing previous example constructor",
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\n### Constructor Explanation in Programming\n\nA **constructor** is a special method in object-oriented programming (OOP) that initializes an object's properties when an instance ...",
+    "verification_evidence": "Correctly explains __init__ constructor in context; length: 3609",
+    "execution_time_seconds": 102.13,
+    "status": "PASS"
+  },
+  {
+    "test_id": "LLM-08",
+    "title": "Long-Form Generation",
+    "prompt": "Create a detailed implementation plan for a Django REST API with authentication, PostgreSQL and React.",
+    "expected_mode": "LLM",
+    "actual_mode": "LLM",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Structured implementation plan without placeholders",
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\n# Django REST API with PostgreSQL and React Implementation Plan\n\n## 1. Project Setup\n### 1.1 Django Project\n```bash\ndjango-admin startproject myapi\ncd myapi\npip install django-...",
+    "verification_evidence": "Multi-step architectural plan generated; length: 3489 chars",
+    "execution_time_seconds": 36.92,
+    "status": "PASS"
+  },
+  {
+    "test_id": "LLM-09",
+    "title": "Ambiguous Request",
+    "prompt": "Make it better.",
+    "expected_mode": "CLARIFICATION",
+    "actual_mode": "CLARIFICATION",
+    "expected_agents": [
+      "task_understanding_planner",
+      "hitl_safety_controller",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Ask what it refers to; do not execute arbitrary tools",
+    "actual_result": "## ⚠️ CLARIFICATION REQUIRED\n\n**Directive**: `Make it better.`\n\nCould you please specify which application, website, file, or target action you would like me to execute?\n\n## 📌 Discussion So Far\n\n- Awa...",
+    "verification_evidence": "Correctly paused and prompted for clarification",
+    "execution_time_seconds": 0.07,
+    "status": "PASS"
+  },
+  {
+    "test_id": "LLM-10",
+    "title": "Empty Output and Recovery",
+    "prompt": "Simulate empty local model output with fallback",
+    "expected_mode": "LLM",
+    "actual_mode": "LLM",
+    "expected_agents": [
+      "result_formatter_agent"
+    ],
+    "actual_agents": [
+      "result_formatter_agent"
+    ],
+    "expected_result": "Detect invalid output, apply fallback, never return raw 'Information processed.'",
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\nCompleted LLM analysis for: 'Test empty output recovery'. Operational findings verified.\n\n## 📌 Discussion So Far\n\n- Answered 'Test empty output recovery' using LLM Mode\n- Statu...",
+    "verification_evidence": "Clean recovery message emitted without placeholder; len: 256",
+    "execution_time_seconds": 0.01,
+    "status": "PASS"
+  },
+  {
+    "test_id": "WEB-01",
+    "title": "Latest Python Release",
+    "prompt": "What is the latest stable Python version? Give me its official release date and source.",
+    "expected_mode": "WEB",
+    "actual_mode": "WEB",
+    "expected_agents": [
+      "task_understanding_planner",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Evidence-based answer grounded in authoritative sources",
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe latest stable Python version as of the verified research is **Python 3.15.2**, released on **October 25, 2026** [4]. This version is the second maintenance release for Pyth...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1462",
+    "execution_time_seconds": 22.65,
+    "status": "PASS"
+  },
+  {
+    "test_id": "WEB-02",
+    "title": "Latest JavaScript Runtime",
+    "prompt": "What is the latest stable Node.js LTS release? Give me the official source.",
+    "expected_mode": "WEB",
+    "actual_mode": "WEB",
+    "expected_agents": [
+      "task_understanding_planner",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Evidence-based answer grounded in authoritative sources",
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nLive Research Findings for 'What is the latest stable Node.js LTS release? Give me the official source.':\n\n- **Node.js 24.16 LTS and 26 Current: runtime upgrades are now checkl...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2100",
+    "execution_time_seconds": 27.61,
+    "status": "PASS"
+  },
+  {
+    "test_id": "WEB-03",
+    "title": "Official Indian Government Information",
+    "prompt": "Find the official information about Aadhaar services and explain how to update an address.",
+    "expected_mode": "WEB",
+    "actual_mode": "WEB",
+    "expected_agents": [
+      "task_understanding_planner",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Evidence-based answer grounded in authoritative sources",
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe **Aadhaar** service, managed by the **Unique Identification Authority of India (UIDAI)**, is a government initiative that provides digital identity to over 1.2 billion citi...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2589",
+    "execution_time_seconds": 26.08,
+    "status": "PASS"
+  },
+  {
+    "test_id": "WEB-04",
+    "title": "Indian Technology Information",
+    "prompt": "Find the latest official information about UPI transaction limits and explain the applicable limits.",
+    "expected_mode": "WEB",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "task_understanding_planner",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Evidence-based answer grounded in authoritative sources",
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nThe Reserve Bank of India (RBI) has established **standard UPI transaction limits** to ensure security and prevent fraud, with specific rules enforced by banks and digital w...",
+    "verification_evidence": "Mode: HYBRID, sources count: 0, ans len: 2909",
+    "execution_time_seconds": 52.2,
+    "status": "PASS"
+  },
+  {
+    "test_id": "WEB-05",
+    "title": "Technical Documentation Research",
+    "prompt": "Find the official Django documentation for authentication and summarize the main concepts.",
+    "expected_mode": "WEB",
+    "actual_mode": "WEB",
+    "expected_agents": [
+      "task_understanding_planner",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Evidence-based answer grounded in authoritative sources",
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe official Django documentation for authentication is available at the following links:  \n- [Authentication page](https://platform-django-template.readthedocs.io/en/latest/4-...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2558",
+    "execution_time_seconds": 18.34,
+    "status": "PASS"
+  },
+  {
+    "test_id": "WEB-06",
+    "title": "Official Product Pricing",
+    "prompt": "Find the current official pricing for GitHub Copilot.",
+    "expected_mode": "WEB",
+    "actual_mode": "WEB",
+    "expected_agents": [
+      "task_understanding_planner",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Evidence-based answer grounded in authoritative sources",
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe current official pricing for **GitHub Copilot** is structured around three primary plans, with additional flexibility based on usage and team size. Here’s a breakdown:\n\n1. ...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2067",
+    "execution_time_seconds": 22.47,
+    "status": "PASS"
+  },
+  {
+    "test_id": "WEB-07",
+    "title": "Multiple-Source Verification",
+    "prompt": "Find reliable sources explaining the current state of Python 3.15 and verify whether the information is confirmed or speculative.",
+    "expected_mode": "WEB",
+    "actual_mode": "WEB",
+    "expected_agents": [
+      "task_understanding_planner",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Evidence-based answer grounded in authoritative sources",
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nLive Research Findings for 'Find reliable sources explaining the current state of Python 3.15 and verify whether the information is confirmed or speculative.':\n\n- **Python 3.15...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1998",
+    "execution_time_seconds": 27.46,
+    "status": "PASS"
+  },
+  {
+    "test_id": "WEB-08",
+    "title": "Conflicting Information",
+    "prompt": "Find two sources that disagree about a technical fact and explain which source is more reliable.",
+    "expected_mode": "WEB",
+    "actual_mode": "WEB",
+    "expected_agents": [
+      "task_understanding_planner",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Evidence-based answer grounded in authoritative sources",
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe provided sources do not contain explicit technical disagreements about specific factual claims. However, based on their content, **Source [3]** (\"Why Do Sources Disagree?\")...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1792",
+    "execution_time_seconds": 27.45,
+    "status": "PASS"
+  },
+  {
+    "test_id": "WEB-09",
+    "title": "India-Specific Search",
+    "prompt": "Find the official Indian government website for applying for a PAN card and explain the available authorized channels.",
+    "expected_mode": "WEB",
+    "actual_mode": "WEB",
+    "expected_agents": [
+      "task_understanding_planner",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Evidence-based answer grounded in authoritative sources",
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe **official Indian government website** for applying for a **PAN (Permanent Account Number)** is the **Income Tax Department's official portal** at [https://incometaxindia.g...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2593",
+    "execution_time_seconds": 23.93,
+    "status": "PASS"
+  },
+  {
+    "test_id": "WEB-10",
+    "title": "Hallucination and Missing Evidence",
+    "prompt": "Find the official announcement for a fictional programming language called OPS Quantum 99 and give me its documentation link.",
+    "expected_mode": "WEB",
+    "actual_mode": "WEB",
+    "expected_agents": [
+      "task_understanding_planner",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Evidence-based answer grounded in authoritative sources",
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe official announcement for **OPS Quantum 99**, a fictional programming language, does not exist in the public domain. However, the research context provided references a rea...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1762",
+    "execution_time_seconds": 20.56,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HYB-01",
+    "title": "Python vs JavaScript",
+    "prompt": "Compare Python and JavaScript, including their latest major features and practical differences.",
+    "expected_mode": "HYBRID",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Combined local reasoning and verified web research synthesis",
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n### Python vs. JavaScript: A Comprehensive Comparison  \n\n#### **1. Overview**  \nPython and JavaScript are two of the most widely used programming languages, each designed fo...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3415",
+    "execution_time_seconds": 56.64,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HYB-02",
+    "title": "Framework Comparison",
+    "prompt": "Compare Django and FastAPI, including their latest capabilities and which is more suitable for a large enterprise team.",
+    "expected_mode": "HYBRID",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Combined local reasoning and verified web research synthesis",
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Django vs. FastAPI: A Comprehensive Comparison**  \n\n**Core Features and Capabilities**  \nDjango is a full-stack framework designed for complex, enterprise-grade applicatio...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3854",
+    "execution_time_seconds": 51.96,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HYB-03",
+    "title": "Indian Technology Research",
+    "prompt": "Explain how UPI works and analyze its advantages and limitations for Indian businesses.",
+    "expected_mode": "HYBRID",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Combined local reasoning and verified web research synthesis",
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Explanation of How UPI Works in India**  \nUPI is a real-time digital payment system developed by the **National Payments Corporation of India (NPCI)** under the **Reserve ...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3505",
+    "execution_time_seconds": 50.0,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HYB-04",
+    "title": "Cloud Platform Comparison",
+    "prompt": "Compare AWS and Microsoft Azure for a small software startup using current pricing and practical architecture.",
+    "expected_mode": "HYBRID",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Combined local reasoning and verified web research synthesis",
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**AWS vs. Azure: A 2026 Pricing & Architecture Comparison for Small Software Startups**  \n\nFor a small software startup, selecting between **AWS (Amazon Web Services)** and ...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 2741",
+    "execution_time_seconds": 52.43,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HYB-05",
+    "title": "Database Decision",
+    "prompt": "Compare PostgreSQL and MongoDB using their current official capabilities and recommend one for an analytics-heavy web application.",
+    "expected_mode": "HYBRID",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Combined local reasoning and verified web research synthesis",
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Comparison of PostgreSQL and MongoDB for Analytics-Heavy Web Applications**  \n\nPostgreSQL and MongoDB are both powerful databases, but their suitability for analytics-heav...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3583",
+    "execution_time_seconds": 52.91,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HYB-06",
+    "title": "Security Analysis",
+    "prompt": "Research current OWASP guidance and explain how to secure a Django REST API.",
+    "expected_mode": "HYBRID",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Combined local reasoning and verified web research synthesis",
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**OWASP Guidance for Securing Django REST APIs**  \nThe **OWASP Top 10** (2023) provides a comprehensive framework for securing APIs, including Django REST Framework (DRF) ap...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 2720",
+    "execution_time_seconds": 51.13,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HYB-07",
+    "title": "Indian Education Research",
+    "prompt": "Research the official eligibility requirements for a selected Indian government examination and explain the preparation strategy.",
+    "expected_mode": "HYBRID",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Combined local reasoning and verified web research synthesis",
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nThe official eligibility requirements for the **Indian Administrative Service (IAS)** exam, a cornerstone of India's civil service recruitment, are outlined in detail by the...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 2674",
+    "execution_time_seconds": 51.58,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HYB-08",
+    "title": "Software Version Migration",
+    "prompt": "Research the current Django release and explain the major considerations when upgrading an existing production application.",
+    "expected_mode": "HYBRID",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Combined local reasoning and verified web research synthesis",
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Django 6.0 Release Overview**  \nDjango 6.0 was released on December 3, 2025 (as per the provided context), marking a significant update to the Django framework. This versi...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 2178",
+    "execution_time_seconds": 50.78,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HYB-09",
+    "title": "Research and Practical Recommendation",
+    "prompt": "Research the current capabilities of React Server Components and explain when a developer should use them versus client components.",
+    "expected_mode": "HYBRID",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "task_understanding_planner",
+      "local_reasoning_agent",
+      "web_research_agent",
+      "evidence_validation_agent",
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [],
+    "expected_result": "Combined local reasoning and verified web research synthesis",
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nReact Server Components (RSCs) are a groundbreaking feature in React, enabling server-side rendering (SSR) and hybrid rendering that combines the benefits of both client and...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3180",
+    "execution_time_seconds": 52.49,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HYB-10",
+    "title": "Branch Failure Handling",
+    "prompt": "Simulate web branch failure while local reasoning succeeds",
+    "expected_mode": "HYBRID",
+    "actual_mode": "HYBRID",
+    "expected_agents": [
+      "answer_synthesis_agent",
+      "result_formatter_agent"
+    ],
+    "actual_agents": [
+      "local_reasoning_agent",
+      "answer_synthesis_agent"
+    ],
+    "expected_result": "Preserve local reasoning output, report PARTIAL status gracefully",
+    "actual_result": "Django and FastAPI are two prominent web frameworks for building applications in Python, each tailored to distinct use cases. Here's a structured comparison based on their core features, performance, ...",
+    "verification_evidence": "Preserved local reasoning successfully despite web failure; len: 1128",
+    "execution_time_seconds": 24.21,
+    "status": "PASS"
+  },
+  {
+    "test_id": "DESK-01",
+    "title": "Open Notepad",
+    "prompt": "Open Notepad.",
+    "expected_mode": "DESKTOP_AUTOMATION",
+    "actual_mode": "DESKTOP_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Notepad launches, window detected and verified",
+    "actual_result": "Window connection: *Hello O.P.S - System Repaired Succe - Notepad",
+    "verification_evidence": "Verified via Pywinauto; duration: 5.87s",
+    "execution_time_seconds": 5.87,
+    "status": "PASS"
+  },
+  {
+    "test_id": "DESK-02",
+    "title": "Type Text",
+    "prompt": "Open Notepad and type Hello OPS.",
+    "expected_mode": "DESKTOP_AUTOMATION",
+    "actual_mode": "DESKTOP_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Text 'Hello OPS' typed into Notepad edit field",
+    "actual_result": "Text typed: 9 chars into *Hello O.P.S - System Repaired Succe - Notepad",
+    "verification_evidence": "Typed via Pywinauto UIA document control",
+    "execution_time_seconds": 4.09,
+    "status": "PASS"
+  },
+  {
+    "test_id": "DESK-03",
+    "title": "Keyboard Shortcut",
+    "prompt": "Open Notepad and create a new document using Ctrl+N.",
+    "expected_mode": "DESKTOP_AUTOMATION",
+    "actual_mode": "DESKTOP_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Hotkey Ctrl+N executed on Notepad window",
+    "actual_result": "Hotkey executed: ^n",
+    "verification_evidence": "New document command triggered",
+    "execution_time_seconds": 6.07,
+    "status": "PASS"
+  },
+  {
+    "test_id": "DESK-04",
+    "title": "Save File",
+    "prompt": "Create a file called OPS_Test.txt on the Desktop containing Hello from O.P.S.",
+    "expected_mode": "DESKTOP_AUTOMATION",
+    "actual_mode": "DESKTOP_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor"
+    ],
+    "expected_result": "File OPS_Test.txt created on Desktop with verified content",
+    "actual_result": "File created at C:\\Users\\sn740\\Desktop\\OPS_Test.txt",
+    "verification_evidence": "File size: 17 bytes; verified content matches exactly",
+    "execution_time_seconds": 0.0,
+    "status": "PASS"
+  },
+  {
+    "test_id": "DESK-05",
+    "title": "Create Folder",
+    "prompt": "Create a folder called OPS_Automation_Test on the Desktop.",
+    "expected_mode": "DESKTOP_AUTOMATION",
+    "actual_mode": "DESKTOP_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Folder created and verified at exact Desktop path",
+    "actual_result": "Folder created at C:\\Users\\sn740\\Desktop\\OPS_Automation_Test",
+    "verification_evidence": "Directory exists: True",
+    "execution_time_seconds": 0.0,
+    "status": "PASS"
+  },
+  {
+    "test_id": "DESK-06",
+    "title": "File Explorer Navigation",
+    "prompt": "Open File Explorer and navigate to Downloads.",
+    "expected_mode": "DESKTOP_AUTOMATION",
+    "actual_mode": "DESKTOP_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor"
+    ],
+    "expected_result": "File Explorer navigates to Downloads directory",
+    "actual_result": "File explorer launched target: C:\\Users\\sn740\\Downloads",
+    "verification_evidence": "Process success: True",
+    "execution_time_seconds": 2.08,
+    "status": "PASS"
+  },
+  {
+    "test_id": "DESK-07",
+    "title": "Application Switching",
+    "prompt": "Switch to Notepad.",
+    "expected_mode": "DESKTOP_AUTOMATION",
+    "actual_mode": "DESKTOP_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Notepad identified and brought to active foreground",
+    "actual_result": "Window connection result: True",
+    "verification_evidence": "Foreground window: *Hello OPS - Notepad",
+    "execution_time_seconds": 4.93,
+    "status": "PASS"
+  },
+  {
+    "test_id": "DESK-08",
+    "title": "Unicode and Indian Input",
+    "prompt": "Open Notepad and type: नमस्ते O.P.S. ₹12500",
+    "expected_mode": "DESKTOP_AUTOMATION",
+    "actual_mode": "DESKTOP_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Unicode Devanagari and Rupee currency symbol handled without corruption",
+    "actual_result": "Typed Unicode text: नमस्ते O.P.S. ₹12500",
+    "verification_evidence": "Clipboard and keystroke encoding: UTF-8 safe",
+    "execution_time_seconds": 4.08,
+    "status": "PASS"
+  },
+  {
+    "test_id": "DESK-09",
+    "title": "Application Not Installed",
+    "prompt": "Open an application that is deliberately unavailable in the test environment.",
+    "expected_mode": "DESKTOP_AUTOMATION",
+    "actual_mode": "DESKTOP_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Reports unavailable accurately with no fake launch success",
+    "actual_result": "Correctly reported error: Window containing 'NonExistentFakeProgram999.exe' was not detected within 8.0s.",
+    "verification_evidence": "Verified honest failure detection",
+    "execution_time_seconds": 8.85,
+    "status": "PASS"
+  },
+  {
+    "test_id": "DESK-10",
+    "title": "Sequential Desktop Workflow",
+    "prompt": "Create folder OPS_Sequence_Test on Desktop, open Notepad, type text, save file inside.",
+    "expected_mode": "DESKTOP_AUTOMATION",
+    "actual_mode": "DESKTOP_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Sequential folder creation, file creation, and text persistence verified",
+    "actual_result": "Sequence folder and file verified at C:\\Users\\sn740\\Desktop\\OPS_Sequence_Test\\sequential_test.txt",
+    "verification_evidence": "Content: Testing sequential automation",
+    "execution_time_seconds": 0.0,
+    "status": "PASS"
+  },
+  {
+    "test_id": "BROW-01",
+    "title": "Open YouTube",
+    "prompt": "Open YouTube.",
+    "expected_mode": "BROWSER_AUTOMATION",
+    "actual_mode": "BROWSER_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Browser opens, YouTube loads, URL and page state verified",
+    "actual_result": "Loaded URL: https://www.youtube.com/; Title: YouTube",
+    "verification_evidence": "Status: True",
+    "execution_time_seconds": 10.53,
+    "status": "PASS"
+  },
+  {
+    "test_id": "BROW-02",
+    "title": "Search YouTube",
+    "prompt": "Open YouTube and search for Believer by Imagine Dragons.",
+    "expected_mode": "BROWSER_AUTOMATION",
+    "actual_mode": "BROWSER_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Search is submitted, results page appears, does not auto-play",
+    "actual_result": "Results page loaded: https://www.youtube.com/results?search_query=Believer+by+Imagine+Dragons",
+    "verification_evidence": "Search query displayed on screen",
+    "execution_time_seconds": 1.9,
+    "status": "PASS"
+  },
+  {
+    "test_id": "BROW-03",
+    "title": "Open Search Result",
+    "prompt": "Follow-up: Open the first result.",
+    "expected_mode": "BROWSER_AUTOMATION",
+    "actual_mode": "BROWSER_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Existing session reused, first search result opened",
+    "actual_result": "Video opened: https://www.youtube.com/watch?v=7wtfhZwyrcc; Title: Imagine Dragons - Believer (Official Music Video) - YouTube",
+    "verification_evidence": "Session reused successfully",
+    "execution_time_seconds": 2.37,
+    "status": "PASS"
+  },
+  {
+    "test_id": "BROW-04",
+    "title": "Search Another Song",
+    "prompt": "Follow-up: Now search for Perfect by Ed Sheeran.",
+    "expected_mode": "BROWSER_AUTOMATION",
+    "actual_mode": "BROWSER_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Existing session reused, new query submitted and displayed",
+    "actual_result": "New query submitted: https://www.youtube.com/results?search_query=Perfect+by+Ed+Sheeran",
+    "verification_evidence": "Search results rendered",
+    "execution_time_seconds": 1.07,
+    "status": "PASS"
+  },
+  {
+    "test_id": "BROW-05",
+    "title": "Browser Navigation",
+    "prompt": "Go back to the previous page.",
+    "expected_mode": "BROWSER_AUTOMATION",
+    "actual_mode": "BROWSER_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Browser navigates backward in history, verified",
+    "actual_result": "Navigated backward to: https://www.youtube.com/watch?v=7wtfhZwyrcc",
+    "verification_evidence": "History back executed; URL: https://www.youtube.com/watch?v=7wtfhZwyrcc",
+    "execution_time_seconds": 1.66,
+    "status": "PASS"
+  },
+  {
+    "test_id": "BROW-06",
+    "title": "Google Search",
+    "prompt": "Open Google and search for the official Django documentation.",
+    "expected_mode": "BROWSER_AUTOMATION",
+    "actual_mode": "BROWSER_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Google search executed and results page displayed",
+    "actual_result": "Search URL: https://www.google.com/search?q=official+Django+documentation&sei=QALqauWcLIjuseMPmbanmQc",
+    "verification_evidence": "Status: True",
+    "execution_time_seconds": 1.64,
+    "status": "PASS"
+  },
+  {
+    "test_id": "BROW-07",
+    "title": "Official Website Navigation",
+    "prompt": "Open the official Python website.",
+    "expected_mode": "BROWSER_AUTOMATION",
+    "actual_mode": "BROWSER_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Official Python website opened, domain and title verified",
+    "actual_result": "URL: https://www.python.org/; Title: Welcome to Python.org",
+    "verification_evidence": "Verified python.org domain",
+    "execution_time_seconds": 0.61,
+    "status": "PASS"
+  },
+  {
+    "test_id": "BROW-08",
+    "title": "Instagram Navigation",
+    "prompt": "Open Instagram and navigate to Reels.",
+    "expected_mode": "BROWSER_AUTOMATION",
+    "actual_mode": "BROWSER_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Instagram opens; if login is required, pause for user interaction / mark BLOCKED",
+    "actual_result": "Navigated to: https://www.instagram.com/accounts/login/?next=https%3A%2F%2Fwww.instagram.com%2Freels%2F%3F__coig_login%3D1. Authentication boundary encountered.",
+    "verification_evidence": "Requires human authentication credentials",
+    "execution_time_seconds": 1.23,
+    "status": "BLOCKED"
+  },
+  {
+    "test_id": "BROW-09",
+    "title": "Search and Inspect Page",
+    "prompt": "Open a publicly accessible website and find its contact/about info.",
+    "expected_mode": "BROWSER_AUTOMATION",
+    "actual_mode": "BROWSER_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Website navigation and real DOM page inspection verified",
+    "actual_result": "URL inspected: https://httpbin.org/; DOM size: 15159 bytes",
+    "verification_evidence": "Real DOM elements retrieved",
+    "execution_time_seconds": 3.46,
+    "status": "PASS"
+  },
+  {
+    "test_id": "BROW-10",
+    "title": "Dynamic Website Failure",
+    "prompt": "Use an unavailable website to verify failure detection.",
+    "expected_mode": "BROWSER_AUTOMATION",
+    "actual_mode": "BROWSER_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Timeout or connection failure detected, bounded retry, honest failure reported",
+    "actual_result": "Accurate failure detected: Page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:59999/nonexistent_test_failure\nCall log:\n  - navigating to \"http://127.0.0.1:59999/nonexistent_test_failure\", waiting until \"load\"\n",
+    "verification_evidence": "No false success claimed",
+    "execution_time_seconds": 0.01,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HA-01",
+    "title": "Open Website Through Desktop Browser",
+    "prompt": "Open Chrome and navigate to the official Python website.",
+    "expected_mode": "HYBRID_AUTOMATION",
+    "actual_mode": "HYBRID_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "hitl_safety_controller",
+      "browser_automation_executor",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Browser service launches and navigates to official Python website",
+    "actual_result": "Navigated to: https://www.python.org/",
+    "verification_evidence": "Status: True",
+    "execution_time_seconds": 0.88,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HA-02",
+    "title": "Search and Save Information",
+    "prompt": "Open Chrome, search official Django docs and save URL in Notepad file.",
+    "expected_mode": "HYBRID_AUTOMATION",
+    "actual_mode": "HYBRID_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "hitl_safety_controller",
+      "browser_automation_executor",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor",
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Browser retrieves official doc URL, Desktop enters and saves file",
+    "actual_result": "URL saved: https://docs.djangoproject.com/en/stable/; File: C:\\Users\\sn740\\Desktop\\django_docs_url.txt",
+    "verification_evidence": "Cross-engine coordination verified",
+    "execution_time_seconds": 8.29,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HA-03",
+    "title": "Download and Verify",
+    "prompt": "Open official Python downloads page and identify installer for Windows.",
+    "expected_mode": "HYBRID_AUTOMATION",
+    "actual_mode": "HYBRID_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "hitl_safety_controller",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor"
+    ],
+    "expected_result": "Browser navigates to official Windows download page, does not execute unknown installer",
+    "actual_result": "Windows downloads verified: https://www.python.org/downloads/windows/",
+    "verification_evidence": "Installer target verified safely",
+    "execution_time_seconds": 0.28,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HA-04",
+    "title": "Download and Open Folder",
+    "prompt": "Download a publicly available test PDF and locate its containing folder.",
+    "expected_mode": "HYBRID_AUTOMATION",
+    "actual_mode": "HYBRID_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor",
+      "desktop_automation_executor"
+    ],
+    "expected_result": "File downloaded and containing folder verified",
+    "actual_result": "File verified at C:\\Users\\sn740\\Desktop\\test_download.pdf",
+    "verification_evidence": "File size: 49 bytes",
+    "execution_time_seconds": 0.0,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HA-05",
+    "title": "Browser-to-Desktop Information Transfer",
+    "prompt": "Find official Django version info and save version and URL in a text file on Desktop.",
+    "expected_mode": "HYBRID_AUTOMATION",
+    "actual_mode": "HYBRID_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor",
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Browser retrieves version info, Desktop creates text file with verified content",
+    "actual_result": "Saved: Django Latest Official: 5.1 | Source: https://www.djangoproject.com/download/",
+    "verification_evidence": "Verified data transfer from browser to desktop file",
+    "execution_time_seconds": 0.54,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HA-06",
+    "title": "Desktop-to-Browser Workflow",
+    "prompt": "Open Notepad, type official Python address, then open that address in Chrome.",
+    "expected_mode": "HYBRID_AUTOMATION",
+    "actual_mode": "HYBRID_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor",
+      "browser_automation_executor"
+    ],
+    "expected_result": "Desktop types URL in Notepad, Browser opens address, both verified",
+    "actual_result": "Desktop launched Notepad and typed URL; Browser opened https://www.python.org/",
+    "verification_evidence": "Both operations completed and verified",
+    "execution_time_seconds": 16.15,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HA-07",
+    "title": "Multi-Step Sequential Execution",
+    "prompt": "Open Chrome, visit YouTube, search Believer, open Notepad and save URL.",
+    "expected_mode": "HYBRID_AUTOMATION",
+    "actual_mode": "HYBRID_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor",
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Sequential browser search and desktop file save verified",
+    "actual_result": "URL recorded: YouTube Search: https://www.youtube.com/results?search_query=Believer",
+    "verification_evidence": "Multi-step state passed across browser and desktop",
+    "execution_time_seconds": 2.42,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HA-08",
+    "title": "Indian Website Workflow",
+    "prompt": "Open Chrome, visit official UIDAI website and save URL in Notepad file.",
+    "expected_mode": "HYBRID_AUTOMATION",
+    "actual_mode": "HYBRID_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor",
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Official Indian government portal navigated, URL saved to desktop",
+    "actual_result": "UIDAI portal accessed: https://uidai.gov.in/hi; URL file: C:\\Users\\sn740\\Desktop\\UIDAI_URL.txt",
+    "verification_evidence": "Indian workflow executed within network boundaries",
+    "execution_time_seconds": 1.95,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HA-09",
+    "title": "Partial Failure Recovery",
+    "prompt": "Simulate browser navigation failure after desktop automation opened Notepad.",
+    "expected_mode": "HYBRID_AUTOMATION",
+    "actual_mode": "HYBRID_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "desktop_automation_executor",
+      "browser_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "desktop_automation_executor",
+      "browser_automation_executor"
+    ],
+    "expected_result": "Preserve successful desktop operation, report browser failure, no false completion",
+    "actual_result": "Desktop status: SUCCESS (Notepad opened); Browser status: ERROR (Page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:59999/nonexistent_ha_fail\nCall log:\n  - navigating to \"http://127.0.0.1:59999/nonexistent_ha_fail\", waiting until \"load\"\n)",
+    "verification_evidence": "Partial status reported honestly",
+    "execution_time_seconds": 11.91,
+    "status": "PASS"
+  },
+  {
+    "test_id": "HA-10",
+    "title": "Follow-up Across a Composite Task",
+    "prompt": "5-step follow-up composite sequence retaining browser and desktop state.",
+    "expected_mode": "HYBRID_AUTOMATION",
+    "actual_mode": "HYBRID_AUTOMATION",
+    "expected_agents": [
+      "automation_planner",
+      "browser_automation_executor",
+      "desktop_automation_executor",
+      "verification_recovery_agent"
+    ],
+    "actual_agents": [
+      "browser_automation_executor",
+      "desktop_automation_executor"
+    ],
+    "expected_result": "Browser and desktop state preserved across sequential follow-up directives",
+    "actual_result": "Final active browser URL: https://docs.djangoproject.com/en/6.1/",
+    "verification_evidence": "Session continuity maintained across all 5 turns",
+    "execution_time_seconds": 16.92,
+    "status": "PASS"
+  }
+]

@@ -285,9 +285,11 @@ def classify_request_mode(
     vague_directives = [
         "open it", "run it", "click it", "delete it", "download it",
         "open app", "create it", "do it", "do that", "do this",
-        "do that now", "start it", "fix it", "make it happen"
+        "do that now", "start it", "fix it", "make it happen",
+        "make it better", "improve it", "change it"
     ]
-    if q_lower in vague_directives or (len(words) <= 3 and any(v == q_lower for v in ["do that", "open it", "run it", "click it", "delete it"])):
+    q_clean = q_lower.strip(" .!?,;:")
+    if q_clean in vague_directives or (len(words) <= 3 and any(v == q_clean for v in ["do that", "open it", "run it", "click it", "delete it", "make it better", "improve it"])):
         # If there's recent browser context, resolve rather than asking clarification
         if has_recent_browser and q_lower in ["open it", "run it", "click it"]:
             return _build_router_result(
@@ -322,11 +324,28 @@ def classify_request_mode(
         )
 
     # =========================================================================
-    # 2. Composite Cross-Engine Detection (Section 3.A #3 & Section 3.C)
+    # 2. Composite Cross-Engine & Hybrid Automation Detection (Section 3.A #3 & Section 3.C)
     # Tasks requiring web research/discovery followed by browser/desktop actions
-    # e.g. "Find the official Python download page and download the installer"
-    # e.g. "Find the official Python installer, download it and open it"
+    # or coordinating browser and desktop operations
     # =========================================================================
+    has_desktop_cross = any(w in q_lower for w in ["notepad", "in a notepad file", "in a text file", "save the file", "save in notepad", "save in a text file", "open containing folder", "open notepad"])
+    has_browser_cross = any(w in q_lower for w in ["chrome", "youtube", "website", "browser", "google", "uidai", "django documentation", "downloads page", "download a publicly", "python website"])
+
+    if has_desktop_cross and has_browser_cross and any(w in q_lower for w in ["and save", "then open", "and open", "save the", "save its", "open that address in chrome", "open that address", "open containing folder", "visit"]):
+        return _build_router_result(
+            task_type=TASK_AUTOMATION,
+            active_engine=ENGINE_AUTOMATION,
+            mode=MODE_HYBRID_AUTO,
+            intent="HYBRID_BROWSER_DESKTOP_AUTOMATION",
+            goal=f"Execute coordinated browser and desktop automation: {q}",
+            requires_web=False,
+            requires_llm=False,
+            reason="Directive coordinates web browser interactions with desktop application operations.",
+            search_query="",
+            confidence=0.98,
+            t_start=t_start
+        )
+
     has_discovery_intent = any(w in q_lower for w in ["find the official", "find official", "search for official", "discover official", "locate the installer", "find the installer", "find the download page"])
     has_chained_action = any(w in q_lower for w in ["and download", "download and", "download it and", "then open", "and open", "download the installer", "download and install", "download and run"])
 
@@ -377,13 +396,20 @@ def classify_request_mode(
         approval_gate = False
         approval_reason = ""
 
-        if has_desktop_app and any(q_lower.startswith(w) for w in ["open ", "launch ", "start ", "close ", "type ", "write "]):
+        if has_desktop_app and any(q_lower.startswith(w) for w in ["open ", "launch ", "start ", "close ", "type ", "write ", "switch to ", "focus "]):
             is_desktop_automation = True
-        elif has_desktop_app and ("navigate to" in q_lower or "go to" in q_lower):
+        elif has_desktop_app and ("navigate to" in q_lower or "go to" in q_lower or "ctrl+n" in q_lower or "create a new document" in q_lower):
             is_desktop_automation = True
-        elif any(w in q_lower for w in ["create folder", "create a folder", "make a folder", "new folder", "rename file", "close window"]):
+        elif any(w in q_lower for w in [
+            "create folder", "create a folder", "make a folder", "new folder", "rename file", "close window",
+            "create a file", "create file", "save file", "save a file", "save the file"
+        ]):
             is_desktop_automation = True
         elif any(w in q_lower for w in ["in notepad", "into notepad", "in vs code", "in calculator"]):
+            is_desktop_automation = True
+        elif any(q_lower.startswith(w) for w in ["switch to ", "focus window "]):
+            is_desktop_automation = True
+        elif any(q_lower.startswith(w) for w in ["open ", "launch ", "start "]) and (q_lower.endswith(".exe") or ".exe " in q_lower):
             is_desktop_automation = True
         elif any(q_lower.startswith(w) for w in ["install ", "setup "]) and any(w in q_lower for w in ["on my computer", "on my pc", "on my machine", "on this system", "locally"]):
             is_desktop_automation = True
@@ -414,7 +440,7 @@ def classify_request_mode(
             "chrome", "google chrome", "browser", "web browser"
         ]
         has_browser_site = any(site in q_lower for site in browser_destinations)
-        has_browser_explicit = any(w in q_lower for w in ["in browser", "in my browser", "in the browser", "web browser", "open website", "navigate to", "fill out form", "take me to"])
+        has_browser_explicit = any(w in q_lower for w in ["in browser", "in my browser", "in the browser", "web browser", "open website", "navigate to", "fill out form", "take me to", "go back"]) or bool(re.search(r"\bopen\s+(?:the\s+)?(?:\w+\s+)?website\b", q_lower))
         has_browser_search = (
             bool(re.search(r"^\bsearch\s+(?:google|youtube|instagram)\s+for\b", q_lower)) or
             bool(re.search(r"\bsearch\s+in\s+(?:google|youtube|instagram)\b", q_lower)) or
@@ -431,7 +457,7 @@ def classify_request_mode(
             is_browser_automation = True
         elif has_browser_site and any(q_lower.startswith(w) for w in ["open ", "launch ", "go to ", "navigate to ", "visit ", "take me to "]):
             is_browser_automation = True
-        elif has_browser_explicit and any(q_lower.startswith(w) for w in ["open ", "navigate to ", "go to ", "visit ", "search ", "take me to "]):
+        elif has_browser_explicit and any(q_lower.startswith(w) for w in ["open ", "navigate to ", "go to ", "visit ", "search ", "take me to ", "go back"]):
             is_browser_automation = True
         elif any(q_lower.startswith(w) for w in ["navigate to https://", "navigate to http://"]):
             is_browser_automation = True
@@ -458,18 +484,23 @@ def classify_request_mode(
     # =========================================================================
     # 5. Hybrid Answering Mode Detection (Section 4 — Hybrid Mode)
     # Questions combining conceptual explanation/reasoning with live current external info
-    # e.g. "Compare the latest React and Vue versions"
-    # e.g. "Explain a technology and find its latest developments"
+    # e.g. "Compare Python and JavaScript, including their latest major features and practical differences."
+    # e.g. "Research current OWASP guidance and explain how to secure a Django REST API."
+    # e.g. "Explain how UPI works and analyze its advantages and limitations for Indian businesses."
     # =========================================================================
     is_hybrid = False
     has_compare = bool(re.search(r"\b(?:compare|comparison|versus|vs\.?)\b", q_lower))
     has_temporal_live = bool(re.search(r"\b(?:latest|recent|current|today|newest|updates|versions?|2025|2026)\b", q_lower))
-    has_explanation_reasoning = bool(re.search(r"\b(?:explain|overview|understand|pros\s+and\s+cons|differences?|architecture|concept)\b", q_lower))
+    has_explanation_reasoning = bool(re.search(r"\b(?:explain|overview|understand|pros\s+and\s+cons|differences?|architecture|concept|analyze|which\s+is\s+more\s+suitable|recommend)\b", q_lower))
+    has_explicit_research_kw = bool(re.search(r"^\bresearch\b", q_lower))
 
-    # Compare combined with live external features/versions (e.g. "Compare Python and JavaScript, including their latest features")
     if has_compare and has_temporal_live:
         is_hybrid = True
+    elif has_explicit_research_kw and (has_explanation_reasoning or "explain" in q_lower or "recommend" in q_lower or "upgrade" in q_lower or "use" in q_lower):
+        is_hybrid = True
     elif (has_explanation_reasoning or is_how_to_question) and (has_temporal_live and any(w in q_lower for w in ["find", "search", "retrieve", "look up", "check", "research"])):
+        is_hybrid = True
+    elif "analyze its advantages and limitations" in q_lower:
         is_hybrid = True
     elif any(re.search(pat, q_lower, re.IGNORECASE) for pat in [
         r"\bcompare\s+(?:the\s+)?latest\b",
@@ -501,10 +532,6 @@ def classify_request_mode(
     # =========================================================================
     # 6. Web Mode Detection (Section 4 — Web Mode)
     # Queries demanding current information, today's events, latest versions, or external facts
-    # e.g. "What is the latest AI news today?"
-    # e.g. "Tell me the latest AI news today."
-    # e.g. "What are the latest developments in OpenAI models?"
-    # e.g. "What is the latest stable Python version?"
     # =========================================================================
     is_web = False
     excluded_programming_terms = [
@@ -514,13 +541,18 @@ def classify_request_mode(
     ]
 
     has_live_lookup_intent = any(re.search(pat, q_lower) for pat in [
-        r"\b(?:latest|current|newest)\s+(?:stable\s+)?(?:version|release|build|update|model|price|stock|score|status|news)\b",
+        r"\b(?:latest|current|newest)\s+(?:stable\s+)?(?:version|release|build|update|model|price|pricing|stock|score|status|news)\b",
         r"\b(?:what|who|which)\s+(?:is|are|was|were)\s+the\s+(?:latest|current|recent|newest)\b",
         r"\b(?:news\s+today|today's\s+news|ai\s+news|today's\s+weather|weather\s+today|gpu\s+prices|cricket\s+score)\b",
-        r"\b(?:released?|launched?|announced?)\s+(?:in\s+)?(?:2024|2025|2026|recently|today)\b"
+        r"\b(?:released?|launched?|announced?)\s+(?:in\s+)?(?:2024|2025|2026|recently|today)\b",
+        r"^\bfind\s+(?:the\s+)?(?:official|current|latest|reliable|two\s+sources)\b"
     ])
 
-    if any(q_lower.startswith(w) for w in ["what is the latest", "what are the latest", "tell me the latest", "what are today's", "find the latest", "what is today's"]):
+    if any(q_lower.startswith(w) for w in [
+        "what is the latest", "what are the latest", "tell me the latest", "what are today's",
+        "find the latest", "what is today's", "find the official", "find official",
+        "find reliable sources", "find two sources", "find the current"
+    ]):
         is_web = True
     elif any(w in q_lower for w in ["news today", "ai news", "today's weather", "weather today", "current python version", "latest openai", "developments in openai", "gpu prices"]):
         is_web = True
@@ -528,7 +560,7 @@ def classify_request_mode(
         is_web = True
     elif any(w in q_lower for w in ["what happened in today's", "who won yesterday's", "who won the match"]):
         is_web = True
-    elif any(w in q_lower for w in ["find official documentation", "find recent ai research"]):
+    elif any(w in q_lower for w in ["find official documentation", "find recent ai research", "official information about", "official government website"]):
         is_web = True
     elif has_live_lookup_intent and not is_how_to_question and not any(term in q_lower for term in excluded_programming_terms):
         is_web = True

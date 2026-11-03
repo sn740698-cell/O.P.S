@@ -112,6 +112,21 @@ def route_after_answer_synthesis(state: CentralGraphState) -> str:
     return "result_formatter_agent"
 
 
+def route_after_browser_executor(state: CentralGraphState) -> str:
+    """
+    In hybrid automation workflows, after browser actions complete,
+    proceeds to desktop automation executor if desktop steps exist.
+    Otherwise routes directly to verification recovery.
+    """
+    steps = state.get("execution_plan", [])
+    has_desktop_steps = any(s.get("executor") == "desktop" for s in steps)
+    auto_res = state.get("automation_results", {})
+    desktop_done = len(auto_res.get("desktop_results", [])) > 0
+    if has_desktop_steps and not desktop_done:
+        return "desktop_automation_executor"
+    return "verification_recovery_agent"
+
+
 def build_central_ops_graph():
     """
     Constructs and compiles the canonical 13-component LangGraph orchestrator.
@@ -185,9 +200,16 @@ def build_central_ops_graph():
         }
     )
 
-    # Post-Execution -> Verification
+    # Post-Execution -> Verification (supports chained Hybrid Automation)
     workflow.add_edge("desktop_automation_executor", "verification_recovery_agent")
-    workflow.add_edge("browser_automation_executor", "verification_recovery_agent")
+    workflow.add_conditional_edges(
+        "browser_automation_executor",
+        route_after_browser_executor,
+        {
+            "desktop_automation_executor": "desktop_automation_executor",
+            "verification_recovery_agent": "verification_recovery_agent"
+        }
+    )
     workflow.add_edge("verification_recovery_agent", "result_formatter_agent")
 
     # 6. Composite Coordination Path

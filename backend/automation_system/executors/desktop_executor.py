@@ -48,6 +48,9 @@ class DesktopExecutor:
         elif app_name.lower() in ["calc", "calculator", "calc.exe"]:
             executable = "calc.exe"
             expected_title = "Calculator"
+        elif app_name.lower() in ["explorer", "explorer.exe", "file explorer"]:
+            executable = "explorer.exe"
+            expected_title = "Downloads" if (cmd_args and any("downloads" in a.lower() for a in cmd_args)) else "File Explorer"
         else:
             expected_title = app_name
 

@@ -85,7 +85,19 @@ class OllamaProvider:
             response = self._client.post(url, json=payload, timeout=timeout)
             response.raise_for_status()
             data = response.json()
-            return data.get("response", "").strip()
+            resp_text = data.get("response", "").strip()
+            if not resp_text and data.get("thinking"):
+                th = data.get("thinking", "")
+                if "```" in th:
+                    parts = th.split("```")
+                    if len(parts) >= 3:
+                        resp_text = f"```\n{parts[1].strip()}\n```"
+                if not resp_text:
+                    resp_text = th.strip()
+            if resp_text:
+                return resp_text
+            # If still empty, raise to trigger model fallback
+            raise ValueError(f"Model {model} returned empty response")
         except Exception as e:
             logger.error(f"Ollama generation error ({model}): {e}")
             if model != MODEL_QWEN_0_6B:
@@ -94,7 +106,18 @@ class OllamaProvider:
                     payload["model"] = MODEL_QWEN_0_6B
                     resp2 = self._client.post(url, json=payload, timeout=40.0)
                     if resp2.status_code == 200:
-                        return resp2.json().get("response", "").strip()
+                        d2 = resp2.json()
+                        t2 = d2.get("response", "").strip()
+                        if not t2 and d2.get("thinking"):
+                            th2 = d2.get("thinking", "")
+                            if "```" in th2:
+                                parts2 = th2.split("```")
+                                if len(parts2) >= 3:
+                                    t2 = f"```\n{parts2[1].strip()}\n```"
+                            if not t2:
+                                t2 = th2.strip()
+                        if t2:
+                            return t2
                 except Exception as e2:
                     logger.warning(f"Fallback model error: {e2}")
             raise e
