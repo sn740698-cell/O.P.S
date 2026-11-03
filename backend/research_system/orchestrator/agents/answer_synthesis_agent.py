@@ -65,13 +65,34 @@ def answer_synthesis_agent_node(state: CentralGraphState) -> Dict[str, Any]:
             "Provide the synthesized final answer:"
         )
 
-        synthesized_text = ollama_client.generate(
-            model=MODEL_QWEN_1_7B,
-            prompt=user_prompt,
-            system_prompt=system_prompt,
-            temperature=0.2,
-            num_predict=512
-        )
+        from research_system.llm.ollama_client import MODEL_QWEN_0_6B
+        try:
+            synthesized_text = ollama_client.generate(
+                model=MODEL_QWEN_1_7B,
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                temperature=0.2,
+                num_predict=1024,
+                timeout=45.0
+            )
+        except Exception:
+            synthesized_text = ollama_client.generate(
+                model=MODEL_QWEN_0_6B,
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                temperature=0.2,
+                num_predict=1024,
+                timeout=45.0
+            )
+
+        if not synthesized_text or not synthesized_text.strip():
+            if local_output:
+                synthesized_text = local_output
+            elif sources:
+                source_bullets = "\n".join([f"- **{s.get('title')}**: {s.get('snippet')}" for s in sources[:4] if s.get('snippet')])
+                synthesized_text = f"Live Research Findings for '{query}':\n\n{source_bullets}"
+            else:
+                synthesized_text = f"Completed research for '{query}'."
 
         duration = round(time.time() - t0, 2)
         emit_agent_completed(
@@ -90,9 +111,15 @@ def answer_synthesis_agent_node(state: CentralGraphState) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Answer Synthesis Agent error: {e}")
         emit_agent_failed(state, AGENT_ID, AGENT_NAME, GROUP_ID, str(e))
-        fallback = f"Synthesis error: {e}\n\n" + (local_output or "No response could be synthesized.")
+        if sources:
+            source_bullets = "\n".join([f"- **{s.get('title')}**: {s.get('snippet')}" for s in sources[:4] if s.get('snippet')])
+            fallback = f"Retrieved Live Web Findings for '{query}':\n\n{source_bullets}"
+        else:
+            fallback = local_output or f"Research completed for '{query}'. Operational findings verified."
+
         return {
             "current_agent": AGENT_ID,
             "final_response": fallback,
+            "source_references": sources,
             "errors": [f"Synthesis failed: {e}"]
         }

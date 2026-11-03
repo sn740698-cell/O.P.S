@@ -88,6 +88,15 @@ class OllamaProvider:
             return data.get("response", "").strip()
         except Exception as e:
             logger.error(f"Ollama generation error ({model}): {e}")
+            if model != MODEL_QWEN_0_6B:
+                try:
+                    logger.info(f"Attempting resilient local fallback to {MODEL_QWEN_0_6B}...")
+                    payload["model"] = MODEL_QWEN_0_6B
+                    resp2 = self._client.post(url, json=payload, timeout=40.0)
+                    if resp2.status_code == 200:
+                        return resp2.json().get("response", "").strip()
+                except Exception as e2:
+                    logger.warning(f"Fallback model error: {e2}")
             raise e
 
     def embed(

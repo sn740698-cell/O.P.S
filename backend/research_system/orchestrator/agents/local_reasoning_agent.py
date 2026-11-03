@@ -112,13 +112,25 @@ def local_reasoning_agent_node(state: CentralGraphState) -> Dict[str, Any]:
             "code examples where relevant, and clear conceptual breakdowns."
         )
 
-        response_text = ollama_client.generate(
-            model=MODEL_QWEN_1_7B,
-            prompt=f"User Query:\n{query}\n\nProvide a comprehensive, authoritative explanation.",
-            system_prompt=system_prompt,
-            temperature=0.2,
-            num_predict=512
-        )
+        from research_system.llm.ollama_client import MODEL_QWEN_0_6B
+        try:
+            response_text = ollama_client.generate(
+                model=MODEL_QWEN_1_7B,
+                prompt=f"User Query:\n{query}\n\nProvide a comprehensive, authoritative explanation.",
+                system_prompt=system_prompt,
+                temperature=0.2,
+                num_predict=1024,
+                timeout=45.0
+            )
+        except Exception:
+            response_text = ollama_client.generate(
+                model=MODEL_QWEN_0_6B,
+                prompt=f"User Query:\n{query}\n\nProvide a comprehensive, authoritative explanation.",
+                system_prompt=system_prompt,
+                temperature=0.2,
+                num_predict=1024,
+                timeout=45.0
+            )
 
         duration = round(time.time() - t0, 2)
         snippet = response_text[:120] + "..." if len(response_text) > 120 else response_text

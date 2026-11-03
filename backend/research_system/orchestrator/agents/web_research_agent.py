@@ -43,20 +43,30 @@ def web_research_agent_node(state: CentralGraphState) -> Dict[str, Any]:
     try:
         # Build synthetic research state for the sub-workers
         from research_system.graph.state import ResearchState
+        
+        # Check India-specific context
+        is_india_context = any(w in query.lower() for w in ["inr", "rupee", "rupees", "india", "indian", "gst", "delhi", "mumbai", "bengaluru", "bangalore"])
+        search_q = query
+        if is_india_context and not any(w in query.lower() for w in ["india", "inr"]):
+            search_q = f"{query} India"
+
         sub_state: ResearchState = {
             "conversation_id": conv_id,
             "request_id": req_id,
             "user_query": query,
+            "query": search_q,
             "core_topic": query,
             "key_entities": [],
             "complexity_level": "moderate",
             "is_ambiguous": False,
             "clarification_prompt": "",
             "subquestions": [query],
-            "search_queries": [query],
+            "search_queries": [search_q],
             "raw_search_results": [],
+            "search_results": [],
             "selected_urls": [],
             "retrieved_pages": [],
+            "crawled_pages": [],
             "extracted_contents": [],
             "processed_chunks": [],
             "analyzed_evidence": [],
@@ -77,8 +87,11 @@ def web_research_agent_node(state: CentralGraphState) -> Dict[str, Any]:
         emit_agent_progress(state, AGENT_ID, AGENT_NAME, GROUP_ID, "Querying search provider for authoritative sources...")
         search_res = search_worker_node(sub_state)
         sub_state.update(search_res)
+        found_results = sub_state.get("search_results", []) or sub_state.get("raw_search_results", [])
+        sub_state["search_results"] = found_results
+        sub_state["raw_search_results"] = found_results
 
-        sources_count = len(sub_state.get("raw_search_results", []))
+        sources_count = len(found_results)
         event_bus.publish(
             request_id=req_id,
             execution_id=task_id,
@@ -103,7 +116,11 @@ def web_research_agent_node(state: CentralGraphState) -> Dict[str, Any]:
         crawl_res = crawling_worker_node(sub_state)
         sub_state.update(crawl_res)
 
-        pages_count = len(sub_state.get("retrieved_pages", []))
+        crawled_pages = sub_state.get("crawled_pages", []) or sub_state.get("retrieved_pages", [])
+        sub_state["crawled_pages"] = crawled_pages
+        sub_state["retrieved_pages"] = crawled_pages
+
+        pages_count = len(crawled_pages)
         event_bus.publish(
             request_id=req_id,
             execution_id=task_id,
@@ -127,29 +144,55 @@ def web_research_agent_node(state: CentralGraphState) -> Dict[str, Any]:
         sub_state.update(proc_res)
 
         processed_chunks = sub_state.get("processed_chunks", [])
-        retrieved_pages = sub_state.get("retrieved_pages", [])
+        extracted_contents = sub_state.get("extracted_contents", [])
+
+        # Ensure both chunk_text and text are populated on chunks
+        for ch in processed_chunks:
+            if "chunk_text" not in ch:
+                ch["chunk_text"] = ch.get("text", "")
+
+        # Build genuine, verifiable source references
+        rich_sources = []
+        for p in crawled_pages[:5]:
+            p_url = p.get("url", "")
+            matching_ext = next((e for e in extracted_contents if e.get("url") == p_url), None)
+            snip = ""
+            if matching_ext and matching_ext.get("clean_text"):
+                snip = matching_ext.get("clean_text")[:280] + "..."
+            elif p.get("snippet"):
+                snip = p.get("snippet")[:280] + "..."
+
+            rich_sources.append({
+                "title": p.get("title", "Online Source"),
+                "url": p_url,
+                "snippet": snip,
+                "domain": p.get("domain", "")
+            })
+
+        # If crawled_pages was empty, fallback to selected_urls or search_results snippets
+        if not rich_sources:
+            for item in (selected_urls or found_results)[:4]:
+                rich_sources.append({
+                    "title": item.get("title", "Online Source"),
+                    "url": item.get("url", ""),
+                    "snippet": item.get("snippet", ""),
+                    "domain": item.get("domain", "")
+                })
 
         research_results = {
             "search_queries": sub_state.get("search_queries", [query]),
             "selected_urls": selected_urls,
-            "pages_retrieved": len(retrieved_pages),
+            "pages_retrieved": len(crawled_pages),
             "chunks_count": len(processed_chunks),
             "chunks": processed_chunks[:12],  # Cap representative passages
-            "sources": [
-                {
-                    "title": p.get("title", "Online Source"),
-                    "url": p.get("url", ""),
-                    "snippet": (p.get("text", "")[:200] + "...") if p.get("text") else ""
-                }
-                for p in retrieved_pages[:5]
-            ]
+            "sources": rich_sources
         }
 
         duration = round(time.time() - t0, 2)
         emit_agent_completed(
             state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE,
             f"Web research completed across {len(selected_urls)} source(s) and {len(processed_chunks)} passage(s).",
-            output_summary=f"{len(selected_urls)} sources retrieved in {duration}s",
+            output_summary=f"{len(rich_sources)} sources retrieved in {duration}s",
             duration_s=duration
         )
 

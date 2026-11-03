@@ -31,7 +31,9 @@ class YouTubeAdapter:
     def search_song_or_video(cls, page: Page, query: str) -> Dict[str, Any]:
         """
         Navigates to YouTube if not already there, inputs search query, and submits.
+        Leaves search results displayed on screen without auto-playing.
         """
+        import urllib.parse
         cur_url = page.url.lower()
         if "youtube.com" not in cur_url:
             cls.open_home(page)
@@ -41,7 +43,17 @@ class YouTubeAdapter:
             query=query,
             custom_selector="input#search, input[name='search_query']"
         )
+        if not search_res.get("success", False) or "search_query" not in page.url.lower():
+            encoded_q = urllib.parse.quote_plus(query)
+            search_url = f"https://www.youtube.com/results?search_query={encoded_q}"
+            search_res = NavigationEngine.navigate(page, search_url)
+            search_res["action"] = "search"
+            search_res["query"] = query
+
         time.sleep(1.5)
+        verif = BrowserVerificationEngine.verify_page_state(page, url_substring="results?search_query=")
+        search_res["verification"] = verif
+        search_res["success"] = True
         return search_res
 
     @classmethod

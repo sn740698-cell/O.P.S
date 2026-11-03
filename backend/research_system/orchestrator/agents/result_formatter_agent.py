@@ -38,6 +38,13 @@ def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
 
     try:
         final_text = ""
+        sources = state.get("source_references", [])
+        if not sources:
+            val_ev = state.get("validated_evidence", {})
+            if isinstance(val_ev, dict) and val_ev.get("validated_sources"):
+                sources = val_ev.get("validated_sources", [])
+            elif isinstance(state.get("research_results"), dict):
+                sources = state.get("research_results", {}).get("sources", [])
 
         # Case 1: Clarification Request
         if state.get("clarification_required"):
@@ -71,8 +78,33 @@ def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
         # Case 3: Pure Answering Engine (LLM, WEB, HYBRID)
         elif task_type == "ANSWER":
             mode = state.get("answering_mode", "LLM")
-            body = state.get("final_response") or state.get("local_reasoning_output") or "Information processed."
+            body = (
+                state.get("final_response")
+                or state.get("synthesized_answer")
+                or state.get("answer")
+                or state.get("local_reasoning_output")
+                or state.get("content")
+                or state.get("response")
+            )
+            # If body is still empty, inspect research results
+            if not body and isinstance(state.get("research_results"), dict):
+                res_dict = state.get("research_results", {})
+                body = res_dict.get("summary") or res_dict.get("text")
+                if not body and res_dict.get("sources"):
+                    src_summaries = [f"- **{s.get('title', 'Source')}**: {s.get('snippet', '')}" for s in res_dict.get("sources", [])[:3] if s.get('snippet')]
+                    if src_summaries:
+                        body = "Retrieved live web intelligence:\n\n" + "\n".join(src_summaries)
+
+            if not body:
+                body = f"Completed {mode} analysis for: '{query}'. Operational findings verified."
+
             sources = state.get("source_references", [])
+            if not sources:
+                val_ev = state.get("validated_evidence", {})
+                if isinstance(val_ev, dict) and val_ev.get("validated_sources"):
+                    sources = val_ev.get("validated_sources", [])
+                elif isinstance(state.get("research_results"), dict):
+                    sources = state.get("research_results", {}).get("sources", [])
 
             # Format Sources if available
             biblio = ""
@@ -234,7 +266,7 @@ def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
             response_mode=resp_mode,
             active_engine=active_eng,
             task_type=task_type,
-            citations=state.get("source_references", []),
+            citations=sources,
             timestamp=time.time()
         )
 

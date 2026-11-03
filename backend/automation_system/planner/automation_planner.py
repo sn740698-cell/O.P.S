@@ -381,6 +381,33 @@ class AutomationPlanner:
                 "requires_approval": False
             }
 
+        # 8b. Browser: Follow-up Search on active page ("now search for X", "search for another song", "search for X")
+        if q_lower.startswith("now search for ") or q_lower.startswith("now search ") or q_lower.startswith("search for another ") or (mode == MODE_BROWSER and (q_lower.startswith("search for ") or q_lower.startswith("search ")) and "youtube" not in q_lower and "google" not in q_lower):
+            search_term = re.sub(r'^(?:now\s+)?search\s+(?:for\s+)?(?:another\s+)?(?:song\s+)?', '', query, flags=re.IGNORECASE).strip(" \"'.,;:!?")
+            if search_term:
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": f"Execute search for '{search_term}' in active browser session",
+                        "executor": "browser",
+                        "action": "search",
+                        "params": {"query": search_term},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": f"Follow-up browser search workflow for '{search_term}'.",
+                    "steps": steps,
+                    "target_apps": ["Playwright Browser"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+
         # 9. Browser: YouTube Multi-Step Workflow or Search
         if "youtube" in q_lower or (
             any(w in q_lower for w in ["song", "music video", "play "]) and not any(w in q_lower for w in ["explain", "what is", "how to"])
@@ -390,19 +417,22 @@ class AutomationPlanner:
             # Patterns: "search for X and open the first result", "search for X on youtube", "play X"
             m = re.search(r'search\s+(?:for\s+)?(.*?)(?:\s+and\s+open|\s+and\s+play|\s+on\s+youtube|$)', query, re.IGNORECASE)
             if m and m.group(1).strip():
-                clean_term = m.group(1).strip(" \"'")
+                clean_term = m.group(1).strip(" \"'.,;:!?")
                 if clean_term and clean_term.lower() not in ["a song", "another song", "music", "it"]:
                     song_name = clean_term
             elif "play" in q_lower:
                 m_play = re.search(r'play\s+(.*?)(?:\s+on\s+youtube|$)', query, re.IGNORECASE)
                 if m_play and m_play.group(1).strip():
-                    song_name = m_play.group(1).strip(" \"'")
+                    clean_term = m_play.group(1).strip(" \"'.,;:!?")
+                    if clean_term:
+                        song_name = clean_term
 
-            # Check if user asked to search AND open first result
+            # Check if user asked to search AND open/play first result vs search only
             has_chain_click = any(w in q_lower for w in ["open the first", "click the first", "play the first", "first result"])
-            has_search_directive = any(w in q_lower for w in ["search for", "search", "play", "find"])
+            wants_play = has_chain_click or q_lower.startswith("play ") or "play the song" in q_lower or "and play" in q_lower or ("play " in q_lower and "search" not in q_lower)
+            has_search_directive = any(w in q_lower for w in ["search for", "search", "find"]) or "search" in q_lower
 
-            if has_chain_click or has_search_directive:
+            if wants_play:
                 steps = [
                     {
                         "step_id": 1,
@@ -420,6 +450,29 @@ class AutomationPlanner:
                     "status": "READY",
                     "automation_mode": MODE_BROWSER,
                     "mode_reason": f"Deterministic YouTube search and playback workflow for '{song_name}'.",
+                    "steps": steps,
+                    "target_apps": ["Playwright Browser (YouTube)"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+            elif has_search_directive:
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": f"Open YouTube and search for '{song_name}'",
+                        "executor": "browser",
+                        "action": "youtube_search",
+                        "params": {"query": song_name},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state", "url_substring": "results?search_query="}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": f"Deterministic YouTube search results workflow for '{song_name}'.",
                     "steps": steps,
                     "target_apps": ["Playwright Browser (YouTube)"],
                     "risk_level": RISK_LOW,

@@ -462,7 +462,16 @@ def classify_request_mode(
     # e.g. "Explain a technology and find its latest developments"
     # =========================================================================
     is_hybrid = False
-    if any(re.search(pat, q_lower, re.IGNORECASE) for pat in [
+    has_compare = bool(re.search(r"\b(?:compare|comparison|versus|vs\.?)\b", q_lower))
+    has_temporal_live = bool(re.search(r"\b(?:latest|recent|current|today|newest|updates|versions?|2025|2026)\b", q_lower))
+    has_explanation_reasoning = bool(re.search(r"\b(?:explain|overview|understand|pros\s+and\s+cons|differences?|architecture|concept)\b", q_lower))
+
+    # Compare combined with live external features/versions (e.g. "Compare Python and JavaScript, including their latest features")
+    if has_compare and has_temporal_live:
+        is_hybrid = True
+    elif (has_explanation_reasoning or is_how_to_question) and (has_temporal_live and any(w in q_lower for w in ["find", "search", "retrieve", "look up", "check", "research"])):
+        is_hybrid = True
+    elif any(re.search(pat, q_lower, re.IGNORECASE) for pat in [
         r"\bcompare\s+(?:the\s+)?latest\b",
         r"\bcompare\s+(?:the\s+)?(?:recent|current)\b",
         r"\bcompare\s+latest\b",
@@ -495,10 +504,21 @@ def classify_request_mode(
     # e.g. "What is the latest AI news today?"
     # e.g. "Tell me the latest AI news today."
     # e.g. "What are the latest developments in OpenAI models?"
-    # e.g. "Find the latest Python version."
+    # e.g. "What is the latest stable Python version?"
     # =========================================================================
     is_web = False
-    web_time_signals = ["today", "latest", "recent", "current", "2025", "2026", "news", "price", "who won", "what happened", "release date", "current version"]
+    excluded_programming_terms = [
+        "current working directory", "current directory", "current thread",
+        "current process", "current value", "current element", "current node",
+        "current context", "current time complexity", "current state in react"
+    ]
+
+    has_live_lookup_intent = any(re.search(pat, q_lower) for pat in [
+        r"\b(?:latest|current|newest)\s+(?:stable\s+)?(?:version|release|build|update|model|price|stock|score|status|news)\b",
+        r"\b(?:what|who|which)\s+(?:is|are|was|were)\s+the\s+(?:latest|current|recent|newest)\b",
+        r"\b(?:news\s+today|today's\s+news|ai\s+news|today's\s+weather|weather\s+today|gpu\s+prices|cricket\s+score)\b",
+        r"\b(?:released?|launched?|announced?)\s+(?:in\s+)?(?:2024|2025|2026|recently|today)\b"
+    ])
 
     if any(q_lower.startswith(w) for w in ["what is the latest", "what are the latest", "tell me the latest", "what are today's", "find the latest", "what is today's"]):
         is_web = True
@@ -510,8 +530,7 @@ def classify_request_mode(
         is_web = True
     elif any(w in q_lower for w in ["find official documentation", "find recent ai research"]):
         is_web = True
-    elif any(sig in q_lower for sig in web_time_signals) and not is_how_to_question:
-        # Check if it asks about current external information
+    elif has_live_lookup_intent and not is_how_to_question and not any(term in q_lower for term in excluded_programming_terms):
         is_web = True
 
     if is_web:
