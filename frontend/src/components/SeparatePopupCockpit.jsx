@@ -224,6 +224,16 @@ export default function SeparatePopupCockpit() {
             const parsed = JSON.parse(evt.data);
             if (parsed.event_type === 'STREAM_CONNECTED' || parsed.event_type === 'STREAM_CLOSED') return;
 
+            // Universal Real-Time Telemetry & Pipeline State Synchronizer
+            if (parsed.current_stage) setCurrentStage(parsed.current_stage);
+            if (parsed.stages && Array.isArray(parsed.stages) && parsed.stages.length > 0) setActiveStages(parsed.stages);
+            if (parsed.safe_task_summary) setCurrentThought(parsed.safe_task_summary);
+            if (parsed.safe_output_summary && !parsed.safe_task_summary) setCurrentThought(parsed.safe_output_summary);
+            if (parsed.component_name) setActiveAgent(parsed.component_name);
+            if (parsed.active_engine) setActiveEngine(parsed.active_engine);
+            if (parsed.response_mode) setActiveMode(parsed.response_mode);
+            if (parsed.mode_reason || parsed.reason) setModeReason(parsed.mode_reason || parsed.reason);
+
             // 0. Directive started (dispatched from Cockpit or Browser)
             if (parsed.event_type === 'REQUEST_STARTED') {
               setIsLoading(true);

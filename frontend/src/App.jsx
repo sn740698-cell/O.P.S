@@ -427,6 +427,17 @@ export default function App() {
         try {
           const evt = JSON.parse(e.data);
           if (evt.event_type === 'STREAM_CONNECTED' || evt.event_type === 'STREAM_CLOSED') return;
+
+          // Universal Real-Time Telemetry & Pipeline State Synchronizer
+          if (evt.current_stage) setCurrentStage(evt.current_stage);
+          if (evt.stages && Array.isArray(evt.stages) && evt.stages.length > 0) setActiveStages(evt.stages);
+          if (evt.safe_task_summary) setCurrentThought(evt.safe_task_summary);
+          if (evt.safe_output_summary && !evt.safe_task_summary) setCurrentThought(evt.safe_output_summary);
+          if (evt.component_name) setActiveAgent(evt.component_name);
+          if (evt.active_engine) setActiveEngine(evt.active_engine);
+          if (evt.response_mode) setActiveMode(evt.response_mode);
+          if (evt.mode_reason || evt.reason) setModeReason(evt.mode_reason || evt.reason);
+
           if (evt.event_type === 'text_chunk' && evt.chunk) {
             setStreamingChunk((prev) => prev + evt.chunk);
             return;
