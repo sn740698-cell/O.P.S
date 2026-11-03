@@ -15,8 +15,10 @@ class CentralGraphState(TypedDict, total=False):
 
     # Routing and Classifications
     task_type: str              # 'ANSWER' | 'AUTOMATION' | 'COMPOSITE' | 'CLARIFICATION'
-    answering_mode: str         # 'LLM' | 'WEB' | 'HYBRID'
+    active_engine: str          # 'ANSWERING' | 'AUTOMATION' | 'COMPOSITE' | 'CLARIFICATION'
+    answering_mode: str         # 'LLM' | 'WEB' | 'HYBRID' | 'DOCUMENT'
     automation_mode: str        # 'DESKTOP' | 'BROWSER' | 'HYBRID'
+    response_mode: str          # Active response mode label
     user_goal: str
     routing_result: Dict[str, Any]
 

@@ -86,21 +86,21 @@ class AutomationPlanner:
         q_lower = query.lower()
 
         # Hybrid Signals: mentions downloading/scraping web AND opening/editing desktop application
-        has_browser_kw = any(w in q_lower for w in ["browser", "website", "web", "url", "download", "github", "http://", "https://", "navigate to", "form", "page"])
-        has_desktop_kw = any(w in q_lower for w in ["notepad", "vscode", "vs code", "code", "desktop", "folder", "directory", "word", "explorer", "window", "calc", "calculator", "app", "application", "extract"])
+        has_browser_kw = any(w in q_lower for w in ["browser", "website", "web", "url", "download", "github", "http://", "https://", "form", "page", "youtube", "google"])
+        has_desktop_kw = any(w in q_lower for w in ["notepad", "vscode", "vs code", "code", "desktop", "folder", "directory", "word", "explorer", "window", "calc", "calculator", "app", "application", "extract", "installer"])
 
         if has_browser_kw and has_desktop_kw:
             # Check if it connects web action with desktop action
             if any(w in q_lower for w in ["and open", "then open", "extract and", "open in", "download and", "organize"]):
-                return MODE_HYBRID, "Task requires browser action (download/web) followed by Windows desktop action."
+                return MODE_HYBRID, "Task requires browser action followed by Windows desktop action."
+
+        # Desktop priority if desktop app or local system is targeted
+        if any(w in q_lower for w in ["calculator", "calc", "notepad", "file explorer", "explorer", "create folder", "make folder", "new folder", "on my computer", "on my pc", "on this system"]):
+            return MODE_DESKTOP, "Task targets local Windows desktop applications and UI controls."
 
         # Browser Automation Signals
-        if any(w in q_lower for w in ["http://", "https://", "website", "web page", "navigate to", "fill out", "fill the form", "fill form", "search within", "browser tab", "web dashboard"]):
+        if any(w in q_lower for w in ["youtube", "google", "wikipedia", "github.com", "http://", "https://", "website", "web page", "in browser", "in my browser", "search google"]):
             return MODE_BROWSER, "Task strictly involves web browser navigation, interaction, or web elements."
-
-        # Desktop Automation Signals
-        if any(w in q_lower for w in ["open notepad", "open vs code", "open vscode", "open calculator", "create folder", "file explorer", "desktop app", "switch window", "press shortcut", "type in notepad"]):
-            return MODE_DESKTOP, "Task targets local Windows desktop applications and UI controls."
 
         # Fallback default based on keywords
         if has_browser_kw and not has_desktop_kw:
@@ -134,7 +134,32 @@ class AutomationPlanner:
         """
         q_lower = query.lower()
 
-        # 1. Desktop: Open Notepad & optionally type text
+        # 1. Desktop: Open Calculator
+        if any(w in q_lower for w in ["calculator", "calc", "calc.exe"]) and any(w in q_lower for w in ["open", "launch", "start", "run"]):
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": "Launch Windows Calculator Application",
+                    "executor": "desktop",
+                    "action": "launch_app",
+                    "params": {"app_name": "calculator", "path": "calc.exe"},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "window_exists", "target": "Calculator"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": "Deterministic desktop automation workflow for Windows Calculator.",
+                "steps": steps,
+                "target_apps": ["Calculator"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # 2. Desktop: Open Notepad & optionally type text
         if "notepad" in q_lower and any(w in q_lower for w in ["open", "launch", "start"]):
             text_to_type = None
             if "type" in q_lower or "write" in q_lower:
@@ -158,7 +183,7 @@ class AutomationPlanner:
             if text_to_type:
                 steps.append({
                     "step_id": 2,
-                    "title": f"Enter text into Notepad",
+                    "title": f"Enter text into Notepad: '{text_to_type}'",
                     "executor": "desktop",
                     "action": "type_text",
                     "params": {"title": "Notepad", "text": text_to_type},
@@ -178,7 +203,36 @@ class AutomationPlanner:
                 "requires_approval": False
             }
 
-        # 2. Desktop: Open VS Code
+        # 3. Desktop: Open File Explorer (Downloads, Desktop, Documents)
+        if any(w in q_lower for w in ["file explorer", "explorer", "explorer.exe"]) and any(w in q_lower for w in ["open", "launch", "start", "navigate"]):
+            target_dir = os.path.expanduser("~/Downloads") if "download" in q_lower else (
+                os.path.expanduser("~/Desktop") if "desktop" in q_lower else os.path.expanduser("~/Documents")
+            )
+            dir_label = "Downloads" if "download" in q_lower else ("Desktop" if "desktop" in q_lower else "Documents")
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Launch File Explorer at {dir_label} ({target_dir})",
+                    "executor": "desktop",
+                    "action": "launch_app",
+                    "params": {"app_name": "explorer", "path": "explorer.exe", "args": [target_dir]},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "window_exists", "target": "File Explorer"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": f"Deterministic desktop automation workflow for File Explorer ({dir_label}).",
+                "steps": steps,
+                "target_apps": ["File Explorer"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # 4. Desktop: Open VS Code
         if any(w in q_lower for w in ["vs code", "vscode", "visual studio code"]) and any(w in q_lower for w in ["open", "launch", "start"]):
             folder_target = None
             match = re.search(r'(?:in|at|folder)\s+["\']?([a-zA-Z]:\\[^\s"\']+|[^\s"\']+)["\']?', query, re.IGNORECASE)
@@ -208,7 +262,34 @@ class AutomationPlanner:
                 "requires_approval": False
             }
 
-        # 3. Desktop: Create a folder
+        # 5. Desktop: Software Installation on local machine (Consequential - requires HITL approval)
+        if any(q_lower.startswith(w) for w in ["install ", "setup "]) and any(w in q_lower for w in ["on my computer", "on my pc", "on my machine", "on this system", "locally"]):
+            target_soft = query.replace("Install", "").replace("install", "").replace("on my computer", "").replace("on my pc", "").strip() or "Software"
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Verify prerequisites and launch installer for {target_soft}",
+                    "executor": "desktop",
+                    "action": "launch_app",
+                    "params": {"app_name": "cmd", "path": "cmd.exe", "args": ["/c", f"echo O.P.S. Ready to install {target_soft}"]},
+                    "depends_on": [],
+                    "risk_level": RISK_HIGH,
+                    "status": "PENDING",
+                    "verification": {"type": "action_completed"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": f"Software installation for '{target_soft}' alters system configuration and requires human approval.",
+                "steps": steps,
+                "target_apps": ["Windows Installer"],
+                "risk_level": RISK_HIGH,
+                "requires_approval": True,
+                "approval_reason": f"Administrative authorization required to install '{target_soft}' on this computer."
+            }
+
+        # 6. Desktop: Create a folder
         if any(w in q_lower for w in ["create folder", "create a folder", "make a folder", "new folder"]):
             folder_name = "NewFolder"
             target_path = os.path.expanduser("~/Desktop")
@@ -245,8 +326,61 @@ class AutomationPlanner:
                 "requires_approval": False
             }
 
-        # 4. Browser: Open website / navigate to URL
-        if mode == MODE_BROWSER:
+        # 7. Browser: Open YouTube ("Open YouTube", "Open YouTube in my browser")
+        if "youtube" in q_lower and any(w in q_lower for w in ["open", "launch", "navigate", "go to", "visit"]):
+            target_url = "https://www.youtube.com"
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Navigate browser to YouTube ({target_url})",
+                    "executor": "browser",
+                    "action": "navigate",
+                    "params": {"url": target_url},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "page_title_loaded"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_BROWSER,
+                "mode_reason": "Deterministic browser navigation workflow for YouTube.",
+                "steps": steps,
+                "target_apps": ["Playwright Browser"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # 8. Browser: Search Google ("Search Google for ...")
+        if "google" in q_lower and any(w in q_lower for w in ["search", "look up", "find"]):
+            search_term = re.sub(r'^(?:please\s+)?(?:can\s+you\s+)?(?:search\s+google\s+for|search\s+for|google)\s+', '', query, flags=re.IGNORECASE).strip()
+            target_url = f"https://www.google.com/search?q={search_term.replace(' ', '+')}"
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Search Google in browser for '{search_term}'",
+                    "executor": "browser",
+                    "action": "navigate",
+                    "params": {"url": target_url},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "page_title_loaded"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_BROWSER,
+                "mode_reason": f"Deterministic browser Google search workflow for '{search_term}'.",
+                "steps": steps,
+                "target_apps": ["Playwright Browser"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # 9. Browser: Open website / navigate to URL
+        if mode == MODE_BROWSER or any(w in q_lower for w in ["navigate to", "open website", "visit"]):
             url_match = re.search(r'https?://[^\s]+', query)
             target_url = url_match.group(0) if url_match else None
             if not target_url:

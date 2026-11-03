@@ -168,6 +168,29 @@ def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
                 f"- Task Identifier: `{task_id}`"
             )
 
+        # Determine response mode and active engine
+        resp_mode = state.get("response_mode")
+        if not resp_mode:
+            if task_type == "AUTOMATION":
+                resp_mode = state.get("automation_mode", "DESKTOP")
+            elif task_type == "COMPOSITE":
+                resp_mode = "COMPOSITE"
+            elif task_type == "CLARIFICATION":
+                resp_mode = "CLARIFICATION"
+            else:
+                resp_mode = state.get("answering_mode", "LLM")
+
+        active_eng = state.get("active_engine")
+        if not active_eng:
+            if task_type == "AUTOMATION":
+                active_eng = "AUTOMATION"
+            elif task_type == "COMPOSITE":
+                active_eng = "COMPOSITE"
+            elif task_type == "CLARIFICATION":
+                active_eng = "GLOBAL"
+            else:
+                active_eng = "ANSWERING"
+
         # Emit text chunk for live typewriter streaming to cockpit
         event_bus.publish_text_chunk(request_id=req_id, execution_id=task_id, chunk=final_text, conversation_id=conv_id)
 
@@ -184,6 +207,11 @@ def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
             safe_task_summary="Response delivered to Cockpit.",
             final_answer=final_text,
             content=final_text,
+            mode=resp_mode,
+            response_mode=resp_mode,
+            active_engine=active_eng,
+            task_type=task_type,
+            citations=state.get("source_references", []),
             timestamp=time.time()
         )
 

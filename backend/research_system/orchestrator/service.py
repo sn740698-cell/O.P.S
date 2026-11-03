@@ -133,7 +133,20 @@ class CentralOrchestratorService:
         # Compile thread configuration for LangGraph checkpointing
         config = {"configurable": {"thread_id": conversation_id}}
 
-        # Publish initial task received event
+        # Publish initial task events
+        event_bus.publish(
+            request_id=req_id,
+            execution_id=tid,
+            conversation_id=conversation_id,
+            node_id="system",
+            component_name="O.P.S. Core",
+            component_type="orchestrator",
+            event_type="REQUEST_STARTED",
+            execution_status="ACTIVE",
+            safe_task_summary=f"Directive initiated: '{query[:60]}'",
+            directive=query,
+            timestamp=t0
+        )
         event_bus.publish(
             request_id=req_id,
             execution_id=tid,
@@ -169,6 +182,17 @@ class CentralOrchestratorService:
             else:
                 resp_mode = answering_mode
 
+            active_engine = final_state.get("active_engine")
+            if not active_engine:
+                if task_type == "AUTOMATION":
+                    active_engine = "AUTOMATION"
+                elif task_type == "COMPOSITE":
+                    active_engine = "COMPOSITE"
+                elif task_type == "CLARIFICATION":
+                    active_engine = "GLOBAL"
+                else:
+                    active_engine = "ANSWERING"
+
             # Determine chat message status
             msg_status = "completed"
             if clarify_req:
@@ -189,6 +213,7 @@ class CentralOrchestratorService:
                     "task_type": task_type,
                     "mode": resp_mode,
                     "response_mode": resp_mode,
+                    "active_engine": active_engine,
                     "approval_id": appr_id,
                     "clarification_prompt": final_state.get("clarification_prompt"),
                     "plan": final_state.get("execution_plan", [])
@@ -201,7 +226,7 @@ class CentralOrchestratorService:
             conv.save()
 
             duration = round(time.time() - t0, 2)
-            logger.info(f"Central LangGraph completed task {tid} in {duration}s (mode: {resp_mode}).")
+            logger.info(f"Central LangGraph completed task {tid} in {duration}s (engine: {active_engine}, mode: {resp_mode}).")
 
             return {
                 "success": True,
@@ -209,6 +234,7 @@ class CentralOrchestratorService:
                 "conversation_id": conversation_id,
                 "request_id": req_id,
                 "task_type": task_type,
+                "active_engine": active_engine,
                 "mode": resp_mode,
                 "response_mode": resp_mode,
                 "content": final_answer,

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Square, CheckCircle2, Loader2, Globe, Sparkles, Layers, Cpu } from 'lucide-react';
+import { Square, CheckCircle2, Loader2, Globe, Sparkles, Layers, Cpu, Monitor, Compass, ShieldCheck } from 'lucide-react';
 import LoadingStatusIndicator, { resolveLoadingStateKey } from './LoadingStatusIndicator';
 import TextGenerationSkeleton from './TextGenerationSkeleton';
 import StructuredResponseSkeleton from './StructuredResponseSkeleton';
@@ -71,15 +71,14 @@ export function detectSkeletonVariation(query = '') {
 
 /**
  * CockpitLoadingSkeleton — Master Live Mode Preview & Response Loader
- * Fully implements Part 5 of O.P.S. 2.0 Specification:
- * 1. Three Mode Preview Indicators: [ LLM ] [ WEB ] [ HYBRID ] with distinct color highlights
- * 2. Active Mode Status & Short Reason Banner
- * 3. Real Processing Stages Stepper (LLM, WEB, HYBRID real stages)
- * 4. Real Research Activity Preview (sources discovered, pages retrieved, domains, evidence status)
- * 5. Seamless live typewriter streaming transition
+ * Dual Engine Architecture:
+ * 1. Answering Engine: [ LLM ] [ WEB ] [ HYBRID ] [ DOCUMENT ]
+ * 2. Automation Engine: [ DESKTOP ] [ BROWSER ] [ HYBRID AUTO ]
+ * Dynamic Engine & Mode highlighting, stage stepper, live research & automation telemetry.
  */
 export default function CockpitLoadingSkeleton({
   query = '',
+  activeEngine = '',
   activeAgent = '',
   currentThought = '',
   streamingChunk = '',
@@ -90,17 +89,24 @@ export default function CockpitLoadingSkeleton({
   modeReason = '',
   stages = [],
   currentStage = '',
-  researchTelemetry = null
+  researchTelemetry = null,
+  automationTelemetry = null
 }) {
   const variation = useMemo(() => {
     return variationOverride || detectSkeletonVariation(query);
   }, [variationOverride, query]);
 
-  const stateKey = useMemo(() => {
-    return resolveLoadingStateKey(activeAgent, currentThought);
-  }, [activeAgent, currentThought]);
-
   const normalizedMode = (activeMode || 'LLM').toUpperCase();
+  const normalizedEngine = (activeEngine || (
+    ['DESKTOP', 'BROWSER', 'HYBRID AUTO', 'HYBRID_AUTO'].includes(normalizedMode)
+      ? 'AUTOMATION'
+      : normalizedMode === 'COMPOSITE'
+      ? 'COMPOSITE'
+      : 'ANSWERING'
+  )).toUpperCase();
+
+  const isAnsweringActive = normalizedEngine === 'ANSWERING' || normalizedEngine === 'COMPOSITE';
+  const isAutomationActive = normalizedEngine === 'AUTOMATION' || normalizedEngine === 'COMPOSITE';
 
   return (
     <div
@@ -109,85 +115,179 @@ export default function CockpitLoadingSkeleton({
       aria-busy="true"
     >
       {/* =========================================================================
-          PART 5.A: THREE MODE PREVIEW INDICATORS ([ LLM ] [ WEB ] [ HYBRID ])
+          DUAL ENGINE INDICATOR PANEL: ANSWERING & AUTOMATION ENGINES
           ========================================================================= */}
-      <div className="flex items-center justify-between p-2 rounded bg-zinc-950/90 border border-zinc-800/80 font-mono text-[11px] select-none shadow-sm">
-        <div className="flex items-center gap-1.5 font-bold">
-          <span className="text-[10px] text-zinc-500 uppercase tracking-wider mr-0.5">MODE:</span>
-
-          {/* 1. LLM Mode Indicator (Blue) */}
-          <div
-            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-all flex items-center gap-1 ${
-              normalizedMode === 'LLM'
-                ? 'bg-blue-950/90 text-blue-300 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.35)]'
-                : 'bg-zinc-900/40 text-zinc-600 border-zinc-800'
-            }`}
-            title="LLM Mode: Local reasoning & knowledge"
-          >
-            {normalizedMode === 'LLM' && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />}
-            <span>LLM</span>
+      <div className="p-2.5 rounded bg-zinc-950/95 border border-zinc-800/90 font-mono text-[11px] select-none shadow-md space-y-2">
+        {/* Top Bar: Active Engine & Emergency Halt */}
+        <div className="flex items-center justify-between border-b border-zinc-850 pb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">ENGINE:</span>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wider border flex items-center gap-1.5 ${
+              normalizedEngine === 'COMPOSITE'
+                ? 'bg-rose-950/90 text-rose-300 border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse'
+                : normalizedEngine === 'AUTOMATION'
+                ? 'bg-cyan-950/90 text-cyan-300 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                : 'bg-blue-950/90 text-blue-300 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
+            }`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
+              <span>{normalizedEngine} ENGINE</span>
+            </span>
           </div>
 
-          {/* 2. WEB Mode Indicator (Green) */}
-          <div
-            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-all flex items-center gap-1 ${
-              normalizedMode === 'WEB'
-                ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.35)]'
-                : 'bg-zinc-900/40 text-zinc-600 border-zinc-800'
-            }`}
-            title="WEB Mode: Live search, retrieval & evidence grounding"
-          >
-            {normalizedMode === 'WEB' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-            <span>WEB</span>
-          </div>
+          {/* Emergency Stop Button */}
+          {onStopExecution && (
+            <button
+              type="button"
+              onClick={onStopExecution}
+              className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-950 border border-red-700 text-red-300 hover:bg-red-900 transition flex items-center gap-1 font-mono shrink-0 shadow-sm"
+              title="Halt active operation"
+            >
+              <Square className="w-2.5 h-2.5 fill-current" />
+              <span>HALT</span>
+            </button>
+          )}
+        </div>
 
-          {/* 3. HYBRID Mode Indicator (Purple) */}
-          <div
-            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-all flex items-center gap-1 ${
-              normalizedMode === 'HYBRID'
-                ? 'bg-purple-950/90 text-purple-300 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.35)]'
-                : 'bg-zinc-900/40 text-zinc-600 border-zinc-800'
-            }`}
-            title="HYBRID Mode: Local LLM reasoning combined with live web research"
-          >
-            {normalizedMode === 'HYBRID' && <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />}
-            <span>HYBRID</span>
+        {/* Engine 1: ANSWERING ENGINE MODES */}
+        <div className={`p-1.5 rounded border transition-all ${
+          isAnsweringActive
+            ? 'bg-zinc-900/60 border-zinc-700'
+            : 'bg-zinc-950/40 border-zinc-900 opacity-50'
+        }`}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-400 flex items-center gap-1">
+              <Cpu className="w-3 h-3 text-sky-400" />
+              <span>Answering Engine</span>
+            </span>
+            {isAnsweringActive && (
+              <span className="text-[8px] px-1 py-0.2 rounded bg-sky-950/80 text-sky-400 border border-sky-800">
+                ACTIVE
+              </span>
+            )}
           </div>
+          <div className="grid grid-cols-4 gap-1">
+            {/* LLM */}
+            <div
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold border text-center transition-all flex items-center justify-center gap-1 ${
+                normalizedMode === 'LLM'
+                  ? 'bg-blue-950/90 text-blue-300 border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]'
+                  : 'bg-zinc-900/40 text-zinc-500 border-zinc-800'
+              }`}
+              title="LLM Mode: Local knowledge & high-speed reasoning"
+            >
+              {normalizedMode === 'LLM' && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />}
+              <span>LLM</span>
+            </div>
 
-          {/* 4. DOCUMENT Mode Indicator (Amber) */}
-          <div
-            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-all flex items-center gap-1 ${
-              normalizedMode === 'DOCUMENT'
-                ? 'bg-amber-950/90 text-amber-300 border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.35)]'
-                : 'bg-zinc-900/40 text-zinc-600 border-zinc-800'
-            }`}
-            title="DOCUMENT Mode: Temporary document intelligence via Pinecone"
-          >
-            {normalizedMode === 'DOCUMENT' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
-            <span>DOCUMENT</span>
+            {/* WEB */}
+            <div
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold border text-center transition-all flex items-center justify-center gap-1 ${
+                normalizedMode === 'WEB'
+                  ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
+                  : 'bg-zinc-900/40 text-zinc-500 border-zinc-800'
+              }`}
+              title="WEB Mode: Live search & grounded evidence"
+            >
+              {normalizedMode === 'WEB' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+              <span>WEB</span>
+            </div>
+
+            {/* HYBRID */}
+            <div
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold border text-center transition-all flex items-center justify-center gap-1 ${
+                normalizedMode === 'HYBRID'
+                  ? 'bg-purple-950/90 text-purple-300 border-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]'
+                  : 'bg-zinc-900/40 text-zinc-500 border-zinc-800'
+              }`}
+              title="HYBRID Mode: Local reasoning combined with live web search"
+            >
+              {normalizedMode === 'HYBRID' && <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />}
+              <span>HYBRID</span>
+            </div>
+
+            {/* DOCUMENT */}
+            <div
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold border text-center transition-all flex items-center justify-center gap-1 ${
+                normalizedMode === 'DOCUMENT'
+                  ? 'bg-amber-950/90 text-amber-300 border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                  : 'bg-zinc-900/40 text-zinc-500 border-zinc-800'
+              }`}
+              title="DOCUMENT Mode: Ephemeral Pinecone RAG session"
+            >
+              {normalizedMode === 'DOCUMENT' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+              <span>DOC</span>
+            </div>
           </div>
         </div>
 
-        {/* Emergency Stop Button */}
-        {onStopExecution && (
-          <button
-            type="button"
-            onClick={onStopExecution}
-            className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-950 border border-red-700 text-red-300 hover:bg-red-900 transition flex items-center gap-1 font-mono shrink-0 shadow-sm"
-            title="Halt active response generation"
-          >
-            <Square className="w-2.5 h-2.5 fill-current" />
-            <span>STOP</span>
-          </button>
-        )}
+        {/* Engine 2: AUTOMATION ENGINE MODES */}
+        <div className={`p-1.5 rounded border transition-all ${
+          isAutomationActive
+            ? 'bg-zinc-900/60 border-zinc-700'
+            : 'bg-zinc-950/40 border-zinc-900 opacity-50'
+        }`}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-400 flex items-center gap-1">
+              <Monitor className="w-3 h-3 text-cyan-400" />
+              <span>Automation Engine</span>
+            </span>
+            {isAutomationActive && (
+              <span className="text-[8px] px-1 py-0.2 rounded bg-cyan-950/80 text-cyan-400 border border-cyan-800">
+                ACTIVE
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {/* DESKTOP */}
+            <div
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold border text-center transition-all flex items-center justify-center gap-1 ${
+                normalizedMode === 'DESKTOP'
+                  ? 'bg-cyan-950/90 text-cyan-300 border-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.4)]'
+                  : 'bg-zinc-900/40 text-zinc-500 border-zinc-800'
+              }`}
+              title="Desktop Mode: Pywinauto Windows desktop automation"
+            >
+              {normalizedMode === 'DESKTOP' && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />}
+              <span>DESKTOP</span>
+            </div>
+
+            {/* BROWSER */}
+            <div
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold border text-center transition-all flex items-center justify-center gap-1 ${
+                normalizedMode === 'BROWSER'
+                  ? 'bg-indigo-950/90 text-indigo-300 border-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]'
+                  : 'bg-zinc-900/40 text-zinc-500 border-zinc-800'
+              }`}
+              title="Browser Mode: Playwright browser navigation & scraping"
+            >
+              {normalizedMode === 'BROWSER' && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />}
+              <span>BROWSER</span>
+            </div>
+
+            {/* HYBRID AUTO */}
+            <div
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold border text-center transition-all flex items-center justify-center gap-1 ${
+                normalizedMode === 'HYBRID AUTO' || normalizedMode === 'HYBRID_AUTO' || (normalizedEngine === 'COMPOSITE')
+                  ? 'bg-rose-950/90 text-rose-300 border-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]'
+                  : 'bg-zinc-900/40 text-zinc-500 border-zinc-800'
+              }`}
+              title="Hybrid Automation: Desktop + Browser cross-application orchestration"
+            >
+              {(normalizedMode === 'HYBRID AUTO' || normalizedMode === 'HYBRID_AUTO') && (
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+              )}
+              <span>HYBRID AUTO</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* =========================================================================
-          PART 5.A: ACTIVE MODE STATUS & USER-FRIENDLY REASON BANNER
+          ACTIVE MODE STATUS & REASON BANNER
           ========================================================================= */}
       <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-zinc-950/70 border border-zinc-800/60 text-[10px] font-mono">
         <span className="font-bold shrink-0 flex items-center gap-1">
-          <span className="text-zinc-400">ACTIVE:</span>
+          <span className="text-zinc-400">MODE:</span>
           <span
             className={
               normalizedMode === 'LLM'
@@ -198,10 +298,14 @@ export default function CockpitLoadingSkeleton({
                 ? 'text-purple-400 font-extrabold'
                 : normalizedMode === 'DOCUMENT'
                 ? 'text-amber-400 font-extrabold'
-                : 'text-zinc-300'
+                : normalizedMode === 'DESKTOP'
+                ? 'text-cyan-400 font-extrabold'
+                : normalizedMode === 'BROWSER'
+                ? 'text-indigo-400 font-extrabold'
+                : 'text-rose-400 font-extrabold'
             }
           >
-            {normalizedMode} MODE
+            {normalizedMode}
           </span>
         </span>
         {modeReason && (
@@ -212,13 +316,12 @@ export default function CockpitLoadingSkeleton({
       </div>
 
       {/* =========================================================================
-          PART 5.B: REAL BACKEND PROCESSING STAGES STEPPER
-          Only displayed when real stages are dispatched by backend
+          REAL BACKEND PROCESSING STAGES STEPPER
           ========================================================================= */}
       {stages && stages.length > 0 && !streamingChunk && (
         <div className="px-2.5 py-2 rounded bg-black/60 border border-zinc-800/70 space-y-1 font-mono text-[10px]">
           <div className="text-[9px] uppercase font-bold text-zinc-500 tracking-wider pb-0.5 flex items-center justify-between">
-            <span>PROCESSING STAGES</span>
+            <span>PIPELINE STAGES</span>
             <span className="text-zinc-400 font-normal">
               Stage {Math.max(1, stages.indexOf(currentStage) + 1)} of {stages.length}
             </span>
@@ -257,8 +360,33 @@ export default function CockpitLoadingSkeleton({
       )}
 
       {/* =========================================================================
-          PART 5.D: RESEARCH ACTIVITY PREVIEW (When WEB or HYBRID Mode Active)
-          Displays only actual values received from backend execution events
+          AUTOMATION ACTIVITY & STATE VERIFICATION PREVIEW
+          ========================================================================= */}
+      {isAutomationActive && automationTelemetry && (
+        <div className="p-2 rounded bg-zinc-950/90 border border-cyan-900/50 font-mono text-[10px] space-y-1">
+          <div className="flex items-center justify-between text-cyan-400 font-bold">
+            <span className="flex items-center gap-1.5">
+              <Monitor className="w-3 h-3 text-cyan-400" />
+              <span>LIVE AUTOMATION PIPELINE</span>
+            </span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950/80 border border-cyan-700 text-cyan-300 font-mono flex items-center gap-1">
+              <ShieldCheck className="w-2.5 h-2.5" />
+              <span>{automationTelemetry.verificationStatus || 'Verifying'}</span>
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-zinc-400 text-[10px] pt-0.5">
+            <div>
+              Target App: <span className="text-zinc-100 font-bold">{automationTelemetry.targetApp || 'System'}</span>
+            </div>
+            <div>
+              Action: <span className="text-zinc-100 font-bold">{automationTelemetry.action || 'Executing'}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          RESEARCH ACTIVITY PREVIEW (When WEB or HYBRID Active)
           ========================================================================= */}
       {(normalizedMode === 'WEB' || normalizedMode === 'HYBRID') &&
         researchTelemetry &&
@@ -292,7 +420,7 @@ export default function CockpitLoadingSkeleton({
         )}
 
       {/* =========================================================================
-          PART 5.E & STREAMING: LIVE TYPEWRITER OUTPUT OR SKELETON PLACEHOLDER
+          LIVE TYPEWRITER OUTPUT OR SKELETON PLACEHOLDER
           ========================================================================= */}
       {streamingChunk ? (
         <div className="pl-3.5 border-l-2 border-sky-800/80 font-mono">

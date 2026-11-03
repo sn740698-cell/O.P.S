@@ -35,6 +35,14 @@ export default function AssistantMessage({
                 ? 'bg-blue-950/80 text-blue-300 border-blue-700'
                 : turn.category.toUpperCase().includes('WEB')
                 ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
+                : turn.category.toUpperCase().includes('DOC')
+                ? 'bg-amber-950/80 text-amber-300 border-amber-700'
+                : turn.category.toUpperCase().includes('DESKTOP')
+                ? 'bg-cyan-950/80 text-cyan-300 border-cyan-700'
+                : turn.category.toUpperCase().includes('BROWSER')
+                ? 'bg-indigo-950/80 text-indigo-300 border-indigo-700'
+                : turn.category.toUpperCase().includes('COMPOSITE')
+                ? 'bg-rose-950/80 text-rose-300 border-rose-700 shadow-sm'
                 : turn.category.toUpperCase().includes('HYBRID')
                 ? 'bg-purple-950/80 text-purple-300 border-purple-700'
                 : 'bg-zinc-900 border-zinc-800 text-zinc-400'

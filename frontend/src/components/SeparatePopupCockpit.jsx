@@ -45,11 +45,13 @@ export default function SeparatePopupCockpit() {
   const [activeAgent, setActiveAgent] = useState('');
   const [streamingChunk, setStreamingChunk] = useState('');
 
-  // Three Automatic Response Modes & Live Cockpit Preview State (Part 5)
-  const [activeMode, setActiveMode] = useState(null); // 'LLM' | 'WEB' | 'HYBRID'
+  // Engine & Automatic Response Modes State
+  const [activeEngine, setActiveEngine] = useState(null); // 'ANSWERING' | 'AUTOMATION' | 'COMPOSITE'
+  const [activeMode, setActiveMode] = useState(null); // 'LLM' | 'WEB' | 'HYBRID' | 'DOCUMENT' | 'DESKTOP' | 'BROWSER'
   const [modeReason, setModeReason] = useState('');
   const [activeStages, setActiveStages] = useState([]);
   const [currentStage, setCurrentStage] = useState('');
+  const [automationTelemetry, setAutomationTelemetry] = useState(null);
   const [researchTelemetry, setResearchTelemetry] = useState({
     sourcesCount: 0,
     pagesCount: 0,
@@ -225,7 +227,7 @@ export default function SeparatePopupCockpit() {
             if (parsed.event_type === 'REQUEST_STARTED') {
               setIsLoading(true);
               setStreamingChunk('');
-              const promptText = parsed.query || (parsed.safe_task_summary ? parsed.safe_task_summary.replace(/^Analyzing directive:\s*['"]?/, '').replace(/['"]?\.\.\.$/, '') : '');
+              const promptText = parsed.query || parsed.directive || (parsed.safe_task_summary ? parsed.safe_task_summary.replace(/^Analyzing directive:\s*['"]?/, '').replace(/['"]?\.\.\.$/, '') : '');
               if (promptText) {
                 setCurrentTaskPrompt(promptText);
                 setConversationHistory((prev) => {
@@ -236,8 +238,21 @@ export default function SeparatePopupCockpit() {
                   return prev;
                 });
               }
+              setActiveEngine(parsed.active_engine || 'ANSWERING');
               if (parsed.response_mode) setActiveMode(parsed.response_mode);
               if (parsed.mode_reason) setModeReason(parsed.mode_reason);
+              if (parsed.stages) setActiveStages(parsed.stages);
+              if (parsed.current_stage) setCurrentStage(parsed.current_stage);
+              if (parsed.safe_task_summary) setCurrentThought(parsed.safe_task_summary);
+              return;
+            }
+
+            // Engine Selected Event
+            if (parsed.event_type === 'ENGINE_SELECTED') {
+              const eng = parsed.active_engine || parsed.engine;
+              if (eng) setActiveEngine(eng);
+              if (parsed.response_mode) setActiveMode(parsed.response_mode);
+              if (parsed.current_agent) setActiveAgent(parsed.current_agent);
               if (parsed.stages) setActiveStages(parsed.stages);
               if (parsed.current_stage) setCurrentStage(parsed.current_stage);
               if (parsed.safe_task_summary) setCurrentThought(parsed.safe_task_summary);
@@ -263,10 +278,60 @@ export default function SeparatePopupCockpit() {
             if (parsed.event_type === 'MODE_SELECTED' || parsed.event_type === 'MODE_CHANGED') {
               const m = parsed.response_mode || parsed.new_mode;
               if (m) setActiveMode(m);
+              if (parsed.active_engine) setActiveEngine(parsed.active_engine);
+              if (parsed.current_agent) setActiveAgent(parsed.current_agent);
               if (parsed.mode_reason || parsed.reason) setModeReason(parsed.mode_reason || parsed.reason);
               if (parsed.stages) setActiveStages(parsed.stages);
               if (parsed.current_stage) setCurrentStage(parsed.current_stage);
               if (parsed.safe_task_summary) setCurrentThought(parsed.safe_task_summary);
+              return;
+            }
+
+            // Agent Execution Status Events
+            if (parsed.event_type === 'AGENT_STARTED') {
+              if (parsed.component_name) setActiveAgent(parsed.component_name);
+              if (parsed.active_engine) setActiveEngine(parsed.active_engine);
+              if (parsed.response_mode) setActiveMode(parsed.response_mode);
+              if (parsed.current_stage) setCurrentStage(parsed.current_stage);
+              if (parsed.safe_task_summary) setCurrentThought(parsed.safe_task_summary);
+              return;
+            }
+
+            // Automation Telemetry Events
+            if (parsed.event_type === 'AUTOMATION_PLAN_READY') {
+              setAutomationTelemetry({
+                targetApp: parsed.target_app || 'Application',
+                action: parsed.action || 'Executing plan',
+                verificationStatus: 'Plan Ready'
+              });
+              if (parsed.current_stage) setCurrentStage(parsed.current_stage);
+              return;
+            }
+            if (parsed.event_type === 'AUTOMATION_STEP_STARTED') {
+              setAutomationTelemetry((prev) => ({
+                ...prev,
+                targetApp: parsed.target_app || prev?.targetApp || 'System',
+                action: parsed.action || parsed.safe_task_summary || 'Executing step',
+                verificationStatus: 'Executing...'
+              }));
+              if (parsed.current_stage) setCurrentStage(parsed.current_stage);
+              if (parsed.safe_task_summary) setCurrentThought(parsed.safe_task_summary);
+              return;
+            }
+            if (parsed.event_type === 'AUTOMATION_STEP_COMPLETED') {
+              setAutomationTelemetry((prev) => ({
+                ...prev,
+                verificationStatus: 'Step Verified ✅'
+              }));
+              if (parsed.current_stage) setCurrentStage(parsed.current_stage);
+              return;
+            }
+            if (parsed.event_type === 'AUTOMATION_VERIFIED') {
+              setAutomationTelemetry((prev) => ({
+                ...prev,
+                verificationStatus: 'Window/State Verified ✅'
+              }));
+              if (parsed.current_stage) setCurrentStage(parsed.current_stage);
               return;
             }
 
@@ -316,6 +381,9 @@ export default function SeparatePopupCockpit() {
             if (parsed.event_type === 'response_completed') {
               const finalVal = parsed.final_answer || parsed.content;
               const finalMode = parsed.response_mode || parsed.mode || 'LLM';
+              const finalEng = parsed.active_engine || (['DESKTOP', 'BROWSER', 'HYBRID AUTO'].includes(finalMode) ? 'AUTOMATION' : (finalMode === 'COMPOSITE' ? 'COMPOSITE' : 'ANSWERING'));
+              setActiveEngine(finalEng);
+              setActiveMode(finalMode);
               if (finalVal) {
                 setConversationHistory((prev) => {
                   const last = prev[prev.length - 1];
@@ -337,9 +405,9 @@ export default function SeparatePopupCockpit() {
               }
               setIsLoading(false);
               setStreamingChunk('');
-              setActiveAgent('');
+              setActiveAgent('Result Formatter');
               setCurrentThought('');
-              setCurrentStage('');
+              setCurrentStage('Completed');
               retroSoundEngine.playBeep(520, 0.08);
               return;
             }
@@ -494,12 +562,14 @@ export default function SeparatePopupCockpit() {
     setCurrentTaskPrompt(prompt);
     setIsLoading(true);
     setStreamingChunk('');
+    setActiveEngine(null);
     setActiveMode(null);
     setModeReason('Analyzing directive intent...');
-    setActiveStages(['Understanding request', 'Classifying intent', 'Preparing reasoning context', 'Generating answer', 'Completing response']);
+    setActiveStages(['Understanding request', 'Classifying intent', 'Preparing execution context', 'Executing pipeline', 'Verifying & delivering response']);
     setCurrentStage('Understanding request');
+    setAutomationTelemetry(null);
     setResearchTelemetry({ sourcesCount: 0, pagesCount: 0, domains: [], evidenceStatus: '' });
-    setActiveAgent('Request Router');
+    setActiveAgent('Global Intent Router');
     setCurrentThought(`Analyzing directive: "${prompt}"...`);
 
     // Add user turn immediately
@@ -534,6 +604,10 @@ export default function SeparatePopupCockpit() {
       const data = await resp.json();
       const botAnswer = data.content || data.final_answer || data.response || "Task completed.";
       const finalCategory = data.response_mode || data.mode || activeMode || 'LLM';
+      const finalEngine = data.active_engine || (['DESKTOP', 'BROWSER', 'HYBRID AUTO'].includes(finalCategory) ? 'AUTOMATION' : (finalCategory === 'COMPOSITE' ? 'COMPOSITE' : 'ANSWERING'));
+
+      setActiveEngine(finalEngine);
+      setActiveMode(finalCategory);
 
       setConversationHistory((prev) => {
         const last = prev[prev.length - 1];
@@ -567,11 +641,8 @@ export default function SeparatePopupCockpit() {
     } finally {
       abortCtrlRef.current = null;
       setIsLoading(false);
-      setActiveAgent('');
       setCurrentThought('');
       setStreamingChunk('');
-      setActiveMode(null);
-      setCurrentStage('');
     }
   };
 
@@ -993,6 +1064,55 @@ export default function SeparatePopupCockpit() {
         </div>
       </header>
 
+      {/* 4.A.2: COMPACT ACTIVE AGENT / CURRENT OPERATION TOP BAR */}
+      <div className="px-3.5 py-1.5 bg-zinc-950/95 border-b border-zinc-800/80 flex items-center justify-between font-mono text-[10px] text-zinc-400 select-none overflow-x-auto whitespace-nowrap shadow-inner z-20">
+        <div className="flex items-center gap-2.5">
+          <span className="flex items-center gap-1">
+            <span className="text-zinc-500 font-bold uppercase">ACTIVE ENGINE:</span>
+            <span className={`font-black tracking-wide ${
+              activeEngine === 'COMPOSITE' ? 'text-rose-400 font-extrabold animate-pulse' :
+              activeEngine === 'AUTOMATION' ? 'text-cyan-400 font-extrabold' :
+              activeEngine === 'ANSWERING' ? 'text-sky-400 font-extrabold' : 'text-zinc-300'
+            }`}>
+              {activeEngine || (isLoading ? 'ROUTING' : 'STANDBY')}
+            </span>
+          </span>
+          <span className="text-zinc-700">|</span>
+          <span className="flex items-center gap-1">
+            <span className="text-zinc-500 font-bold uppercase">ACTIVE MODE:</span>
+            <span className={`font-black ${
+              activeMode === 'LLM' ? 'text-blue-400' :
+              activeMode === 'WEB' ? 'text-emerald-400' :
+              activeMode === 'HYBRID' ? 'text-purple-400' :
+              activeMode === 'DOCUMENT' ? 'text-amber-400' :
+              activeMode === 'DESKTOP' ? 'text-cyan-400' :
+              activeMode === 'BROWSER' ? 'text-indigo-400' :
+              activeMode === 'COMPOSITE' ? 'text-rose-400' :
+              activeMode ? 'text-rose-400' : 'text-zinc-400'
+            }`}>
+              {activeMode || (isLoading ? 'DETECTING' : 'IDLE')}
+            </span>
+          </span>
+          <span className="text-zinc-700">|</span>
+          <span className="flex items-center gap-1">
+            <span className="text-zinc-500 font-bold uppercase">CURRENT AGENT:</span>
+            <span className="font-bold text-zinc-200">
+              {activeAgent || (isLoading ? 'Global Intent Router' : 'JARVIS Supervisor')}
+            </span>
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 pl-2">
+          <span className="text-zinc-500 font-bold uppercase">STATUS:</span>
+          <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+            isLoading
+              ? 'bg-amber-950/80 text-amber-300 border border-amber-800 animate-pulse'
+              : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800'
+          }`}>
+            {isLoading ? 'RUNNING' : 'STANDBY'}
+          </span>
+        </div>
+      </div>
+
       {/* 4.B: MAIN CONVERSATION AREA */}
       <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-3 space-y-3.5 select-text font-mono">
         {conversationHistory.length === 0 && !isLoading ? (
@@ -1017,25 +1137,30 @@ export default function SeparatePopupCockpit() {
               {/* Standby Mode Engine Preview */}
               <div className="w-full max-w-xs p-2.5 bg-black/90 border border-zinc-800 rounded-lg space-y-2 text-left shadow-md">
                 <div className="flex items-center justify-between text-[10px] font-bold text-zinc-300 border-b border-zinc-800/80 pb-1.5">
-                  <span className="uppercase tracking-wider">AUTOMATIC RESPONSE MODES:</span>
+                  <span className="uppercase tracking-wider">DUAL EXECUTION ENGINES:</span>
                   <span className="text-emerald-400 font-mono text-[9px] animate-pulse">[ONLINE]</span>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5 font-mono text-[10px]">
-                  <div className="p-1.5 rounded bg-blue-950/40 border border-blue-800/60 text-center">
-                    <div className="font-bold text-blue-400">LLM</div>
-                    <div className="text-[9px] text-zinc-500">Fast Local</div>
-                  </div>
-                  <div className="p-1.5 rounded bg-emerald-950/40 border border-emerald-800/60 text-center">
-                    <div className="font-bold text-emerald-400">WEB</div>
-                    <div className="text-[9px] text-zinc-500">Live Search</div>
-                  </div>
-                  <div className="p-1.5 rounded bg-purple-950/40 border border-purple-800/60 text-center">
-                    <div className="font-bold text-purple-400">HYBRID</div>
-                    <div className="text-[9px] text-zinc-500">Synthesized</div>
+                {/* Answering Engine */}
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400 font-bold uppercase">Answering Engine:</span>
+                  <div className="grid grid-cols-4 gap-1 font-mono text-[9px]">
+                    <div className="p-1 rounded bg-blue-950/40 border border-blue-800/60 text-center font-bold text-blue-400">LLM</div>
+                    <div className="p-1 rounded bg-emerald-950/40 border border-emerald-800/60 text-center font-bold text-emerald-400">WEB</div>
+                    <div className="p-1 rounded bg-purple-950/40 border border-purple-800/60 text-center font-bold text-purple-400">HYBRID</div>
+                    <div className="p-1 rounded bg-amber-950/40 border border-amber-800/60 text-center font-bold text-amber-400">DOC</div>
                   </div>
                 </div>
-                <p className="text-[10px] text-zinc-500 leading-tight">
-                  Auto-routes directives based on intent. Real-time stages and research telemetry will stream automatically.
+                {/* Automation Engine */}
+                <div className="space-y-1 pt-1 border-t border-zinc-900">
+                  <span className="text-[9px] text-zinc-400 font-bold uppercase">Automation Engine:</span>
+                  <div className="grid grid-cols-3 gap-1 font-mono text-[9px]">
+                    <div className="p-1 rounded bg-cyan-950/40 border border-cyan-800/60 text-center font-bold text-cyan-400">DESKTOP</div>
+                    <div className="p-1 rounded bg-indigo-950/40 border border-indigo-800/60 text-center font-bold text-indigo-400">BROWSER</div>
+                    <div className="p-1 rounded bg-rose-950/40 border border-rose-800/60 text-center font-bold text-rose-400">HYBRID AUTO</div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-zinc-500 leading-tight pt-1">
+                  Semantic intent auto-routes directives across local intelligence, web research, and system automation.
                 </p>
               </div>
             </div>
@@ -1061,6 +1186,7 @@ export default function SeparatePopupCockpit() {
               <div className="min-w-0 max-w-full break-words">
                 <CockpitLoadingSkeleton
                   query={currentTaskPrompt}
+                  activeEngine={activeEngine}
                   activeAgent={activeAgent}
                   currentThought={currentThought}
                   streamingChunk={streamingChunk}
@@ -1071,6 +1197,7 @@ export default function SeparatePopupCockpit() {
                   stages={activeStages}
                   currentStage={currentStage}
                   researchTelemetry={researchTelemetry}
+                  automationTelemetry={automationTelemetry}
                 />
               </div>
             )}
