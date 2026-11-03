@@ -40,6 +40,7 @@ export default function App() {
   const [pendingApproval, setPendingApproval] = useState(null);
   const [isHitlLoading, setIsHitlLoading] = useState(false);
   const [hitlError, setHitlError] = useState(null);
+  const dismissedApprovalsRef = useRef(new Set());
 
   // Backend & WS Status
   const [backendHealth, setBackendHealth] = useState('checking');
@@ -318,19 +319,32 @@ export default function App() {
 
   // Desktop Overlay & Human-in-the-Loop Real-Time Gate Listeners
   useEffect(() => {
-    // 1. Periodically check for backend PENDING Human-in-the-Loop approvals (every 2.5s)
+    // 1. Periodically check for backend PENDING Human-in-the-Loop approvals (every 3s)
     const checkPendingApprovals = async () => {
+      // Guard: Do not poll without a valid conversation ID
+      if (!conversationId || conversationId === 'undefined' || conversationId === 'null') {
+        return;
+      }
       try {
-        const resp = await fetch(`/api/chat/approvals/pending/?conversation_id=${conversationId}`);
+        const resp = await fetch(`/api/chat/approvals/pending/?conversation_id=${encodeURIComponent(conversationId)}`);
         if (resp.ok) {
           const data = await resp.json();
           if (data.approvals && data.approvals.length > 0) {
             const topAppr = data.approvals[0];
+            // If already dismissed by user in this session, do not re-surface
+            if (dismissedApprovalsRef.current.has(topAppr.approval_id)) {
+              return;
+            }
             setPendingApproval((prev) => {
               if (prev?.approval_id === topAppr.approval_id) return prev;
               return topAppr;
             });
             setIsHitlModalOpen(true);
+          } else {
+            if (isHitlModalOpen && pendingApproval?.conversation_id === conversationId) {
+              setIsHitlModalOpen(false);
+              setPendingApproval(null);
+            }
           }
         }
       } catch (err) {
@@ -338,7 +352,7 @@ export default function App() {
       }
     };
 
-    const approvalInterval = setInterval(checkPendingApprovals, 2500);
+    const approvalInterval = setInterval(checkPendingApprovals, 3000);
 
     // 2. Custom Window Event: Quick Action (Ctrl + Alt + Space)
     const handleQuickAction = () => {
@@ -613,12 +627,30 @@ export default function App() {
 
   // Step 2: User Selects DENY in HITL Popup
   const handleDenyApproval = async () => {
-    if (pendingApproval?.approval_id) {
+    const apprId = pendingApproval?.approval_id;
+    if (apprId) {
+      dismissedApprovalsRef.current.add(apprId);
       try {
-        await fetch(`/api/chat/conversations/${conversationId}/refresh-approval/${pendingApproval.approval_id}/deny/`, {
+        // 1. Universal approval responder endpoint
+        await fetch(`/api/chat/approvals/${apprId}/respond/`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'reject', action: 'deny', conversation_id: conversationId })
+        }).catch(() => {});
+
+        // 2. Action-specific fallback endpoints
+        if (pendingApproval?.action_type?.startsWith('AUTOMATION')) {
+          await fetch(`/api/automation/approvals/${apprId}/respond/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ decision: 'reject' })
+          }).catch(() => {});
+        } else if (conversationId) {
+          await fetch(`/api/chat/conversations/${conversationId}/refresh-approval/${apprId}/deny/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          }).catch(() => {});
+        }
       } catch (e) {
         console.warn('Deny approval notification notice:', e);
       }
@@ -626,51 +658,68 @@ export default function App() {
     setIsHitlModalOpen(false);
     setPendingApproval(null);
     setHitlError(null);
-    setCurrentThought('Human approval DENIED. Active conversation preserved intact.');
+    setCurrentThought('Human approval DENIED. Operation halted safely.');
     loadAuditLogs();
   };
 
   // Step 3: User Selects ACCEPT in HITL Popup
   const handleAcceptApproval = async () => {
-    if (!pendingApproval?.approval_id) return;
+    const apprId = pendingApproval?.approval_id;
+    if (!apprId) return;
     setIsHitlLoading(true);
     setHitlError(null);
+    dismissedApprovalsRef.current.add(apprId);
 
     try {
-      const resp = await fetch(`/api/chat/conversations/${conversationId}/refresh-approval/${pendingApproval.approval_id}/accept/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      if (pendingApproval?.action_type?.startsWith('AUTOMATION')) {
+        const resp = await fetch(`/api/chat/approvals/${apprId}/respond/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'approve', action: 'accept', conversation_id: conversationId })
+        });
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || `Server error (${resp.status})`);
+        }
+        setIsHitlModalOpen(false);
+        setPendingApproval(null);
+        setCurrentThought('Automation action authorized. Resuming execution...');
+      } else {
+        const resp = await fetch(`/api/chat/conversations/${conversationId}/refresh-approval/${apprId}/accept/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
 
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        throw new Error(errData.error || `Server returned error status ${resp.status}`);
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || `Server returned error status ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        const newConvId = data.new_conversation_id || ('conv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8));
+
+        // Update Active Conversation ID
+        setConversationId(newConvId);
+        setSessionId('sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+        localStorage.setItem('ops_conversation_id', newConvId);
+
+        // Reset Active Chat Interface
+        setConversationHistory([]);
+        setLiveEvents([]);
+        setBriefingText('');
+        setPlanSteps([]);
+        setCurrentTaskPrompt('');
+        setCurrentThought('Active conversation permanently reset. Fresh session initialized.');
+        setStreamingChunk('');
+
+        // Play retro memory erase sound
+        retroSoundEngine.playMemoryErase();
+        setIsHitlModalOpen(false);
+        setPendingApproval(null);
       }
-
-      const data = await resp.json();
-      const newConvId = data.new_conversation_id || ('conv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8));
-
-      // Update Active Conversation ID
-      setConversationId(newConvId);
-      setSessionId('sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
-      localStorage.setItem('ops_conversation_id', newConvId);
-
-      // Reset Active Chat Interface
-      setConversationHistory([]);
-      setLiveEvents([]);
-      setBriefingText('');
-      setPlanSteps([]);
-      setCurrentTaskPrompt('');
-      setCurrentThought('Active conversation permanently reset. Fresh session initialized.');
-      setStreamingChunk('');
-
-      // Play retro memory erase sound
-      retroSoundEngine.playMemoryErase();
-      setIsHitlModalOpen(false);
-      setPendingApproval(null);
       loadAuditLogs();
     } catch (err) {
-      setHitlError(err.message || 'Failed to permanently delete conversation.');
+      setHitlError(err.message || 'Failed to process authorization.');
     } finally {
       setIsHitlLoading(false);
     }
@@ -762,8 +811,12 @@ export default function App() {
       {/* Reusable Human-in-the-Loop (HITL) Approval Modal */}
       <HumanApprovalModal
         isOpen={isHitlModalOpen}
-        title="Human Approval Required"
-        subtitle="Delete Current Conversation?"
+        title={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Automation Action Authorization" : "Human Approval Required"}
+        subtitle={pendingApproval?.description || (pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Authorize system automation task execution?" : "Delete Current Conversation?")}
+        denyLabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "REJECT ACTION" : "DENY"}
+        denySublabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Cancel this automation step." : "Keep my conversation."}
+        acceptLabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "AUTHORIZE" : "ACCEPT"}
+        acceptSublabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Proceed with execution." : "Delete and start fresh."}
         conversationId={conversationId}
         approvalId={pendingApproval?.approval_id}
         loading={isHitlLoading}

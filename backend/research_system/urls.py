@@ -18,6 +18,7 @@ urlpatterns = [
 
     # Human-in-the-Loop (HITL) Approval Endpoints
     path("chat/approvals/pending/", views.get_pending_approvals, name="chat_pending_approvals"),
+    path("chat/approvals/<str:approval_id>/respond/", views.respond_chat_approval, name="chat_approval_respond"),
     path("chat/conversations/<str:conversation_id>/refresh-approval/", views.create_refresh_approval, name="chat_refresh_approval"),
     path("chat/conversations/<str:conversation_id>/refresh-approval/<str:approval_id>/accept/", views.accept_refresh_approval, name="chat_refresh_approval_accept"),
     path("chat/conversations/<str:conversation_id>/refresh-approval/<str:approval_id>/deny/", views.deny_refresh_approval, name="chat_refresh_approval_deny"),

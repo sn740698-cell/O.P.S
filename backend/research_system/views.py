@@ -4,6 +4,7 @@ import uuid
 import asyncio
 import queue
 import logging
+import datetime
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
@@ -1860,13 +1861,32 @@ def accept_refresh_approval(request, conversation_id, approval_id):
 def get_pending_approvals(request):
     """
     Endpoint: GET /api/chat/approvals/pending/
-    Retrieves all currently active PENDING Human-in-the-Loop approval requests.
-    Used by the Desktop Visibility Controller and Cockpit HUD to surface approval gates immediately.
+    Retrieves currently active PENDING Human-in-the-Loop approval requests strictly for the requested conversation.
+    Auto-expires stale approvals older than 5 minutes to prevent infinite prompt loops.
     """
-    conversation_id = request.GET.get("conversation_id")
-    query = PendingApproval.objects.filter(status="PENDING")
-    if conversation_id:
-        query = query.filter(target_conversation_id=conversation_id)
+    # 1. Clean up & expire pending approvals older than 5 minutes
+    try:
+        expiry_cutoff = timezone.now() - datetime.timedelta(minutes=5)
+        PendingApproval.objects.filter(status="PENDING", created_at__lt=expiry_cutoff).update(
+            status="EXPIRED",
+            resolved_at=timezone.now()
+        )
+    except Exception as e:
+        logger.warning(f"Error auto-expiring pending approvals: {e}")
+
+    # 2. Extract conversation_id and validate strictly
+    conversation_id = (request.GET.get("conversation_id") or "").strip()
+    if not conversation_id or conversation_id.lower() in ["undefined", "null", "none", ""]:
+        # Do NOT leak un-targeted approvals to arbitrary uninitialized sessions
+        return JsonResponse({
+            "pending_count": 0,
+            "approvals": []
+        }, status=200)
+
+    query = PendingApproval.objects.filter(
+        status="PENDING",
+        target_conversation_id=conversation_id
+    )
 
     approvals = []
     for appr in query.order_by("-created_at")[:10]:
@@ -1876,12 +1896,90 @@ def get_pending_approvals(request):
             "action_type": appr.action_type,
             "description": appr.description,
             "created_at": appr.created_at.isoformat(),
-            "status": appr.status
+            "status": appr.status,
+            "metadata": appr.metadata
         })
 
     return JsonResponse({
         "pending_count": len(approvals),
         "approvals": approvals
+    }, status=200)
+
+
+@csrf_exempt
+def respond_chat_approval(request, approval_id):
+    """
+    Endpoint: POST /api/chat/approvals/<approval_id>/respond/
+    Universal handler for accepting or rejecting any Human-in-the-Loop pending approval.
+    Handles conversation reset approvals, automation gates, and composite safety policies.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed. Use POST."}, status=405)
+
+    try:
+        body = json.loads(request.body.decode("utf-8")) if request.body else {}
+    except Exception:
+        body = {}
+
+    decision = (body.get("decision") or body.get("action") or "").lower().strip()
+    is_approved = decision in ["approve", "accept", "authorized", "yes", "true"]
+
+    appr = PendingApproval.objects.filter(approval_id=approval_id).first()
+    if not appr:
+        return JsonResponse({"error": f"Pending approval '{approval_id}' not found."}, status=404)
+
+    if appr.status != "PENDING":
+        return JsonResponse({
+            "error": f"Approval request has already been resolved with status '{appr.status}'."
+        }, status=409)
+
+    action_type = appr.action_type or ""
+
+    # Case A: Automation Engine Gate
+    if action_type.startswith("AUTOMATION_"):
+        try:
+            from automation_system.services.automation_service import AutomationService
+            res = AutomationService.resume_after_approval(approval_id, approved=is_approved)
+            return JsonResponse(res, status=200)
+        except Exception as e:
+            logger.error(f"Failed to resume automation approval {approval_id}: {e}")
+            appr.status = "APPROVED" if is_approved else "REJECTED"
+            appr.resolved_at = timezone.now()
+            appr.save()
+            return JsonResponse({"success": True, "status": appr.status}, status=200)
+
+    # Case B: Permanent Conversation Deletion
+    if action_type == "PERMANENT_CONVERSATION_DELETION":
+        target_conv_id = appr.target_conversation_id
+        if not is_approved:
+            return deny_refresh_approval(request, target_conv_id, approval_id)
+        else:
+            return accept_refresh_approval(request, target_conv_id, approval_id)
+
+    # Case C: General HITL Safety Gate
+    appr.status = "APPROVED" if is_approved else "REJECTED"
+    appr.resolved_at = timezone.now()
+    appr.save()
+
+    event_bus.publish(
+        request_id=f"req_{approval_id}",
+        execution_id=appr.execution_id or f"exec_{approval_id}",
+        conversation_id=appr.target_conversation_id,
+        node_id="hitl_safety_controller",
+        component_name="HITL Safety Controller",
+        component_type="approval_controller",
+        event_type="APPROVAL_ACCEPTED" if is_approved else "APPROVAL_REJECTED",
+        execution_status="EXECUTING" if is_approved else "CANCELLED",
+        safe_task_summary="Human authorization confirmed." if is_approved else "Human authorization denied.",
+        status=appr.status,
+        timestamp=time.time()
+    )
+
+    return JsonResponse({
+        "success": True,
+        "status": appr.status,
+        "approval_id": approval_id,
+        "message": f"Approval {appr.status}."
     }, status=200)
 
 
