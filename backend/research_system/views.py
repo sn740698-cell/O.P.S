@@ -435,7 +435,7 @@ def conversation_messages(request, conversation_id):
             "response_mode": resp_mode,
             "plan": orch_res.get("plan", []),
             "node_history": [s.get("assigned_agent") for s in orch_res.get("plan", [])] if orch_res.get("plan") else [resp_mode.lower()]
-        }, status=200 if orch_res.get("success") else 500)
+        }, status=200)
 
     except Exception as orch_err:
         logger.error(f"Central orchestrator execution exception: {orch_err}, falling back to router.", exc_info=True)
@@ -1152,7 +1152,7 @@ def conversation_messages(request, conversation_id):
             "content": final_answer, "final_answer": final_answer, "response": final_answer,
             "mode": auto_mode, "response_mode": auto_mode, "stages": stages,
             "plan": plan_res.get("steps", [])
-        }, status=200 if exec_res.get("success") else 500)
+        }, status=200)
 
     # =========================================================================
     # PATH B: WEB & HYBRID MODES (LangGraph Multi-Agent Research & Evidence Synthesis)

@@ -255,6 +255,96 @@ class BrowserExecutor:
         except Exception as e:
             return {"success": False, "action": "capture_screenshot", "error": str(e)}
 
+    def go_back(self) -> Dict[str, Any]:
+        """Navigates back to the previous page in history."""
+        try:
+            self._ensure_browser()
+            from automation_system.browser.navigation_engine import NavigationEngine
+            return NavigationEngine.go_back(self._page)
+        except Exception as e:
+            return {"success": False, "action": "go_back", "error": str(e)}
+
+    def youtube_search(self, query: str) -> Dict[str, Any]:
+        """Navigates to YouTube and performs a search without auto-playing."""
+        try:
+            self._ensure_browser()
+            from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
+            return YouTubeAdapter.search_song_or_video(self._page, query=query)
+        except Exception as e:
+            return {"success": False, "action": "youtube_search", "error": str(e)}
+
+    def youtube_search_and_play(self, query: str) -> Dict[str, Any]:
+        """Searches YouTube and plays the top result."""
+        try:
+            self._ensure_browser()
+            from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
+            return YouTubeAdapter.execute_full_search_and_play(self._page, query=query)
+        except Exception as e:
+            return {"success": False, "action": "youtube_search_and_play", "error": str(e)}
+
+    def youtube_click_first(self) -> Dict[str, Any]:
+        """Clicks the top result on YouTube search page."""
+        try:
+            self._ensure_browser()
+            from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
+            return YouTubeAdapter.click_first_video(self._page)
+        except Exception as e:
+            return {"success": False, "action": "youtube_click_first", "error": str(e)}
+
+    def google_search(self, query: str) -> Dict[str, Any]:
+        """Performs Google search and displays results."""
+        try:
+            self._ensure_browser()
+            from automation_system.browser.adapters.google_adapter import GoogleAdapter
+            return GoogleAdapter.search(self._page, query=query)
+        except Exception as e:
+            return {"success": False, "action": "google_search", "error": str(e)}
+
+    def google_click_top(self) -> Dict[str, Any]:
+        """Clicks the top organic search result on Google."""
+        try:
+            self._ensure_browser()
+            from automation_system.browser.adapters.google_adapter import GoogleAdapter
+            return GoogleAdapter.click_top_result(self._page)
+        except Exception as e:
+            return {"success": False, "action": "google_click_top", "error": str(e)}
+
+    def instagram_reels(self) -> Dict[str, Any]:
+        """Navigates to Instagram Reels feed."""
+        try:
+            self._ensure_browser()
+            from automation_system.browser.adapters.instagram_adapter import InstagramAdapter
+            return InstagramAdapter.navigate_reels(self._page)
+        except Exception as e:
+            return {"success": False, "action": "instagram_reels", "error": str(e)}
+
+    def instagram_open(self) -> Dict[str, Any]:
+        """Navigates to Instagram homepage."""
+        try:
+            self._ensure_browser()
+            from automation_system.browser.adapters.instagram_adapter import InstagramAdapter
+            return InstagramAdapter.open_home(self._page)
+        except Exception as e:
+            return {"success": False, "action": "instagram_open", "error": str(e)}
+
+    def search(self, query: str, selector: Optional[str] = None) -> Dict[str, Any]:
+        """Executes search on currently active page."""
+        try:
+            self._ensure_browser()
+            from automation_system.browser.search_engine import SearchEngine
+            return SearchEngine.execute_search(self._page, query=query, custom_selector=selector)
+        except Exception as e:
+            return {"success": False, "action": "search", "error": str(e)}
+
+    def click_first_result(self) -> Dict[str, Any]:
+        """Clicks the first search result on the active page."""
+        try:
+            self._ensure_browser()
+            from automation_system.browser.interaction_engine import InteractionEngine
+            return InteractionEngine.click_first_result(self._page)
+        except Exception as e:
+            return {"success": False, "action": "click_first_result", "error": str(e)}
+
     def close(self):
         """Cleans up Playwright resources."""
         try:

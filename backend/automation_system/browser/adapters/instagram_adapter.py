@@ -82,3 +82,130 @@ class InstagramAdapter:
         res = NavigationEngine.navigate(page, target_url)
         cls.handle_login_barrier(page)
         return res
+
+    @classmethod
+    def is_authenticated(cls, page: Page) -> bool:
+        """Verifies if current page is in an authenticated Instagram session."""
+        try:
+            curr_u = page.url.lower()
+            if "accounts/login" in curr_u:
+                return False
+            # Look for navigation bar items present only when logged in
+            dms_icon = page.locator("svg[aria-label='Direct']").first
+            profile_icon = page.locator("svg[aria-label='Profile']").first
+            return dms_icon.is_visible(timeout=800) or profile_icon.is_visible(timeout=800)
+        except Exception:
+            return False
+
+    @classmethod
+    def navigate_dms(cls, page: Page) -> Dict[str, Any]:
+        """
+        Navigates to Instagram Direct Messages inbox.
+        Safely halts if user is unauthenticated per Section 1.D rules.
+        """
+        t0 = time.time()
+        res = NavigationEngine.navigate(page, "https://www.instagram.com/direct/inbox/")
+        time.sleep(1.5)
+        cls.handle_login_barrier(page)
+
+        auth_ok = cls.is_authenticated(page)
+        duration = round(time.time() - t0, 2)
+
+        if not auth_ok:
+            return {
+                "success": True,
+                "status": "BLOCKED",
+                "action": "instagram_dms",
+                "auth_required": True,
+                "url": page.url,
+                "duration_s": duration,
+                "message": "Instagram Direct Messages requires an active, authorized user session. Halting before login barrier to protect user credentials.",
+                "verification": {"verified": True, "auth_barrier_respected": True}
+            }
+
+        return {
+            "success": True,
+            "status": "COMPLETED",
+            "action": "instagram_dms",
+            "auth_required": False,
+            "url": page.url,
+            "duration_s": duration,
+            "verification": {"verified": True, "inbox_loaded": True}
+        }
+
+    @classmethod
+    def open_conversation(cls, page: Page, contact_name: str) -> Dict[str, Any]:
+        """
+        Identifies and opens a specified conversation in Instagram DMs.
+        Never guesses contact names if ambiguous.
+        """
+        if not contact_name:
+            return {
+                "success": False,
+                "action": "instagram_open_conversation",
+                "error": "A specific username or contact name must be provided to open a conversation."
+            }
+
+        dm_res = cls.navigate_dms(page)
+        if dm_res.get("status") == "BLOCKED":
+            return dm_res
+
+        try:
+            # Find matching chat in inbox list
+            chat_item = page.locator(f"div[role='listitem']:has-text('{contact_name}')").first
+            if not chat_item.is_visible(timeout=3000):
+                # Try finding by span or text
+                chat_item = page.locator(f"span:has-text('{contact_name}')").first
+
+            if chat_item.is_visible(timeout=2000):
+                chat_item.click()
+                time.sleep(1.5)
+                return {
+                    "success": True,
+                    "action": "instagram_open_conversation",
+                    "contact_name": contact_name,
+                    "url": page.url,
+                    "verification": {"verified": True, "conversation_opened": contact_name}
+                }
+            else:
+                return {
+                    "success": False,
+                    "action": "instagram_open_conversation",
+                    "error": f"Conversation with '{contact_name}' not found in visible inbox items."
+                }
+        except Exception as e:
+            return {"success": False, "action": "instagram_open_conversation", "error": str(e)}
+
+    @classmethod
+    def read_visible_messages(cls, page: Page, max_messages: int = 5) -> Dict[str, Any]:
+        """
+        Reads visible messages in currently open authorized conversation.
+        Never modifies, sends, or deletes messages.
+        """
+        if not cls.is_authenticated(page):
+            return {
+                "success": False,
+                "status": "BLOCKED",
+                "action": "instagram_read_messages",
+                "error": "Active session is unauthenticated. Cannot read private messages."
+            }
+
+        try:
+            msg_bubbles = page.locator("div[role='row'] div[dir='auto']")
+            count = min(msg_bubbles.count(), max_messages)
+            texts = []
+            for i in range(count):
+                b = msg_bubbles.nth(i)
+                txt = b.text_content() or ""
+                if txt.strip():
+                    texts.append(txt.strip())
+
+            return {
+                "success": True,
+                "action": "instagram_read_messages",
+                "messages_count": len(texts),
+                "messages": texts,
+                "verification": {"verified": True}
+            }
+        except Exception as e:
+            return {"success": False, "action": "instagram_read_messages", "error": str(e)}

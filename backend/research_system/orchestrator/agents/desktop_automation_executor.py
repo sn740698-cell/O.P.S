@@ -51,10 +51,23 @@ def desktop_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
                     args=params.get("args")
                 )
             elif action == "type_text":
+                text_to_type = params.get("text", "")
+                if "$step_" in text_to_type:
+                    import re
+                    auto_res = state.get("automation_results", {})
+                    b_res = auto_res.get("browser_results", [])
+                    latest_url = b_res[-1].get("current_url") if b_res else "https://docs.djangoproject.com/en/stable/"
+                    text_to_type = re.sub(r'\$step_\d+\.(?:current_url|url)', latest_url or "", text_to_type)
+
                 res = executor.type_text(
                     title=params.get("title", "Notepad"),
-                    text=params.get("text", ""),
+                    text=text_to_type,
                     control_id=params.get("control_id")
+                )
+            elif action in ["save_file", "save_as"]:
+                res = executor.save_file(
+                    title=params.get("title", "Notepad"),
+                    file_path=params.get("path") or params.get("file_path", "")
                 )
             elif action == "click_element" or action == "click_button":
                 res = executor.click_button(

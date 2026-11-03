@@ -98,3 +98,75 @@ class YouTubeAdapter:
             "duration_s": duration,
             "verification": verif
         }
+
+    @classmethod
+    def pause_playback(cls, page: Page) -> Dict[str, Any]:
+        """Pauses the currently playing YouTube video using player shortcut."""
+        try:
+            # YouTube standard shortcut 'k' toggles pause
+            page.keyboard.press("k")
+            time.sleep(1.0)
+            verif = BrowserVerificationEngine.verify_page_state(page, url_substring="watch")
+            return {
+                "success": True,
+                "action": "youtube_pause",
+                "state": "PAUSED",
+                "verification": verif
+            }
+        except Exception as e:
+            return {"success": False, "action": "youtube_pause", "error": str(e)}
+
+    @classmethod
+    def resume_playback(cls, page: Page) -> Dict[str, Any]:
+        """Resumes YouTube playback."""
+        try:
+            page.keyboard.press("k")
+            time.sleep(1.0)
+            verif = BrowserVerificationEngine.verify_youtube_video_playing(page)
+            return {
+                "success": True,
+                "action": "youtube_resume",
+                "state": "PLAYING",
+                "verification": verif
+            }
+        except Exception as e:
+            return {"success": False, "action": "youtube_resume", "error": str(e)}
+
+    @classmethod
+    def stop_playback(cls, page: Page) -> Dict[str, Any]:
+        """Stops YouTube playback and resets player."""
+        try:
+            # Pauses video and rewinds to 0
+            page.keyboard.press("0")
+            page.keyboard.press("k")
+            return {"success": True, "action": "youtube_stop", "state": "STOPPED"}
+        except Exception as e:
+            return {"success": False, "action": "youtube_stop", "error": str(e)}
+
+    @classmethod
+    def inspect_search_results(cls, page: Page, max_items: int = 5) -> Dict[str, Any]:
+        """Extracts visible video titles and links from YouTube search page."""
+        try:
+            time.sleep(1.5)
+            titles = []
+            links = page.locator("ytd-video-renderer a#video-title")
+            count = min(links.count(), max_items)
+            for i in range(count):
+                el = links.nth(i)
+                t_text = el.text_content() or ""
+                href = el.get_attribute("href") or ""
+                if t_text.strip():
+                    titles.append({
+                        "rank": i + 1,
+                        "title": t_text.strip(),
+                        "url": f"https://www.youtube.com{href}" if href.startswith("/") else href
+                    })
+
+            return {
+                "success": len(titles) > 0,
+                "action": "youtube_inspect_results",
+                "results_count": len(titles),
+                "items": titles
+            }
+        except Exception as e:
+            return {"success": False, "action": "youtube_inspect_results", "error": str(e)}

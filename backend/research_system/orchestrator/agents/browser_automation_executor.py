@@ -20,6 +20,7 @@ from automation_system.browser.verification_engine import BrowserVerificationEng
 from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
 from automation_system.browser.adapters.instagram_adapter import InstagramAdapter
 from automation_system.browser.adapters.google_adapter import GoogleAdapter
+from automation_system.browser.adapters.spotify_adapter import SpotifyAdapter
 
 logger = logging.getLogger("OPS.Agent.BrowserExecutor")
 
@@ -40,11 +41,11 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
 
     emit_agent_started(state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE, f"Executing {len(browser_steps)} browser operation(s)...")
 
-    # Retrieve or instantiate persistent session page for this conversation
-    session_mgr = BrowserSessionManager()
-    page = session_mgr.get_or_create_page(conv_id)
-
     try:
+        # Retrieve or instantiate persistent session page for this conversation
+        session_mgr = BrowserSessionManager()
+        page = session_mgr.get_or_create_page(conv_id)
+
         executed_results: List[Dict[str, Any]] = []
         overall_ok = True
 
@@ -100,11 +101,45 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
             elif action == "youtube_click_first":
                 res = YouTubeAdapter.click_first_video(page)
 
+            elif action == "youtube_pause":
+                res = YouTubeAdapter.pause_playback(page)
+
+            elif action == "youtube_resume":
+                res = YouTubeAdapter.resume_playback(page)
+
+            elif action == "youtube_stop":
+                res = YouTubeAdapter.stop_playback(page)
+
+            elif action == "youtube_inspect_results":
+                res = YouTubeAdapter.inspect_search_results(page, max_results=params.get("max_results", 5))
+
+            elif action == "spotify_search":
+                q = params.get("query", "")
+                res = SpotifyAdapter.search_song(page, query=q)
+
+            elif action == "spotify_play":
+                q = params.get("query", "")
+                res = SpotifyAdapter.play_top_result(page, query=q)
+
+            elif action == "spotify_toggle_playback":
+                res = SpotifyAdapter.toggle_playback(page)
+
             elif action == "instagram_reels":
                 res = InstagramAdapter.navigate_reels(page)
 
             elif action == "instagram_open":
                 res = InstagramAdapter.open_home(page)
+
+            elif action == "instagram_dms":
+                res = InstagramAdapter.navigate_dms(page)
+
+            elif action == "instagram_open_conversation":
+                user = params.get("username", "")
+                res = InstagramAdapter.open_conversation(page, username=user)
+
+            elif action == "instagram_read_messages":
+                user = params.get("username", "")
+                res = InstagramAdapter.read_visible_messages(page, username=user)
 
             elif action == "google_search":
                 q = params.get("query", "")
@@ -112,6 +147,12 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
 
             elif action == "google_click_top":
                 res = GoogleAdapter.click_top_result(page)
+
+            elif action == "google_inspect_results":
+                res = GoogleAdapter.inspect_results(page, max_results=params.get("max_results", 5))
+
+            elif action == "google_extract_content":
+                res = GoogleAdapter.extract_page_content(page)
 
             else:
                 res = {"success": True, "action": action, "info": f"Completed {action}"}

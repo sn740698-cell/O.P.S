@@ -159,13 +159,32 @@ class AutomationPlanner:
                 "requires_approval": False
             }
 
-        # 2. Desktop: Open Notepad & optionally type text
+        # 2. Desktop: Open Notepad & optionally type text & optionally save
         if "notepad" in q_lower and any(w in q_lower for w in ["open", "launch", "start"]):
             text_to_type = None
+            save_path = None
+
+            # Detect save directive
+            if "save" in q_lower:
+                m_save = re.search(r'(?:save\s+(?:it\s+)?(?:as|to)\s+["\']?([^"\',]+)["\']?|save\s+(?:as|to)\s+Desktop\s+(?:as\s+)?["\']?([^"\',]+)["\']?)', query, re.IGNORECASE)
+                save_filename = "notes.txt"
+                if m_save:
+                    save_filename = (m_save.group(1) or m_save.group(2) or "notes.txt").strip(" \"'")
+                else:
+                    m_txt = re.search(r'([a-zA-Z0-9_\-\.]+\.txt)', query, re.IGNORECASE)
+                    if m_txt:
+                        save_filename = m_txt.group(1).strip()
+                save_path = os.path.join(os.path.expanduser("~/Desktop"), os.path.basename(save_filename))
+
+            # Extract text to type
             if "type" in q_lower or "write" in q_lower:
-                match = re.search(r'(?:type|write)\s+["\']?(.*?)["\']?(?:\s+in\s+notepad|\s+into\s+notepad|$)', query, re.IGNORECASE)
-                if match:
-                    text_to_type = match.group(1).strip(" \"'")
+                m_quote = re.search(r'(?:type|write)\s*:\s*["\']([^"\']+)["\']|(?:type|write)\s+["\']([^"\']+)["\']', query, re.IGNORECASE)
+                if m_quote:
+                    text_to_type = m_quote.group(1) or m_quote.group(2)
+                else:
+                    m_unquoted = re.search(r'(?:type|write)\s+(?:in\s+notepad\s+)?(.*?)(?:\s+and\s+save|\s+in\s+notepad|\s+into\s+notepad|$)', query, re.IGNORECASE)
+                    if m_unquoted:
+                        text_to_type = m_unquoted.group(1).strip(" \"'")
 
             steps = [
                 {
@@ -191,6 +210,19 @@ class AutomationPlanner:
                     "risk_level": RISK_LOW,
                     "status": "PENDING",
                     "verification": {"type": "window_exists", "target": "Notepad"}
+                })
+            if save_path:
+                prev_id = steps[-1]["step_id"]
+                steps.append({
+                    "step_id": prev_id + 1,
+                    "title": f"Save Notepad file to Desktop as '{os.path.basename(save_path)}'",
+                    "executor": "desktop",
+                    "action": "save_file",
+                    "params": {"title": "Notepad", "path": save_path, "file_path": save_path},
+                    "depends_on": [prev_id],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "file_exists", "target": save_path}
                 })
 
             return {
@@ -326,6 +358,114 @@ class AutomationPlanner:
                 "requires_approval": False
             }
 
+        # 6b. File System Automation: Create File
+        if any(w in q_lower for w in ["create file", "create a file", "make a file", "new file", "write file"]) and "notepad" not in q_lower and "code" not in q_lower:
+            file_name = "ops_output.txt"
+            content = ""
+            target_dir = os.path.expanduser("~/Desktop")
+
+            # Extract path or filename
+            m_path = re.search(r'(?:at|named|called|path)\s+["\']?([a-zA-Z]:\\[^\s"\']+|~[^\s"\']+|\b[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+\b)["\']?', query, re.IGNORECASE)
+            if m_path:
+                cand = m_path.group(1).strip()
+                if os.path.sep in cand or "/" in cand:
+                    full_target = os.path.expanduser(cand)
+                else:
+                    full_target = os.path.join(target_dir, cand)
+            else:
+                full_target = os.path.join(target_dir, file_name)
+
+            # Extract content
+            m_content = re.search(r'(?:with content|containing|with text|content)\s*[:=]?\s*["\']([^"\']+)["\']', query, re.IGNORECASE)
+            if m_content:
+                content = m_content.group(1)
+
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Create file at '{full_target}'",
+                    "executor": "system",
+                    "action": "create_file",
+                    "params": {"path": full_target, "content": content, "overwrite": True},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "file_exists", "target": full_target}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": f"Deterministic filesystem file creation workflow at '{full_target}'.",
+                "steps": steps,
+                "target_apps": ["File System"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # 6c. File System Automation: Read File
+        if any(w in q_lower for w in ["read file", "read the file", "show content of file", "read contents of"]) and not any(w in q_lower for w in ["explain", "summarize"]):
+            m_path = re.search(r'(?:of|file|at)\s+["\']?([a-zA-Z]:\\[^\s"\']+|~[^\s"\']+|\b[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+\b)["\']?', query, re.IGNORECASE)
+            target_path = m_path.group(1).strip() if m_path else os.path.expanduser("~/Desktop/notes.txt")
+            full_path = os.path.expanduser(target_path)
+
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Read contents of file '{full_path}'",
+                    "executor": "system",
+                    "action": "read_file",
+                    "params": {"path": full_path},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "action_completed"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": f"Deterministic filesystem read workflow for '{full_path}'.",
+                "steps": steps,
+                "target_apps": ["File System"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # 6d. File System Automation: Delete File or Folder (Consequential - requires HITL approval)
+        if any(w in q_lower for w in ["delete file", "remove file", "delete the file", "delete folder", "remove folder", "delete directory"]):
+            is_folder = any(w in q_lower for w in ["folder", "directory"])
+            action_type = "delete_folder" if is_folder else "delete_file"
+            label = "directory" if is_folder else "file"
+
+            m_path = re.search(r'(?:file|folder|directory)\s+["\']?([a-zA-Z]:\\[^\s"\']+|~[^\s"\']+|\b[a-zA-Z0-9_\-\.]+\b)["\']?', query, re.IGNORECASE)
+            target = m_path.group(1).strip() if m_path else (os.path.expanduser("~/Desktop/temp_folder") if is_folder else os.path.expanduser("~/Desktop/temp_file.txt"))
+            full_target = os.path.expanduser(target)
+
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Permanently delete {label} at '{full_target}'",
+                    "executor": "system",
+                    "action": action_type,
+                    "params": {"path": full_target},
+                    "depends_on": [],
+                    "risk_level": RISK_HIGH,
+                    "status": "PENDING",
+                    "verification": {"type": "action_completed"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": f"Destructive {label} deletion at '{full_target}' requires human authorization.",
+                "steps": steps,
+                "target_apps": ["File System"],
+                "risk_level": RISK_HIGH,
+                "requires_approval": True,
+                "approval_reason": f"Safety Policy Gate: Irreversible deletion of {label} '{full_target}'."
+            }
+
         # 7. Browser: Click First Result (Follow-up)
         if any(q_lower == v or q_lower.startswith(v) for v in [
             "open the first result", "click the first result", "open first result",
@@ -408,13 +548,106 @@ class AutomationPlanner:
                     "requires_approval": False
                 }
 
-        # 9. Browser: YouTube Multi-Step Workflow or Search
+        # 9. Browser: YouTube Playback Control (Pause, Resume, Stop, Inspect)
+        if "youtube" in q_lower or any(w in q_lower for w in ["playback", "video", "song"]):
+            if any(w in q_lower for w in ["pause youtube", "pause video", "pause the video", "pause playback", "pause song"]):
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": "Pause currently playing YouTube video",
+                        "executor": "browser",
+                        "action": "youtube_pause",
+                        "params": {},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": "Follow-up browser workflow to pause YouTube playback.",
+                    "steps": steps,
+                    "target_apps": ["Playwright Browser (YouTube)"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+            elif any(w in q_lower for w in ["resume youtube", "resume playback", "resume video", "continue playing"]):
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": "Resume YouTube video playback",
+                        "executor": "browser",
+                        "action": "youtube_resume",
+                        "params": {},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": "Follow-up browser workflow to resume YouTube playback.",
+                    "steps": steps,
+                    "target_apps": ["Playwright Browser (YouTube)"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+            elif any(w in q_lower for w in ["stop youtube", "stop playback", "stop video"]):
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": "Stop YouTube video playback",
+                        "executor": "browser",
+                        "action": "youtube_stop",
+                        "params": {},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": "Follow-up browser workflow to stop YouTube playback.",
+                    "steps": steps,
+                    "target_apps": ["Playwright Browser (YouTube)"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+            elif any(w in q_lower for w in ["inspect results", "what results", "show results", "read results"]):
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": "Inspect search results on YouTube",
+                        "executor": "browser",
+                        "action": "youtube_inspect_results",
+                        "params": {},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": "Follow-up browser workflow to inspect visible YouTube search results.",
+                    "steps": steps,
+                    "target_apps": ["Playwright Browser (YouTube)"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+
+        # 9b. Browser: YouTube Multi-Step Workflow or Search
         if "youtube" in q_lower or (
-            any(w in q_lower for w in ["song", "music video", "play "]) and not any(w in q_lower for w in ["explain", "what is", "how to"])
+            any(w in q_lower for w in ["song", "music video", "play "]) and not any(w in q_lower for w in ["explain", "what is", "how to"]) and "spotify" not in q_lower
         ):
-            # Extract target song/video name
             song_name = "Believer by Imagine Dragons"
-            # Patterns: "search for X and open the first result", "search for X on youtube", "play X"
             m = re.search(r'search\s+(?:for\s+)?(.*?)(?:\s+and\s+open|\s+and\s+play|\s+on\s+youtube|$)', query, re.IGNORECASE)
             if m and m.group(1).strip():
                 clean_term = m.group(1).strip(" \"'.,;:!?")
@@ -427,7 +660,6 @@ class AutomationPlanner:
                     if clean_term:
                         song_name = clean_term
 
-            # Check if user asked to search AND open/play first result vs search only
             has_chain_click = any(w in q_lower for w in ["open the first", "click the first", "play the first", "first result"])
             wants_play = has_chain_click or q_lower.startswith("play ") or "play the song" in q_lower or "and play" in q_lower or ("play " in q_lower and "search" not in q_lower)
             has_search_directive = any(w in q_lower for w in ["search for", "search", "find"]) or "search" in q_lower
@@ -479,7 +711,6 @@ class AutomationPlanner:
                     "requires_approval": False
                 }
 
-            # Plain navigate to YouTube
             target_url = "https://www.youtube.com"
             steps = [
                 {
@@ -504,8 +735,138 @@ class AutomationPlanner:
                 "requires_approval": False
             }
 
-        # 10. Browser: Instagram & Reels Workflows
+        # 9c. Spotify Automation (Browser & Desktop)
+        if "spotify" in q_lower:
+            track = "Believer by Imagine Dragons"
+            m_sp = re.search(r'(?:play|search\s+for|search)\s+(.*?)(?:\s+on\s+spotify|$)', query, re.IGNORECASE)
+            if m_sp and m_sp.group(1).strip():
+                cand_sp = m_sp.group(1).strip(" \"'.,;:!?")
+                if cand_sp and cand_sp.lower() not in ["spotify", "a song", "music"]:
+                    track = cand_sp
+
+            if any(w in q_lower for w in ["pause", "resume", "stop", "toggle"]):
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": "Toggle playback state on Spotify",
+                        "executor": "browser",
+                        "action": "spotify_toggle_playback",
+                        "params": {},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": "Deterministic playback control workflow for Spotify.",
+                    "steps": steps,
+                    "target_apps": ["Spotify"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+            elif any(w in q_lower for w in ["play", "listen"]):
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": f"Search Spotify for '{track}' and initiate playback",
+                        "executor": "browser",
+                        "action": "spotify_play",
+                        "params": {"query": track},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": f"Deterministic Spotify playback workflow for '{track}'.",
+                    "steps": steps,
+                    "target_apps": ["Spotify"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+            else:
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": f"Search Spotify for '{track}'",
+                        "executor": "browser",
+                        "action": "spotify_search",
+                        "params": {"query": track},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": f"Deterministic Spotify search workflow for '{track}'.",
+                    "steps": steps,
+                    "target_apps": ["Spotify"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+
+        # 10. Browser: Instagram Workflows (Reels, DMs, Conversations, Read Messages)
         if "instagram" in q_lower or "reels" in q_lower:
+            is_dms = any(w in q_lower for w in ["dm", "dms", "direct message", "direct messages", "messages", "inbox"])
+            m_contact = re.search(r'(?:conversation\s+with|chat\s+with|message\s+with)\s+["\']?([^"\']+)["\']?', query, re.IGNORECASE)
+
+            if m_contact:
+                contact_name = m_contact.group(1).strip()
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": f"Open Instagram conversation with '{contact_name}'",
+                        "executor": "browser",
+                        "action": "instagram_open_conversation",
+                        "params": {"contact_name": contact_name},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": f"Deterministic Instagram DM conversation workflow for '{contact_name}'.",
+                    "steps": steps,
+                    "target_apps": ["Playwright Browser (Instagram)"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+            elif is_dms:
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": "Navigate to Instagram Direct Messages inbox",
+                        "executor": "browser",
+                        "action": "instagram_dms",
+                        "params": {},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": "Deterministic browser workflow for Instagram Direct Messages.",
+                    "steps": steps,
+                    "target_apps": ["Playwright Browser (Instagram)"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+
             is_reels = "reels" in q_lower
             action = "instagram_reels" if is_reels else "instagram_open"
             desc = "Navigate to Instagram Reels feed" if is_reels else "Navigate to Instagram homepage"
@@ -653,7 +1014,71 @@ class AutomationPlanner:
                 "automation_mode": MODE_HYBRID,
                 "mode_reason": "Hybrid workflow: Browser download -> Archive extraction -> Desktop VS Code launch.",
                 "steps": steps,
-                "target_apps": ["Playwright Browser", "Visual Studio Code"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+        if (mode == MODE_HYBRID or (any(w in q_lower for w in ["notepad", "file"]) and any(w in q_lower for w in ["browser", "chrome", "search", "docs", "documentation", "url", "website"]))):
+            is_django = "django" in q_lower
+            target_url = "https://docs.djangoproject.com/en/stable/" if is_django else "https://www.python.org"
+            url_match = re.search(r'https?://[^\s]+', query)
+            if url_match:
+                target_url = url_match.group(0)
+
+            out_filename = "django_docs_url.txt" if is_django else "web_reference.txt"
+            out_file_path = os.path.join(os.path.expanduser("~/Desktop"), out_filename)
+
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Navigate browser to {target_url}",
+                    "executor": "browser",
+                    "action": "navigate",
+                    "params": {"url": target_url},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "browser_page_state"}
+                },
+                {
+                    "step_id": 2,
+                    "title": "Launch Notepad Application",
+                    "executor": "desktop",
+                    "action": "launch_app",
+                    "params": {"app_name": "notepad", "path": "notepad.exe"},
+                    "depends_on": [1],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "window_exists", "target": "Notepad"}
+                },
+                {
+                    "step_id": 3,
+                    "title": "Type verified documentation URL into Notepad",
+                    "executor": "desktop",
+                    "action": "type_text",
+                    "params": {"title": "Notepad", "text": "Website: $step_1.current_url"},
+                    "depends_on": [2],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "window_exists", "target": "Notepad"}
+                },
+                {
+                    "step_id": 4,
+                    "title": f"Save Notepad file as '{out_filename}' on Desktop",
+                    "executor": "desktop",
+                    "action": "save_file",
+                    "params": {"title": "Notepad", "path": out_file_path, "file_path": out_file_path},
+                    "depends_on": [3],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "file_exists", "target": out_file_path}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_HYBRID,
+                "mode_reason": f"Hybrid workflow: Browser navigation ({target_url}) -> Desktop Notepad entry and file persistence.",
+                "steps": steps,
+                "target_apps": ["Playwright Browser", "Notepad"],
                 "risk_level": RISK_LOW,
                 "requires_approval": False
             }

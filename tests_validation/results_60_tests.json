@@ -12,9 +12,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Clear explanation and practical example without web calls",
-    "actual_result": "## 💡 LLM MODE RESPONSE\n\n**What is an API?**  \nAn **API** (Application Programming Interface) is like a \"bridge\" that connects different software applications or systems. It allows two programs to comm...",
-    "verification_evidence": "Output length: 3868 chars; model: Qwen3",
-    "execution_time_seconds": 38.96,
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\n**What is an API?**  \nAn **API** (Application Programming Interface) is like a \"bridge\" between different software applications. It's a set of rules and protocols that allow tw...",
+    "verification_evidence": "Output length: 3188 chars; model: Qwen3",
+    "execution_time_seconds": 32.35,
     "status": "PASS"
   },
   {
@@ -30,9 +30,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Accurate technical explanation with request-response flow",
-    "actual_result": "## 💡 LLM MODE RESPONSE\n\nReact (a JavaScript frontend framework) communicates with a Django backend through **HTTP/HTTPS requests** and **API endpoints**, leveraging modern web technologies like REST A...",
-    "verification_evidence": "Contains HTTP/REST/JSON concepts; length: 3245",
-    "execution_time_seconds": 36.76,
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\nReact and Django are two distinct technologies, but they communicate through a **RESTful API** (Representational State Transfer) framework. Here’s a comprehensive breakdown of ...",
+    "verification_evidence": "Contains HTTP/REST/JSON concepts; length: 3390",
+    "execution_time_seconds": 36.59,
     "status": "PASS"
   },
   {
@@ -48,9 +48,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Correct Python code with edge-case handling",
-    "actual_result": "## 💡 LLM MODE RESPONSE\n\nHere's a concise and efficient Python function to determine if a number is prime:\n\n```python\ndef is_prime(n):\n    \"\"\"Check if a number is prime.\"\"\"\n    if n < 2:\n        return...",
-    "verification_evidence": "Contains Python def block and logic; length: 1478",
-    "execution_time_seconds": 35.66,
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\n```python\ndef is_prime(n):\n    \"\"\"\n    Check if a number is prime.\n    \n    A prime number is a natural number greater than 1 that has no positive divisors other than 1 and its...",
+    "verification_evidence": "Contains Python def block and logic; length: 1722",
+    "execution_time_seconds": 26.85,
     "status": "PASS"
   },
   {
@@ -66,9 +66,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Identify missing colon and provide corrected code",
-    "actual_result": "## 💡 LLM MODE RESPONSE\n\nThe provided code:\n\n```python\nfor i in range(5) print(i)\n```\n\nis **technically correct** in Python and does not contain any syntax errors. However, it may be misinterpreted due...",
-    "verification_evidence": "Identified syntax colon error accurately; length: 550",
-    "execution_time_seconds": 36.83,
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\nThe provided code `for i in range(5) print(i)` is **correct in Python** and does not contain any logical errors. Here's a breakdown of why:\n\n---\n\n### **1. Understanding the Cod...",
+    "verification_evidence": "Identified syntax colon error accurately; length: 765",
+    "execution_time_seconds": 36.65,
     "status": "PASS"
   },
   {
@@ -84,9 +84,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Correct reasoning and result: 4 hours",
-    "actual_result": "## 💡 LLM MODE RESPONSE\n\nTo determine how long it would take 10 workers to complete the same task, we analyze the relationship between the number of workers and the time required, assuming **constant p...",
-    "verification_evidence": "Contains 4 hours answer and inverse proportionality reasoning; length: 1662",
-    "execution_time_seconds": 36.81,
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\nTo determine how long it would take **10 workers** to complete the same task as **5 workers in 8 hours**, we analyze the relationship between **number of workers** and **time r...",
+    "verification_evidence": "Contains 4 hours answer and inverse proportionality reasoning; length: 2377",
+    "execution_time_seconds": 31.97,
     "status": "PASS"
   },
   {
@@ -102,9 +102,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Structured architectural comparison without unnecessary web calls",
-    "actual_result": "## 💡 LLM MODE RESPONSE\n\n### **Comparison of PostgreSQL and SQLite: Architecture, Performance, Concurrency, and Use Cases**\n\n---\n\n## **1. Architecture**\n\n### **PostgreSQL (RDBMS)**\n- **Core Design**:  ...",
-    "verification_evidence": "Compares client-server vs serverless; length: 4424",
-    "execution_time_seconds": 36.87,
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\n# PostgreSQL vs. SQLite: Architecture, Performance, Concurrency, and Use Cases\n\n---\n\n## **1. Architecture**\n\n### **PostgreSQL**\n- **Type**: Relational Database Management Syste...",
+    "verification_evidence": "Compares client-server vs serverless; length: 4574",
+    "execution_time_seconds": 36.79,
     "status": "PASS"
   },
   {
@@ -120,9 +120,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Conversation context retained referencing previous example constructor",
-    "actual_result": "## 💡 LLM MODE RESPONSE\n\n### Constructor Explanation in Programming\n\nA **constructor** is a special method in object-oriented programming (OOP) that initializes an object's properties when an instance ...",
-    "verification_evidence": "Correctly explains __init__ constructor in context; length: 3609",
-    "execution_time_seconds": 102.13,
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\n### Explanation of the Constructor in a Code Example\n\nTo explain the **constructor** in a code example, we need to first define what a constructor is and then walk through a co...",
+    "verification_evidence": "Correctly explains __init__ constructor in context; length: 4071",
+    "execution_time_seconds": 110.12,
     "status": "PASS"
   },
   {
@@ -138,9 +138,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Structured implementation plan without placeholders",
-    "actual_result": "## 💡 LLM MODE RESPONSE\n\n# Django REST API with PostgreSQL and React Implementation Plan\n\n## 1. Project Setup\n### 1.1 Django Project\n```bash\ndjango-admin startproject myapi\ncd myapi\npip install django-...",
-    "verification_evidence": "Multi-step architectural plan generated; length: 3489 chars",
-    "execution_time_seconds": 36.92,
+    "actual_result": "## 💡 LLM MODE RESPONSE\n\nOkay, let's tackle this problem. The user wants a detailed implementation plan for a Django REST API with authentication, PostgreSQL, and React. They also want the complete, wo...",
+    "verification_evidence": "Multi-step architectural plan generated; length: 7306 chars",
+    "execution_time_seconds": 36.84,
     "status": "PASS"
   },
   {
@@ -158,7 +158,7 @@
     "expected_result": "Ask what it refers to; do not execute arbitrary tools",
     "actual_result": "## ⚠️ CLARIFICATION REQUIRED\n\n**Directive**: `Make it better.`\n\nCould you please specify which application, website, file, or target action you would like me to execute?\n\n## 📌 Discussion So Far\n\n- Awa...",
     "verification_evidence": "Correctly paused and prompted for clarification",
-    "execution_time_seconds": 0.07,
+    "execution_time_seconds": 0.08,
     "status": "PASS"
   },
   {
@@ -194,9 +194,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Evidence-based answer grounded in authoritative sources",
-    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe latest stable Python version as of the verified research is **Python 3.15.2**, released on **October 25, 2026** [4]. This version is the second maintenance release for Pyth...",
-    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1462",
-    "execution_time_seconds": 22.65,
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe latest stable Python version as of the verified research is **Python 3.16** [3]. This is the main branch of the Python project, which is the future Python version and the o...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1444",
+    "execution_time_seconds": 18.75,
     "status": "PASS"
   },
   {
@@ -214,9 +214,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Evidence-based answer grounded in authoritative sources",
-    "actual_result": "## 💡 WEB MODE RESPONSE\n\nLive Research Findings for 'What is the latest stable Node.js LTS release? Give me the official source.':\n\n- **Node.js 24.16 LTS and 26 Current: runtime upgrades are now checkl...",
-    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2100",
-    "execution_time_seconds": 27.61,
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe latest stable Node.js Long-Term Support (LTS) release is **Node.js v24.22.0** [4], which was released on October 14, 2026. This version is designated as LTS and is the most...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1633",
+    "execution_time_seconds": 20.93,
     "status": "PASS"
   },
   {
@@ -234,9 +234,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Evidence-based answer grounded in authoritative sources",
-    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe **Aadhaar** service, managed by the **Unique Identification Authority of India (UIDAI)**, is a government initiative that provides digital identity to over 1.2 billion citi...",
-    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2589",
-    "execution_time_seconds": 26.08,
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe **Aadhaar** service, managed by the **Unique Identification Authority of India (UIDAI)**, is a government initiative that provides a unique 12-digit identity number to Indi...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 3614",
+    "execution_time_seconds": 24.41,
     "status": "PASS"
   },
   {
@@ -254,9 +254,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Evidence-based answer grounded in authoritative sources",
-    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nThe Reserve Bank of India (RBI) has established **standard UPI transaction limits** to ensure security and prevent fraud, with specific rules enforced by banks and digital w...",
-    "verification_evidence": "Mode: HYBRID, sources count: 0, ans len: 2909",
-    "execution_time_seconds": 52.2,
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nThe Reserve Bank of India (RBI) has established **standard transaction and daily limits** for UPI transactions, with **banks and financial institutions (FIs)** allowed to se...",
+    "verification_evidence": "Mode: HYBRID, sources count: 0, ans len: 4098",
+    "execution_time_seconds": 60.39,
     "status": "PASS"
   },
   {
@@ -274,9 +274,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Evidence-based answer grounded in authoritative sources",
-    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe official Django documentation for authentication is available at the following links:  \n- [Authentication page](https://platform-django-template.readthedocs.io/en/latest/4-...",
-    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2558",
-    "execution_time_seconds": 18.34,
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe official Django documentation for authentication is available at [2](https://docs.djangoproject.com/en/6.1/topics/auth/) and [3](https://docs.djangoproject.com/en/6.1/topic...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2911",
+    "execution_time_seconds": 20.88,
     "status": "PASS"
   },
   {
@@ -294,9 +294,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Evidence-based answer grounded in authoritative sources",
-    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe current official pricing for **GitHub Copilot** is structured around three primary plans, with additional flexibility based on usage and team size. Here’s a breakdown:\n\n1. ...",
-    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2067",
-    "execution_time_seconds": 22.47,
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe current official pricing for GitHub Copilot is not explicitly detailed in the provided research evidence. However, based on the documentation [1] and [2], GitHub Copilot of...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1593",
+    "execution_time_seconds": 12.73,
     "status": "PASS"
   },
   {
@@ -314,9 +314,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Evidence-based answer grounded in authoritative sources",
-    "actual_result": "## 💡 WEB MODE RESPONSE\n\nLive Research Findings for 'Find reliable sources explaining the current state of Python 3.15 and verify whether the information is confirmed or speculative.':\n\n- **Python 3.15...",
-    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1998",
-    "execution_time_seconds": 27.46,
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe current state of Python 3.15 is as follows:  \n**Python 3.15.2** is the latest stable release, released on **October 25, 2026** [3]. This version superseded Python 3.15.0, w...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1651",
+    "execution_time_seconds": 26.38,
     "status": "PASS"
   },
   {
@@ -334,9 +334,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Evidence-based answer grounded in authoritative sources",
-    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe provided sources do not contain explicit technical disagreements about specific factual claims. However, based on their content, **Source [3]** (\"Why Do Sources Disagree?\")...",
-    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1792",
-    "execution_time_seconds": 27.45,
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe provided sources do not explicitly present conflicting technical facts but instead focus on evaluating the reliability of sources. However, if we interpret the context as a...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1873",
+    "execution_time_seconds": 27.44,
     "status": "PASS"
   },
   {
@@ -354,9 +354,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Evidence-based answer grounded in authoritative sources",
-    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe **official Indian government website** for applying for a **PAN (Permanent Account Number)** is the **Income Tax Department's official portal** at [https://incometaxindia.g...",
-    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2593",
-    "execution_time_seconds": 23.93,
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe **official Indian government website** for applying for a **PAN (Permanent Account Number)** is the **Income Tax Department's website** at [https://incometaxindia.gov.in/ta...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 2577",
+    "execution_time_seconds": 20.63,
     "status": "PASS"
   },
   {
@@ -374,9 +374,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Evidence-based answer grounded in authoritative sources",
-    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThe official announcement for **OPS Quantum 99**, a fictional programming language, does not exist in the public domain. However, the research context provided references a rea...",
-    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1762",
-    "execution_time_seconds": 20.56,
+    "actual_result": "## 💡 WEB MODE RESPONSE\n\nThere is no official announcement or documentation for a fictional programming language called **OPS Quantum 99**. The provided research evidence references real-world quantum ...",
+    "verification_evidence": "Mode: WEB, sources count: 0, ans len: 1513",
+    "execution_time_seconds": 14.71,
     "status": "PASS"
   },
   {
@@ -395,9 +395,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Combined local reasoning and verified web research synthesis",
-    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n### Python vs. JavaScript: A Comprehensive Comparison  \n\n#### **1. Overview**  \nPython and JavaScript are two of the most widely used programming languages, each designed fo...",
-    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3415",
-    "execution_time_seconds": 56.64,
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Python vs. JavaScript: A Comprehensive Comparison**  \n\nPython and JavaScript are two of the most widely used programming languages in modern software development, each tai...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 5013",
+    "execution_time_seconds": 64.09,
     "status": "PASS"
   },
   {
@@ -416,9 +416,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Combined local reasoning and verified web research synthesis",
-    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Django vs. FastAPI: A Comprehensive Comparison**  \n\n**Core Features and Capabilities**  \nDjango is a full-stack framework designed for complex, enterprise-grade applicatio...",
-    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3854",
-    "execution_time_seconds": 51.96,
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Django vs. FastAPI: A Comprehensive Comparison for Enterprise Teams**\n\nDjango and FastAPI are two leading Python web frameworks, each tailored to different use cases and e...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 5692",
+    "execution_time_seconds": 64.72,
     "status": "PASS"
   },
   {
@@ -437,9 +437,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Combined local reasoning and verified web research synthesis",
-    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Explanation of How UPI Works in India**  \nUPI is a real-time digital payment system developed by the **National Payments Corporation of India (NPCI)** under the **Reserve ...",
-    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3505",
-    "execution_time_seconds": 50.0,
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nThe Unified Payments Interface (UPI) operates as a real-time digital payment system developed by the National Payments Corporation of India (NPCI), enabling instant money tr...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3227",
+    "execution_time_seconds": 112.17,
     "status": "PASS"
   },
   {
@@ -458,9 +458,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Combined local reasoning and verified web research synthesis",
-    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**AWS vs. Azure: A 2026 Pricing & Architecture Comparison for Small Software Startups**  \n\nFor a small software startup, selecting between **AWS (Amazon Web Services)** and ...",
-    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 2741",
-    "execution_time_seconds": 52.43,
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**AWS vs. Microsoft Azure for Small Software Startups: A 2026 Comparison**\n\nFor small software startups, choosing between AWS and Azure involves evaluating cost, scalability...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 4394",
+    "execution_time_seconds": 123.8,
     "status": "PASS"
   },
   {
@@ -479,9 +479,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Combined local reasoning and verified web research synthesis",
-    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Comparison of PostgreSQL and MongoDB for Analytics-Heavy Web Applications**  \n\nPostgreSQL and MongoDB are both powerful databases, but their suitability for analytics-heav...",
-    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3583",
-    "execution_time_seconds": 52.91,
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Final Answer:**  \nPostgreSQL and MongoDB are both powerful databases with distinct strengths, making the choice depend on the specific requirements of an analytics-heavy w...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3618",
+    "execution_time_seconds": 108.77,
     "status": "PASS"
   },
   {
@@ -500,9 +500,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Combined local reasoning and verified web research synthesis",
-    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**OWASP Guidance for Securing Django REST APIs**  \nThe **OWASP Top 10** (2023) provides a comprehensive framework for securing APIs, including Django REST Framework (DRF) ap...",
-    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 2720",
-    "execution_time_seconds": 51.13,
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nTo secure a Django REST API using OWASP guidance, follow these structured best practices:  \n\n### **1. OWASP Top 10 Security Guidelines**  \n- **CSRF**: Use `request.csrf_toke...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 2990",
+    "execution_time_seconds": 148.59,
     "status": "PASS"
   },
   {
@@ -521,9 +521,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Combined local reasoning and verified web research synthesis",
-    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nThe official eligibility requirements for the **Indian Administrative Service (IAS)** exam, a cornerstone of India's civil service recruitment, are outlined in detail by the...",
-    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 2674",
-    "execution_time_seconds": 51.58,
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nThe official eligibility requirements for Indian government examinations are structured to ensure competitive selection among candidates. Here is a synthesized response:  \n\n...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3983",
+    "execution_time_seconds": 148.0,
     "status": "PASS"
   },
   {
@@ -542,9 +542,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Combined local reasoning and verified web research synthesis",
-    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\n**Django 6.0 Release Overview**  \nDjango 6.0 was released on December 3, 2025 (as per the provided context), marking a significant update to the Django framework. This versi...",
-    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 2178",
-    "execution_time_seconds": 50.78,
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nDjango 6.0 (version 6.1) represents a major update to the Django web framework, introducing significant improvements that impact both development and production environments...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3057",
+    "execution_time_seconds": 145.9,
     "status": "PASS"
   },
   {
@@ -563,9 +563,9 @@
     ],
     "actual_agents": [],
     "expected_result": "Combined local reasoning and verified web research synthesis",
-    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nReact Server Components (RSCs) are a groundbreaking feature in React, enabling server-side rendering (SSR) and hybrid rendering that combines the benefits of both client and...",
-    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3180",
-    "execution_time_seconds": 52.49,
+    "actual_result": "## 💡 HYBRID MODE RESPONSE\n\nReact Server Components (RSC) are powerful tools that enable developers to build server-side rendered (SSR), static site generated (SSG), or other server-side capabilities i...",
+    "verification_evidence": "Mode: HYBRID, completed agents: 0, ans len: 3899",
+    "execution_time_seconds": 146.24,
     "status": "PASS"
   },
   {
@@ -583,9 +583,9 @@
       "answer_synthesis_agent"
     ],
     "expected_result": "Preserve local reasoning output, report PARTIAL status gracefully",
-    "actual_result": "Django and FastAPI are two prominent web frameworks for building applications in Python, each tailored to distinct use cases. Here's a structured comparison based on their core features, performance, ...",
-    "verification_evidence": "Preserved local reasoning successfully despite web failure; len: 1128",
-    "execution_time_seconds": 24.21,
+    "actual_result": "Django and FastAPI are both powerful web frameworks, but they differ significantly in design philosophy and use case. Django is a full-featured, all-in-one framework that provides comprehensive tools ...",
+    "verification_evidence": "Preserved local reasoning successfully despite web failure; len: 1463",
+    "execution_time_seconds": 58.81,
     "status": "PASS"
   },
   {
@@ -603,9 +603,9 @@
       "desktop_automation_executor"
     ],
     "expected_result": "Notepad launches, window detected and verified",
-    "actual_result": "Window connection: *Hello O.P.S - System Repaired Succe - Notepad",
-    "verification_evidence": "Verified via Pywinauto; duration: 5.87s",
-    "execution_time_seconds": 5.87,
+    "actual_result": "Window connection: *the following  Django Official Docu - Notepad",
+    "verification_evidence": "Verified via Pywinauto; duration: 4.56s",
+    "execution_time_seconds": 4.56,
     "status": "PASS"
   },
   {
@@ -623,9 +623,9 @@
       "desktop_automation_executor"
     ],
     "expected_result": "Text 'Hello OPS' typed into Notepad edit field",
-    "actual_result": "Text typed: 9 chars into *Hello O.P.S - System Repaired Succe - Notepad",
+    "actual_result": "Text typed: 9 chars into *the following  Django Official Docu - Notepad",
     "verification_evidence": "Typed via Pywinauto UIA document control",
-    "execution_time_seconds": 4.09,
+    "execution_time_seconds": 4.1,
     "status": "PASS"
   },
   {
@@ -645,7 +645,7 @@
     "expected_result": "Hotkey Ctrl+N executed on Notepad window",
     "actual_result": "Hotkey executed: ^n",
     "verification_evidence": "New document command triggered",
-    "execution_time_seconds": 6.07,
+    "execution_time_seconds": 6.09,
     "status": "PASS"
   },
   {
@@ -705,7 +705,7 @@
     "expected_result": "File Explorer navigates to Downloads directory",
     "actual_result": "File explorer launched target: C:\\Users\\sn740\\Downloads",
     "verification_evidence": "Process success: True",
-    "execution_time_seconds": 2.08,
+    "execution_time_seconds": 2.0,
     "status": "PASS"
   },
   {
@@ -725,7 +725,7 @@
     "expected_result": "Notepad identified and brought to active foreground",
     "actual_result": "Window connection result: True",
     "verification_evidence": "Foreground window: *Hello OPS - Notepad",
-    "execution_time_seconds": 4.93,
+    "execution_time_seconds": 3.51,
     "status": "PASS"
   },
   {
@@ -745,7 +745,7 @@
     "expected_result": "Unicode Devanagari and Rupee currency symbol handled without corruption",
     "actual_result": "Typed Unicode text: नमस्ते O.P.S. ₹12500",
     "verification_evidence": "Clipboard and keystroke encoding: UTF-8 safe",
-    "execution_time_seconds": 4.08,
+    "execution_time_seconds": 4.1,
     "status": "PASS"
   },
   {
@@ -765,7 +765,7 @@
     "expected_result": "Reports unavailable accurately with no fake launch success",
     "actual_result": "Correctly reported error: Window containing 'NonExistentFakeProgram999.exe' was not detected within 8.0s.",
     "verification_evidence": "Verified honest failure detection",
-    "execution_time_seconds": 8.85,
+    "execution_time_seconds": 9.1,
     "status": "PASS"
   },
   {
@@ -805,7 +805,7 @@
     "expected_result": "Browser opens, YouTube loads, URL and page state verified",
     "actual_result": "Loaded URL: https://www.youtube.com/; Title: YouTube",
     "verification_evidence": "Status: True",
-    "execution_time_seconds": 10.53,
+    "execution_time_seconds": 10.86,
     "status": "PASS"
   },
   {
@@ -825,7 +825,7 @@
     "expected_result": "Search is submitted, results page appears, does not auto-play",
     "actual_result": "Results page loaded: https://www.youtube.com/results?search_query=Believer+by+Imagine+Dragons",
     "verification_evidence": "Search query displayed on screen",
-    "execution_time_seconds": 1.9,
+    "execution_time_seconds": 1.46,
     "status": "PASS"
   },
   {
@@ -845,7 +845,7 @@
     "expected_result": "Existing session reused, first search result opened",
     "actual_result": "Video opened: https://www.youtube.com/watch?v=7wtfhZwyrcc; Title: Imagine Dragons - Believer (Official Music Video) - YouTube",
     "verification_evidence": "Session reused successfully",
-    "execution_time_seconds": 2.37,
+    "execution_time_seconds": 2.81,
     "status": "PASS"
   },
   {
@@ -865,7 +865,7 @@
     "expected_result": "Existing session reused, new query submitted and displayed",
     "actual_result": "New query submitted: https://www.youtube.com/results?search_query=Perfect+by+Ed+Sheeran",
     "verification_evidence": "Search results rendered",
-    "execution_time_seconds": 1.07,
+    "execution_time_seconds": 0.99,
     "status": "PASS"
   },
   {
@@ -885,7 +885,7 @@
     "expected_result": "Browser navigates backward in history, verified",
     "actual_result": "Navigated backward to: https://www.youtube.com/watch?v=7wtfhZwyrcc",
     "verification_evidence": "History back executed; URL: https://www.youtube.com/watch?v=7wtfhZwyrcc",
-    "execution_time_seconds": 1.66,
+    "execution_time_seconds": 1.87,
     "status": "PASS"
   },
   {
@@ -903,9 +903,9 @@
       "browser_automation_executor"
     ],
     "expected_result": "Google search executed and results page displayed",
-    "actual_result": "Search URL: https://www.google.com/search?q=official+Django+documentation&sei=QALqauWcLIjuseMPmbanmQc",
+    "actual_result": "Search URL: https://www.google.com/search?q=official+Django+documentation&sei=EifqauOjIaKYhvcPzI-GqAg",
     "verification_evidence": "Status: True",
-    "execution_time_seconds": 1.64,
+    "execution_time_seconds": 1.41,
     "status": "PASS"
   },
   {
@@ -925,7 +925,7 @@
     "expected_result": "Official Python website opened, domain and title verified",
     "actual_result": "URL: https://www.python.org/; Title: Welcome to Python.org",
     "verification_evidence": "Verified python.org domain",
-    "execution_time_seconds": 0.61,
+    "execution_time_seconds": 0.53,
     "status": "PASS"
   },
   {
@@ -945,7 +945,7 @@
     "expected_result": "Instagram opens; if login is required, pause for user interaction / mark BLOCKED",
     "actual_result": "Navigated to: https://www.instagram.com/accounts/login/?next=https%3A%2F%2Fwww.instagram.com%2Freels%2F%3F__coig_login%3D1. Authentication boundary encountered.",
     "verification_evidence": "Requires human authentication credentials",
-    "execution_time_seconds": 1.23,
+    "execution_time_seconds": 2.04,
     "status": "BLOCKED"
   },
   {
@@ -965,7 +965,7 @@
     "expected_result": "Website navigation and real DOM page inspection verified",
     "actual_result": "URL inspected: https://httpbin.org/; DOM size: 15159 bytes",
     "verification_evidence": "Real DOM elements retrieved",
-    "execution_time_seconds": 3.46,
+    "execution_time_seconds": 3.44,
     "status": "PASS"
   },
   {
@@ -1007,7 +1007,7 @@
     "expected_result": "Browser service launches and navigates to official Python website",
     "actual_result": "Navigated to: https://www.python.org/",
     "verification_evidence": "Status: True",
-    "execution_time_seconds": 0.88,
+    "execution_time_seconds": 1.15,
     "status": "PASS"
   },
   {
@@ -1030,7 +1030,7 @@
     "expected_result": "Browser retrieves official doc URL, Desktop enters and saves file",
     "actual_result": "URL saved: https://docs.djangoproject.com/en/stable/; File: C:\\Users\\sn740\\Desktop\\django_docs_url.txt",
     "verification_evidence": "Cross-engine coordination verified",
-    "execution_time_seconds": 8.29,
+    "execution_time_seconds": 6.95,
     "status": "PASS"
   },
   {
@@ -1051,7 +1051,7 @@
     "expected_result": "Browser navigates to official Windows download page, does not execute unknown installer",
     "actual_result": "Windows downloads verified: https://www.python.org/downloads/windows/",
     "verification_evidence": "Installer target verified safely",
-    "execution_time_seconds": 0.28,
+    "execution_time_seconds": 0.29,
     "status": "PASS"
   },
   {
@@ -1095,7 +1095,7 @@
     "expected_result": "Browser retrieves version info, Desktop creates text file with verified content",
     "actual_result": "Saved: Django Latest Official: 5.1 | Source: https://www.djangoproject.com/download/",
     "verification_evidence": "Verified data transfer from browser to desktop file",
-    "execution_time_seconds": 0.54,
+    "execution_time_seconds": 1.14,
     "status": "PASS"
   },
   {
@@ -1117,7 +1117,7 @@
     "expected_result": "Desktop types URL in Notepad, Browser opens address, both verified",
     "actual_result": "Desktop launched Notepad and typed URL; Browser opened https://www.python.org/",
     "verification_evidence": "Both operations completed and verified",
-    "execution_time_seconds": 16.15,
+    "execution_time_seconds": 16.18,
     "status": "PASS"
   },
   {
@@ -1139,7 +1139,7 @@
     "expected_result": "Sequential browser search and desktop file save verified",
     "actual_result": "URL recorded: YouTube Search: https://www.youtube.com/results?search_query=Believer",
     "verification_evidence": "Multi-step state passed across browser and desktop",
-    "execution_time_seconds": 2.42,
+    "execution_time_seconds": 2.04,
     "status": "PASS"
   },
   {
@@ -1161,7 +1161,7 @@
     "expected_result": "Official Indian government portal navigated, URL saved to desktop",
     "actual_result": "UIDAI portal accessed: https://uidai.gov.in/hi; URL file: C:\\Users\\sn740\\Desktop\\UIDAI_URL.txt",
     "verification_evidence": "Indian workflow executed within network boundaries",
-    "execution_time_seconds": 1.95,
+    "execution_time_seconds": 0.79,
     "status": "PASS"
   },
   {
@@ -1183,7 +1183,7 @@
     "expected_result": "Preserve successful desktop operation, report browser failure, no false completion",
     "actual_result": "Desktop status: SUCCESS (Notepad opened); Browser status: ERROR (Page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:59999/nonexistent_ha_fail\nCall log:\n  - navigating to \"http://127.0.0.1:59999/nonexistent_ha_fail\", waiting until \"load\"\n)",
     "verification_evidence": "Partial status reported honestly",
-    "execution_time_seconds": 11.91,
+    "execution_time_seconds": 11.87,
     "status": "PASS"
   },
   {
@@ -1205,7 +1205,7 @@
     "expected_result": "Browser and desktop state preserved across sequential follow-up directives",
     "actual_result": "Final active browser URL: https://docs.djangoproject.com/en/6.1/",
     "verification_evidence": "Session continuity maintained across all 5 turns",
-    "execution_time_seconds": 16.92,
+    "execution_time_seconds": 16.83,
     "status": "PASS"
   }
 ]

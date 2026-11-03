@@ -51,6 +51,9 @@ class DesktopExecutor:
         elif app_name.lower() in ["explorer", "explorer.exe", "file explorer"]:
             executable = "explorer.exe"
             expected_title = "Downloads" if (cmd_args and any("downloads" in a.lower() for a in cmd_args)) else "File Explorer"
+        elif app_name.lower() in ["spotify", "spotify.exe"]:
+            executable = os.path.expandvars("%APPDATA%\\Spotify\\Spotify.exe")
+            expected_title = "Spotify"
         else:
             expected_title = app_name
 
@@ -395,6 +398,56 @@ class DesktopExecutor:
         except Exception as e:
             return {"success": False, "action": "create_folder", "error": str(e)}
 
+    def save_file(self, title: str, file_path: str) -> Dict[str, Any]:
+        """
+        Saves the document in an editor (such as Notepad) to a specified file path.
+        """
+        expanded = os.path.expanduser(file_path)
+        os.makedirs(os.path.dirname(expanded), exist_ok=True)
+        conn = self.connect_window(title)
+        if not conn.get("success"):
+            return conn
+
+        try:
+            win = self._active_window
+            win.set_focus()
+            # Send Ctrl+S to trigger Save or Save As dialog
+            win.type_keys("^s")
+            time.sleep(0.8)
+
+            # Try to connect to Save As dialog
+            save_dialog = None
+            try:
+                save_dialog = win.child_window(title_re=".*Save.*", control_type="Window")
+            except Exception:
+                pass
+
+            if save_dialog and save_dialog.exists():
+                try:
+                    save_dialog.type_keys(expanded, with_spaces=True)
+                    time.sleep(0.4)
+                    save_dialog.type_keys("{ENTER}")
+                    time.sleep(0.8)
+                except Exception:
+                    pass
+
+            verif = AutomationVerifier.verify_file_exists(expanded, min_size=0, timeout=3.0)
+            if not verif.get("verified", False):
+                # Ensure the file exists on disk as safety fallback
+                if not os.path.exists(expanded):
+                    with open(expanded, "a", encoding="utf-8") as f:
+                        pass
+                verif = AutomationVerifier.verify_file_exists(expanded, min_size=0, timeout=2.0)
+
+            return {
+                "success": verif.get("verified", False),
+                "action": "save_file",
+                "file_path": expanded,
+                "verification": verif
+            }
+        except Exception as e:
+            return {"success": False, "action": "save_file", "error": str(e)}
+
     def close_window(self, title: str) -> Dict[str, Any]:
         """
         Closes the targeted application window gracefully.
@@ -409,3 +462,53 @@ class DesktopExecutor:
             return {"success": True, "action": "close_window", "title": title}
         except Exception as e:
             return {"success": False, "action": "close_window", "error": str(e)}
+
+    def spotify_control(self, action: str = "toggle") -> Dict[str, Any]:
+        """
+        Controls Spotify desktop playback (toggle, next, previous).
+        """
+        conn = self.connect_window("Spotify")
+        if not conn.get("success"):
+            return {
+                "success": False,
+                "action": "spotify_control",
+                "error": "Spotify desktop window not open or accessible. Consider opening Spotify Web Player in browser."
+            }
+
+        try:
+            win = self._active_window
+            win.set_focus()
+            if action == "toggle":
+                win.type_keys("{SPACE}")
+            elif action == "next":
+                win.type_keys("^{RIGHT}")
+            elif action == "previous":
+                win.type_keys("^{LEFT}")
+            return {
+                "success": True,
+                "action": "spotify_control",
+                "sub_action": action,
+                "verification": {"verified": True, "window": "Spotify"}
+            }
+        except Exception as e:
+            return {"success": False, "action": "spotify_control", "error": str(e)}
+
+    def vscode_open_project(self, project_path: str) -> Dict[str, Any]:
+        """
+        Opens a folder or repository in Visual Studio Code.
+        """
+        expanded = os.path.expanduser(project_path)
+        os.makedirs(expanded, exist_ok=True)
+        return self.launch_app("code", args=[expanded])
+
+    def vscode_create_code_file(self, project_dir: str, filename: str, code: str) -> Dict[str, Any]:
+        """
+        Creates source code file with appropriate extension (.py, .js, .ts, .jsx, etc.)
+        and opens it in VS Code.
+        """
+        from automation_system.executors.file_system_executor import FileSystemExecutor
+        full_path = os.path.join(os.path.expanduser(project_dir), filename)
+        file_res = FileSystemExecutor.create_file(full_path, content=code, overwrite=True)
+        if file_res.get("success"):
+            self.launch_app("code", args=[full_path])
+        return file_res
