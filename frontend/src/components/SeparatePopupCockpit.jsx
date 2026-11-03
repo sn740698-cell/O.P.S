@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   RotateCcw,
   Send,
-  Mic,
-  MicOff,
   Square,
   Loader2,
   Terminal,
@@ -45,7 +43,6 @@ export default function SeparatePopupCockpit() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentThought, setCurrentThought] = useState('');
   const [activeAgent, setActiveAgent] = useState('');
-  const [isListening, setIsListening] = useState(false);
   const [streamingChunk, setStreamingChunk] = useState('');
 
   // Three Automatic Response Modes & Live Cockpit Preview State (Part 5)
@@ -91,7 +88,6 @@ export default function SeparatePopupCockpit() {
 
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
-  const recognitionRef = useRef(null);
   const sseRef = useRef(null);
   const abortCtrlRef = useRef(null);
 
@@ -470,55 +466,6 @@ export default function SeparatePopupCockpit() {
       window.removeEventListener('ops:hitl-approval', handleDesktopHitl);
     };
   }, [conversationId]);
-
-  // Voice Dictation (Web Speech API)
-  const handleToggleVoice = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Voice input is not supported in this browser engine.");
-      return;
-    }
-
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        retroSoundEngine.playBeep(880, 0.1);
-      };
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setInputPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript));
-        }
-        setIsListening(false);
-      };
-
-      recognition.onerror = () => {
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
-    } catch (err) {
-      console.warn("Speech recognition error:", err);
-      setIsListening(false);
-    }
-  };
 
   // Text-To-Speech Playback
   const handleSpeakText = (text) => {
@@ -1014,10 +961,6 @@ export default function SeparatePopupCockpit() {
             <span className="px-1.5 py-0.5 text-[9px] font-bold bg-red-950/80 border border-red-800 text-red-400 animate-pulse font-mono shrink-0">
               [BUSY: {activeAgent || 'THINKING'}]
             </span>
-          ) : isListening ? (
-            <span className="px-1.5 py-0.5 text-[9px] font-bold bg-red-600 text-white border border-red-500 animate-bounce font-mono shrink-0">
-              [LISTENING]
-            </span>
           ) : (
             <span className="px-1.5 py-0.5 text-[9px] font-bold bg-zinc-950 border border-zinc-800 text-zinc-400 font-mono shrink-0 hidden sm:inline">
               [STANDBY]
@@ -1220,20 +1163,6 @@ export default function SeparatePopupCockpit() {
             className="flex-1 min-w-0 h-9 px-3 bg-zinc-950 border border-zinc-700/80 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded text-xs text-white placeholder-zinc-500 outline-none transition font-mono shadow-inner disabled:opacity-60"
             autoFocus
           />
-
-          {/* Voice Input Button */}
-          <button
-            type="button"
-            onClick={handleToggleVoice}
-            className={`w-9 h-9 p-0 rounded border transition shrink-0 flex items-center justify-center ${
-              isListening
-                ? 'bg-red-600 text-white border-red-500 animate-pulse'
-                : 'bg-zinc-900 text-zinc-400 hover:text-white border-zinc-700 hover:border-zinc-500'
-            }`}
-            title="Toggle voice dictation"
-          >
-            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          </button>
 
           {/* Send / Stop Button */}
           {isLoading ? (
