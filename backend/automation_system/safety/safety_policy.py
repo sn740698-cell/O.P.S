@@ -139,3 +139,219 @@ class SafetyPolicy:
 
         logger.info(f"Generated HITL Approval Gate: id={approval_id} task={task_id} action={action}")
         return appr
+
+    @classmethod
+    def build_automation_hitl_details(
+        cls,
+        query: str,
+        steps: List[Dict[str, Any]],
+        mode: str = "AUTOMATION"
+    ) -> Dict[str, Any]:
+        """
+        Constructs comprehensive, user-friendly Human-in-the-Loop approval metadata
+        covering Action Summary, Target, Execution Plan, Input/Content, Expected Result,
+        Destructive classification, and Plan Hash.
+        """
+        import hashlib
+        import json
+
+        q_lower = query.lower()
+        targets = []
+        target_app = ""
+        target_url = ""
+        target_file = ""
+        input_content = ""
+        is_destructive = False
+
+        # 1. Inspect Steps for targets, actions, and inputs
+        formatted_ops = []
+        for idx, step in enumerate(steps, 1):
+            action = step.get("action", "")
+            params = step.get("params", {})
+            title = step.get("title", f"Step {idx}")
+            executor = step.get("executor", "system")
+
+            # Extract URLs
+            if "url" in params:
+                u = params["url"]
+                if u and u not in targets:
+                    targets.append(u)
+                    target_url = u
+
+            # Extract Apps
+            if "app_name" in params:
+                app = params["app_name"]
+                if app and app not in targets:
+                    targets.append(app)
+                    target_app = app
+
+            # Extract Files / Folders
+            for f_key in ["file_path", "path", "filename", "project_path", "folder_path"]:
+                if f_key in params and params[f_key]:
+                    fp = params[f_key]
+                    if fp not in targets:
+                        targets.append(fp)
+                        target_file = fp
+
+            # Extract Input / Content
+            if "text" in params and params["text"]:
+                input_content = params["text"]
+            elif "code" in params and params["code"]:
+                input_content = params["code"]
+            elif "query" in params and params["query"]:
+                input_content = f"Search query: \"{params['query']}\""
+
+            # Check for Destructive operations
+            if action in ["delete_file", "delete_folder", "delete_code_region"] or "delete" in action.lower():
+                is_destructive = True
+            if params.get("overwrite"):
+                is_destructive = True
+
+            # Formulate clear user-facing operation label
+            if action == "launch_app":
+                op_desc = f"Launch application: {params.get('app_name', 'Desktop App')}"
+            elif action == "navigate":
+                op_desc = f"Navigate browser to {params.get('url', 'URL')}"
+            elif action == "google_search":
+                op_desc = f"Enter search query on Google: '{params.get('query', '')}'"
+            elif action == "youtube_search":
+                op_desc = f"Search YouTube for: '{params.get('query', '')}' (inspect results without auto-playing)"
+            elif action == "youtube_search_and_play":
+                op_desc = f"Search YouTube for '{params.get('query', '')}' and play top result"
+            elif action == "youtube_pause":
+                op_desc = "Pause YouTube video playback"
+            elif action == "youtube_resume":
+                op_desc = "Resume YouTube video playback"
+            elif action == "spotify_search":
+                op_desc = f"Search Spotify for track/artist: '{params.get('query', '')}'"
+            elif action == "spotify_play":
+                op_desc = f"Play top Spotify result for: '{params.get('query', '')}'"
+            elif action == "instagram_reels":
+                op_desc = "Navigate browser to Instagram Reels feed"
+            elif action == "instagram_dms":
+                op_desc = "Open Instagram Direct Messages interface (verify authorization)"
+            elif action == "type_text":
+                txt = params.get("text", "")
+                op_desc = f"Enter text ({len(txt)} chars) into active application window"
+            elif action in ["save_file", "save_as"]:
+                op_desc = f"Save file to disk at: {params.get('file_path', 'target destination')}"
+            elif action == "create_file":
+                op_desc = f"Create file on disk at: {params.get('file_path', 'target path')}"
+            elif action == "create_folder":
+                op_desc = f"Create directory on disk at: {params.get('folder_path', 'target path')}"
+            elif action == "delete_file":
+                op_desc = f"Permanently delete file at: {params.get('file_path', 'target path')}"
+            elif action == "delete_folder":
+                op_desc = f"Permanently delete folder and contents at: {params.get('folder_path', 'target path')}"
+            elif action == "vscode_open_project":
+                op_desc = f"Open project workspace in Visual Studio Code at: {params.get('project_path', 'workspace')}"
+            elif action == "vscode_create_code_file":
+                op_desc = f"Create code file '{params.get('filename', 'file')}' in VS Code project"
+            else:
+                op_desc = title
+
+            formatted_ops.append(f"{idx}. {op_desc}")
+
+        # If query contains explicit delete words, flag destructive
+        if any(w in q_lower for w in ["delete", "remove file", "remove folder", "erase", "destroy"]):
+            is_destructive = True
+
+        # 2. Action Summary
+        if "google" in q_lower and "search" in q_lower:
+            action_summary = "Open Google and perform an automated search."
+            if not target_app: target_app = "Google Chrome"
+            if not target_url: target_url = "https://www.google.com/"
+        elif "youtube" in q_lower and ("play" in q_lower or "song" in q_lower):
+            action_summary = "Open YouTube and play requested media."
+            if not target_app: target_app = "Google Chrome"
+            if not target_url: target_url = "https://www.youtube.com/"
+        elif "youtube" in q_lower:
+            action_summary = "Open YouTube and search for requested videos."
+            if not target_app: target_app = "Google Chrome"
+            if not target_url: target_url = "https://www.youtube.com/"
+        elif "spotify" in q_lower:
+            action_summary = "Open Spotify and control music playback."
+            if not target_app: target_app = "Spotify"
+        elif "instagram" in q_lower and "reel" in q_lower:
+            action_summary = "Navigate to Instagram Reels."
+            if not target_app: target_app = "Playwright Chromium"
+            if not target_url: target_url = "https://www.instagram.com/reels/"
+        elif "instagram" in q_lower and ("message" in q_lower or "dm" in q_lower):
+            action_summary = "Open Instagram Direct Messages."
+            if not target_app: target_app = "Playwright Chromium"
+            if not target_url: target_url = "https://www.instagram.com/direct/inbox/"
+        elif "vs code" in q_lower or "vscode" in q_lower:
+            action_summary = "Create and write source code in Visual Studio Code."
+            if not target_app: target_app = "Visual Studio Code"
+        elif "notepad" in q_lower:
+            action_summary = "Open Notepad, enter text/code, and save document."
+            if not target_app: target_app = "Windows Notepad"
+        elif is_destructive:
+            action_summary = f"Delete specified {'folder' if 'folder' in q_lower or 'dir' in q_lower else 'file'} from disk."
+        elif "create" in q_lower and ("file" in q_lower or "folder" in q_lower):
+            action_summary = "Create file system resources at specified path."
+        else:
+            action_summary = f"Execute {mode.capitalize()} automation directive: '{query[:60]}'."
+
+        # If steps did not yield target_file, inspect query for absolute/relative file paths
+        if not target_file:
+            import re
+            m_path = re.search(r'([A-Za-z]:\\[^\s"\']+|[A-Za-z]:/[^\s"\']+|\b[\w\.-]+\.(?:py|txt|json|md|js|ts|html|css)\b)', query)
+            if m_path:
+                target_file = m_path.group(1).strip()
+                if target_file not in targets:
+                    targets.append(target_file)
+
+        # 3. Target Formulation
+        target_components = []
+        if target_app: target_components.append(f"Application: {target_app}")
+        if target_url: target_components.append(f"Website: {target_url}")
+        if target_file: target_components.append(f"File/Folder: {target_file}")
+        if not target_components:
+            if targets:
+                target_components = [f"Target: {', '.join(targets[:2])}"]
+            else:
+                target_components = [f"Target: System Automation ({mode})"]
+        target_desc = " | ".join(target_components)
+
+        # 4. Expected Result
+        if "google" in q_lower:
+            expected_result = "Search results rendered and verified in browser."
+        elif "youtube" in q_lower and "play" in q_lower:
+            expected_result = "Requested media playing in browser with verified playback controls."
+        elif "youtube" in q_lower:
+            expected_result = "Search results displayed without auto-playing media."
+        elif "spotify" in q_lower:
+            expected_result = "Spotify search results rendered and audio track playback engaged."
+        elif "instagram" in q_lower:
+            expected_result = "Instagram view active (subject to valid user session authentication)."
+        elif "vs code" in q_lower or "vscode" in q_lower:
+            expected_result = "Visual Studio Code workspace active with requested code file saved."
+        elif "notepad" in q_lower and ("save" in q_lower or target_file):
+            expected_result = f"Document saved and verified on disk at destination."
+        elif "notepad" in q_lower:
+            expected_result = "Notepad launched with requested text entered into editor."
+        elif is_destructive:
+            expected_result = "Target file system item permanently removed."
+        elif "create" in q_lower:
+            expected_result = "New file/folder created and verified on disk."
+        else:
+            expected_result = f"All {len(steps)} planned operations executed and empirically verified."
+
+        # 5. Plan Hash for idempotency & tamper-proof authorization
+        plan_str = json.dumps({"query": query, "targets": targets, "ops": formatted_ops}, sort_keys=True)
+        plan_hash = hashlib.sha256(plan_str.encode("utf-8")).hexdigest()[:16]
+
+        return {
+            "action_summary": action_summary,
+            "target": target_desc,
+            "target_application": target_app,
+            "target_url": target_url,
+            "target_file_path": target_file,
+            "execution_plan": formatted_ops,
+            "input_content": input_content,
+            "expected_result": expected_result,
+            "is_destructive": is_destructive,
+            "risk_level": "HIGH" if is_destructive else "STANDARD",
+            "plan_hash": plan_hash
+        }

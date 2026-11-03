@@ -72,8 +72,8 @@ def route_after_safety_controller(state: CentralGraphState) -> str:
     approval_status = state.get("approval_status", "NONE")
     auto_mode = state.get("automation_mode", "DESKTOP")
 
-    # If approval is needed and not yet confirmed, pause directly to formatter
-    if approval_required and approval_status != "APPROVED":
+    # If approval is needed and not yet confirmed, or if rejected, route directly to formatter
+    if (approval_required and approval_status != "APPROVED") or approval_status in ["REJECTED", "DENIED"]:
         return "result_formatter_agent"
 
     # Execution route based on automation mode

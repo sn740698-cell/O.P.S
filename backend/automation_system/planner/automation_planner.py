@@ -160,7 +160,8 @@ class AutomationPlanner:
             }
 
         # 2. Desktop: Open Notepad & optionally type text & optionally save
-        if "notepad" in q_lower and any(w in q_lower for w in ["open", "launch", "start"]):
+        is_hybrid_query = any(w in q_lower for w in ["browser", "chrome", "search", "docs", "documentation", "url", "website", "wikipedia", "google", "youtube"])
+        if "notepad" in q_lower and any(w in q_lower for w in ["open", "launch", "start"]) and not is_hybrid_query:
             text_to_type = None
             save_path = None
 
@@ -359,13 +360,13 @@ class AutomationPlanner:
             }
 
         # 6b. File System Automation: Create File
-        if any(w in q_lower for w in ["create file", "create a file", "make a file", "new file", "write file"]) and "notepad" not in q_lower and "code" not in q_lower:
+        if any(w in q_lower for w in ["create file", "create a file", "make a file", "new file", "write file"]) and "notepad" not in q_lower and not any(w in q_lower for w in ["vs code", "vscode", "visual studio code"]):
             file_name = "ops_output.txt"
             content = ""
             target_dir = os.path.expanduser("~/Desktop")
 
             # Extract path or filename
-            m_path = re.search(r'(?:at|named|called|path)\s+["\']?([a-zA-Z]:\\[^\s"\']+|~[^\s"\']+|\b[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+\b)["\']?', query, re.IGNORECASE)
+            m_path = re.search(r'(?:at\s+path|path|at|named|called)\s+["\']?([a-zA-Z]:\\[^\s"\']+|[a-zA-Z]:/[^\s"\']+|~[^\s"\']+|\b[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+\b)["\']?', query, re.IGNORECASE)
             if m_path:
                 cand = m_path.group(1).strip()
                 if os.path.sep in cand or "/" in cand:
@@ -375,10 +376,10 @@ class AutomationPlanner:
             else:
                 full_target = os.path.join(target_dir, file_name)
 
-            # Extract content
-            m_content = re.search(r'(?:with content|containing|with text|content)\s*[:=]?\s*["\']([^"\']+)["\']', query, re.IGNORECASE)
+            # Extract content or code
+            m_content = re.search(r'(?:with content|containing|with text|with code|content|code)\s*[:=]?\s*["\']?([^"\']+)["\']?', query, re.IGNORECASE)
             if m_content:
-                content = m_content.group(1)
+                content = m_content.group(1).strip()
 
             steps = [
                 {
@@ -386,7 +387,7 @@ class AutomationPlanner:
                     "title": f"Create file at '{full_target}'",
                     "executor": "system",
                     "action": "create_file",
-                    "params": {"path": full_target, "content": content, "overwrite": True},
+                    "params": {"path": full_target, "file_path": full_target, "content": content, "overwrite": True},
                     "depends_on": [],
                     "risk_level": RISK_LOW,
                     "status": "PENDING",

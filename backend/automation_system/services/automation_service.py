@@ -102,24 +102,13 @@ class AutomationService:
                 "task": task.to_dict()
             }
 
-        # Check Safety Policy for High-Risk Steps
-        requires_approval = False
-        approval_step = None
-        approval_reason = ""
-        for s in steps:
-            risk, needs_appr, reason = SafetyPolicy.evaluate_step_risk(
-                s.get("action", ""),
-                s.get("params", {}),
-                user_request
-            )
-            s["risk_level"] = risk
-            if needs_appr and not requires_approval:
-                requires_approval = True
-                approval_step = s
-                approval_reason = reason
+        # Mandatory Human-in-the-Loop (HITL) Approval Gate for ALL Automation Operations
+        requires_approval = True
+        hitl_details = SafetyPolicy.build_automation_hitl_details(user_request, steps, mode=mode)
+        approval_reason = hitl_details["action_summary"]
 
-        initial_status = AutomationTask.STATUS_WAITING_FOR_APPROVAL if requires_approval else AutomationTask.STATUS_READY
-        appr_status = AutomationTask.APPROVAL_PENDING if requires_approval else AutomationTask.APPROVAL_NOT_REQUIRED
+        initial_status = AutomationTask.STATUS_WAITING_FOR_APPROVAL
+        appr_status = AutomationTask.APPROVAL_PENDING
 
         task = AutomationTask.objects.create(
             task_id=tid,
@@ -148,31 +137,66 @@ class AutomationService:
             safe_task_summary=f"Formulated {len(steps)}-step execution plan ({mode} Mode)",
             automation_mode=mode,
             steps_count=len(steps),
-            requires_approval=requires_approval,
-            current_stage="Awaiting approval" if requires_approval else "Executing step 1",
+            requires_approval=True,
+            current_stage="Awaiting user approval",
             timestamp=time.time()
         )
 
-        # If approval required, create PendingApproval record
-        appr_record = None
-        if requires_approval and approval_step:
-            appr_record = SafetyPolicy.create_approval_request(
-                task_id=tid,
-                conversation_id=conversation_id,
-                step_id=approval_step.get("step_id", 1),
-                action=approval_step.get("action", "unknown"),
-                reason=approval_reason
-            )
+        # Create PendingApproval record with complete Section 4 metadata
+        appr_id = f"appr_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+        conv = Conversation.objects.filter(conversation_id=conversation_id).first()
+        appr_record = PendingApproval.objects.create(
+            approval_id=appr_id,
+            conversation=conv,
+            target_conversation_id=conversation_id,
+            execution_id=tid,
+            action_type=f"AUTOMATION_{mode.upper()}",
+            status="PENDING",
+            description=hitl_details["action_summary"],
+            metadata={
+                "task_id": tid,
+                "query": user_request,
+                "user_query": user_request,
+                "mode": mode,
+                **hitl_details
+            }
+        )
+
+        event_bus.publish(
+            request_id=f"req_{appr_id}",
+            execution_id=tid,
+            conversation_id=conversation_id,
+            node_id="hitl_approval_gate",
+            component_name="Safety & HITL Policy Gate",
+            component_type="approval_controller",
+            event_type="APPROVAL_REQUIRED",
+            execution_status="WAITING_FOR_APPROVAL",
+            safe_task_summary=f"Human authorization required: {hitl_details['action_summary']}",
+            approval_id=appr_id,
+            approval_reason=hitl_details["action_summary"],
+            target=hitl_details["target"],
+            execution_plan=hitl_details["execution_plan"],
+            input_content=hitl_details["input_content"],
+            expected_result=hitl_details["expected_result"],
+            is_destructive=hitl_details["is_destructive"],
+            risk_level=hitl_details["risk_level"],
+            status="WAITING_FOR_APPROVAL",
+            timestamp=time.time()
+        )
 
         return {
-            "status": "WAITING_FOR_APPROVAL" if requires_approval else "READY",
+            "status": "WAITING_FOR_APPROVAL",
             "task_id": tid,
             "automation_mode": mode,
             "mode_reason": mode_reason,
             "steps": steps,
-            "requires_approval": requires_approval,
-            "approval_id": appr_record.approval_id if appr_record else None,
+            "requires_approval": True,
+            "approval_id": appr_record.approval_id,
             "approval_reason": approval_reason,
+            "target": hitl_details["target"],
+            "execution_plan": hitl_details["execution_plan"],
+            "input_content": hitl_details["input_content"],
+            "expected_result": hitl_details["expected_result"],
             "task": task.to_dict()
         }
 
@@ -412,6 +436,7 @@ class AutomationService:
                 task.error_details = "Operation rejected by user during Human-in-the-Loop review."
                 task.save()
 
+            cancel_msg = "O.P.S. execution cancelled. No automation actions were performed."
             event_bus.publish(
                 request_id=f"req_{approval_id}",
                 execution_id=task_id or f"exec_{approval_id}",
@@ -422,9 +447,11 @@ class AutomationService:
                 event_type="APPROVAL_REJECTED",
                 execution_status="CANCELLED",
                 safe_task_summary="Human-in-the-Loop approval rejected. Operation halted safely.",
+                final_answer=cancel_msg,
+                content=cancel_msg,
                 timestamp=time.time()
             )
-            return {"success": True, "status": "REJECTED", "message": "Task rejected by user."}
+            return {"success": True, "status": "DENIED", "message": cancel_msg, "final_answer": cancel_msg}
 
         # User Approved
         appr.status = "APPROVED"

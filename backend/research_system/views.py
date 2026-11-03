@@ -1938,15 +1938,89 @@ def respond_chat_approval(request, approval_id):
     # Case A: Automation Engine Gate
     if action_type.startswith("AUTOMATION_"):
         try:
-            from automation_system.services.automation_service import AutomationService
-            res = AutomationService.resume_after_approval(approval_id, approved=is_approved)
-            return JsonResponse(res, status=200)
+            if not is_approved:
+                appr.status = "REJECTED"
+                appr.resolved_at = timezone.now()
+                appr.save()
+
+                from automation_system.models import AutomationTask
+                task_id = appr.execution_id or appr.metadata.get("task_id")
+                if task_id:
+                    task = AutomationTask.objects.filter(task_id=task_id).first()
+                    if task:
+                        task.approval_status = AutomationTask.APPROVAL_REJECTED
+                        task.execution_status = AutomationTask.STATUS_CANCELLED
+                        task.save()
+
+                cancel_msg = "O.P.S. execution cancelled. No automation actions were performed."
+
+                # Create cancelled message record in conversation
+                if appr.target_conversation_id:
+                    conv = Conversation.objects.filter(conversation_id=appr.target_conversation_id).first()
+                    if conv:
+                        ChatMessage.objects.create(
+                            conversation=conv,
+                            message_id=f"msg_{int(time.time())}_{uuid.uuid4().hex[:6]}",
+                            role="assistant",
+                            content=cancel_msg,
+                            input_type="text",
+                            status="cancelled",
+                            metadata={"status": "CANCELLED", "approval_id": approval_id}
+                        )
+
+                event_bus.publish(
+                    request_id=f"req_{approval_id}",
+                    execution_id=appr.execution_id or f"exec_{approval_id}",
+                    conversation_id=appr.target_conversation_id,
+                    node_id="hitl_safety_controller",
+                    component_name="HITL Safety Controller",
+                    component_type="approval_controller",
+                    event_type="APPROVAL_REJECTED",
+                    execution_status="CANCELLED",
+                    safe_task_summary="Execution cancelled by user. No actions performed.",
+                    final_answer=cancel_msg,
+                    content=cancel_msg,
+                    timestamp=time.time()
+                )
+                return JsonResponse({
+                    "success": True,
+                    "status": "DENIED",
+                    "approval_id": approval_id,
+                    "message": cancel_msg,
+                    "final_answer": cancel_msg
+                }, status=200)
+
+            # User Approved: Mark status and resume execution
+            appr.status = "APPROVED"
+            appr.resolved_at = timezone.now()
+            appr.save()
+
+            from automation_system.models import AutomationTask
+            task_id = appr.execution_id or appr.metadata.get("task_id")
+            has_auto_task = AutomationTask.objects.filter(task_id=task_id).exists() if task_id else False
+
+            if has_auto_task:
+                from automation_system.services.automation_service import AutomationService
+                res = AutomationService.resume_after_approval(approval_id, approved=True)
+                return JsonResponse(res, status=200)
+            else:
+                from research_system.orchestrator.service import CentralOrchestratorService
+                query = appr.metadata.get("query") or appr.metadata.get("user_query") or appr.description
+                res = CentralOrchestratorService.execute_directive(
+                    query=query,
+                    conversation_id=appr.target_conversation_id,
+                    task_id=appr.execution_id,
+                    approval_id=approval_id,
+                    approval_decision="approve"
+                )
+                return JsonResponse(res, status=200)
+
         except Exception as e:
-            logger.error(f"Failed to resume automation approval {approval_id}: {e}")
+            logger.error(f"Failed to resume automation approval {approval_id}: {e}", exc_info=True)
             appr.status = "APPROVED" if is_approved else "REJECTED"
             appr.resolved_at = timezone.now()
             appr.save()
-            return JsonResponse({"success": True, "status": appr.status}, status=200)
+            return JsonResponse({"success": True, "status": appr.status, "error": str(e)}, status=200)
 
     # Case B: Permanent Conversation Deletion
     if action_type == "PERMANENT_CONVERSATION_DELETION":

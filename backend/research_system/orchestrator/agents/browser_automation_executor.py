@@ -39,6 +39,15 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
     browser_steps = [s for s in steps if s.get("executor") == "browser"]
     conv_id = state.get("conversation_id", "default_session")
 
+    # Defense-in-depth: Strict server-side HITL gate enforcement
+    if state.get("approval_status") != "APPROVED":
+        logger.warning("Browser execution blocked: Operator authorization has not been granted.")
+        emit_agent_failed(state, AGENT_ID, AGENT_NAME, GROUP_ID, "Browser automation blocked: explicit human approval is required.")
+        return {
+            "current_agent": AGENT_ID,
+            "errors": ["Browser automation blocked: explicit human approval is required."]
+        }
+
     emit_agent_started(state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE, f"Executing {len(browser_steps)} browser operation(s)...")
 
     try:

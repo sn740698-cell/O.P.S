@@ -29,6 +29,15 @@ def desktop_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
     steps = state.get("execution_plan", [])
     desktop_steps = [s for s in steps if s.get("executor") == "desktop"]
 
+    # Defense-in-depth: Strict server-side HITL gate enforcement
+    if state.get("approval_status") != "APPROVED":
+        logger.warning("Desktop execution blocked: Operator authorization has not been granted.")
+        emit_agent_failed(state, AGENT_ID, AGENT_NAME, GROUP_ID, "Desktop automation blocked: explicit human approval is required.")
+        return {
+            "current_agent": AGENT_ID,
+            "errors": ["Desktop automation blocked: explicit human approval is required."]
+        }
+
     emit_agent_started(state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE, f"Executing {len(desktop_steps)} desktop operation(s)...")
 
     try:

@@ -822,25 +822,25 @@ export default function SeparatePopupCockpit() {
       dismissedApprovalsRef.current.add(apprId);
       try {
         // 1. Universal approval responder endpoint
-        await fetch(`/api/chat/approvals/${apprId}/respond/`, {
+        const resp = await fetch(`/api/chat/approvals/${apprId}/respond/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ decision: 'reject', action: 'deny', conversation_id: conversationId })
-        }).catch(() => {});
+        }).catch(() => null);
 
-        // 2. Action-specific fallback endpoints
-        if (pendingApproval?.action_type?.startsWith('AUTOMATION')) {
-          await fetch(`/api/automation/approvals/${apprId}/respond/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ decision: 'reject' })
-          }).catch(() => {});
-        } else if (conversationId) {
-          await fetch(
-            `/api/chat/conversations/${conversationId}/refresh-approval/${apprId}/deny/`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json' } }
-          ).catch(() => {});
-        }
+        const data = resp ? await resp.json().catch(() => ({})) : {};
+        const cancelMsg = data?.message || data?.final_answer || "O.P.S. execution cancelled. No automation actions were performed.";
+
+        setConversationHistory((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: cancelMsg,
+            content: cancelMsg,
+            category: 'AUTOMATION',
+            isCancelled: true
+          }
+        ]);
       } catch (e) {
         console.warn("Deny error:", e);
       }
@@ -848,7 +848,7 @@ export default function SeparatePopupCockpit() {
     setIsHitlModalOpen(false);
     setPendingApproval(null);
     setHitlError(null);
-    setCurrentThought('Human authorization REJECTED. Operation halted safely.');
+    setCurrentThought('DENIED — NO ACTIONS EXECUTED');
   };
 
   // HITL: Accept Decision
@@ -861,6 +861,7 @@ export default function SeparatePopupCockpit() {
 
     try {
       if (pendingApproval?.action_type?.startsWith('AUTOMATION')) {
+        setCurrentThought('APPROVED — EXECUTION STARTING');
         const resp = await fetch(`/api/chat/approvals/${apprId}/respond/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -870,9 +871,30 @@ export default function SeparatePopupCockpit() {
           const errData = await resp.json().catch(() => ({}));
           throw new Error(errData.error || `Server error (${resp.status})`);
         }
+        const data = await resp.json();
         setIsHitlModalOpen(false);
         setPendingApproval(null);
-        setCurrentThought('Automation action authorized. Resuming execution...');
+        setCurrentThought('COMPLETED');
+
+        const botAnswer = data.final_answer || data.content || data.response || "Automation execution completed.";
+        const finalCategory = data.response_mode || data.mode || activeMode || 'AUTOMATION';
+        const finalEngine = data.active_engine || 'AUTOMATION';
+
+        setActiveEngine(finalEngine);
+        setActiveMode(finalCategory);
+
+        setConversationHistory((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: botAnswer,
+            content: botAnswer,
+            category: finalCategory,
+            plan: data.plan || data.step_results,
+            summary: data.conversation_summary
+          }
+        ]);
+        retroSoundEngine.playBeep(780, 0.12);
       } else {
         const resp = await fetch(
           `/api/chat/conversations/${conversationId}/refresh-approval/${apprId}/accept/`,
@@ -902,6 +924,7 @@ export default function SeparatePopupCockpit() {
       }
     } catch (err) {
       setHitlError(err.message);
+      setCurrentThought(`FAILED: ${err.message}`);
     } finally {
       setIsHitlLoading(false);
     }
@@ -1053,12 +1076,20 @@ export default function SeparatePopupCockpit() {
       {/* Human-in-the-Loop Modal Inside Separate Cockpit Window */}
       <HumanApprovalModal
         isOpen={isHitlModalOpen}
-        title={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Automation Action Authorization" : "Human Approval Required"}
+        actionType={pendingApproval?.action_type}
+        title={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "HUMAN-IN-THE-LOOP // EXECUTION APPROVAL" : "Human Approval Required"}
         subtitle={pendingApproval?.description || (pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Authorize system automation task execution?" : "Delete Current Conversation?")}
-        denyLabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "REJECT ACTION" : "DENY"}
-        denySublabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Cancel this automation step." : "Keep my conversation."}
-        acceptLabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "AUTHORIZE" : "ACCEPT"}
-        acceptSublabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Proceed with execution." : "Delete and start fresh."}
+        actionSummary={pendingApproval?.metadata?.action_summary || pendingApproval?.description}
+        target={pendingApproval?.metadata?.target || pendingApproval?.metadata?.target_application || pendingApproval?.metadata?.target_file_path || pendingApproval?.metadata?.target_url}
+        executionPlan={pendingApproval?.metadata?.execution_plan || pendingApproval?.metadata?.steps}
+        inputContent={pendingApproval?.metadata?.input_content}
+        expectedResult={pendingApproval?.metadata?.expected_result}
+        isDestructive={pendingApproval?.metadata?.is_destructive}
+        riskLevel={pendingApproval?.metadata?.risk_level}
+        denyLabel="DENY"
+        denySublabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Cancel this automation step. No actions performed." : "Keep my conversation."}
+        acceptLabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "ACCEPT AND EXECUTE" : "ACCEPT"}
+        acceptSublabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Authorize and begin execution." : "Delete and start fresh."}
         conversationId={conversationId}
         approvalId={pendingApproval?.approval_id}
         loading={isHitlLoading}

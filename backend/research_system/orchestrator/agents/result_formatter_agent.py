@@ -62,16 +62,26 @@ def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
         elif state.get("approval_required") and state.get("approval_status") == "PENDING":
             reason = state.get("approval_reason", "Action requires human authorization.")
             appr_id = state.get("approval_id", "")
+            target_desc = state.get("target_application") or state.get("target_url") or state.get("target_file_path") or "System Automation"
+            ops = state.get("proposed_operations", [])
+            ops_text = "\n".join(ops) if ops else "1. Execute planned automation operations."
+            content_val = state.get("requested_content")
+            content_section = f"\n**Input / Content**:\n```\n{content_val}\n```\n" if content_val else ""
+
             final_text = (
-                f"## 🛑 HUMAN APPROVAL REQUIRED\n\n"
-                f"**Directive**: `{query}`\n\n"
-                f"{reason}\n\n"
-                f"Please review and authorize or reject this operation in the Cockpit or Approval Modal.\n\n"
-                f"- **Approval ID**: `{appr_id}`\n"
-                f"- **Risk Level**: `HIGH`\n\n"
+                f"## 🛑 HUMAN-IN-THE-LOOP // EXECUTION APPROVAL\n\n"
+                f"**Action**: {reason}\n\n"
+                f"**Target**: {target_desc}\n\n"
+                f"### 📋 Execution Plan:\n{ops_text}\n"
+                f"{content_section}\n"
+                f"**Expected Result**: Planned operations executed and verified.\n\n"
+                f"**Approval Controls**:\n"
+                f"- `[ ACCEPT AND EXECUTE ]`\n"
+                f"- `[ DENY ]`\n\n"
+                f"*(Approval ID: `{appr_id}` | Status: `AWAITING USER APPROVAL`)*\n\n"
                 f"## 📌 Discussion So Far\n\n"
-                f"- Directive paused at safety policy gate: '{query}'\n"
-                f"- Awaiting human authorization to proceed.\n"
+                f"- Directive paused for explicit operator authorization: '{query}'\n"
+                f"- Status: `AWAITING USER APPROVAL`\n"
                 f"- Task Identifier: `{task_id}`"
             )
 

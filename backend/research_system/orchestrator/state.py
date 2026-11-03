@@ -49,6 +49,14 @@ class CentralGraphState(TypedDict, total=False):
     approval_status: str        # 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'
     approval_id: Optional[str]
     approval_reason: Optional[str]
+    approval_timestamp: Optional[float]
+    approved_plan_hash: Optional[str]
+    proposed_plan: List[Dict[str, Any]]
+    proposed_operations: List[str]
+    target_application: Optional[str]
+    target_url: Optional[str]
+    target_file_path: Optional[str]
+    requested_content: Optional[str]
     clarification_required: bool
     clarification_prompt: Optional[str]
     clarification_response: Optional[str]
