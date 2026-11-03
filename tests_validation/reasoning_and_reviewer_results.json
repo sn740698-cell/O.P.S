@@ -1,0 +1,46 @@
+{
+  "architectural_status": "DISABLED_IN_WORKFLOW",
+  "model_tested": "hf.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF:Q8_0",
+  "test_cases": [
+    {
+      "id": 1,
+      "name": "Correct Python Function",
+      "expected": "ACCEPT",
+      "status": "PASS",
+      "latency_ms": 14005.837799999426,
+      "output_preview": "STATUS: ACCEPT  Explanation: The provided Python code defines a recursive function `calculate_factorial` that calculates..."
+    },
+    {
+      "id": 2,
+      "name": "Intentional Syntax Error",
+      "expected": "REJECT",
+      "status": "FAIL",
+      "latency_ms": 989.1496000000188,
+      "output_preview": "STATUS: ACCEPT  The provided Python code is syntactically correct and follows standard Python conventions. It defines a ..."
+    },
+    {
+      "id": 3,
+      "name": "Unsupported Factual Claim",
+      "expected": "REJECT",
+      "status": "PASS",
+      "latency_ms": 2254.710900000646,
+      "output_preview": "STATUS: REJECT  The statement is factually incorrect. Sir Isaac Newton was a physicist, not a mathematician, and his wor..."
+    },
+    {
+      "id": 4,
+      "name": "Plan with Missing Implementation Step",
+      "expected": "REJECT",
+      "status": "FAIL",
+      "latency_ms": 4792.08060000019,
+      "output_preview": "STATUS: ACCEPT  The provided technical plan appears to be a simple login system for a React application. Here's a breakd..."
+    },
+    {
+      "id": 5,
+      "name": "Contradictory Statements",
+      "expected": "REJECT",
+      "status": "FAIL",
+      "latency_ms": 712.5216999993427,
+      "output_preview": "STATUS: ACCEPT  The statement appears to be coherent and logically consistent. It accurately describes the function's ch..."
+    }
+  ]
+}

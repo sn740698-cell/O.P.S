@@ -1,0 +1,67 @@
+{
+  "six_turn_sequence": [
+    {
+      "turn": 1,
+      "user": "Hello O.P.S.",
+      "mode": "GENERAL_CHAT",
+      "status": "PASS",
+      "crawler_triggered": false,
+      "latency_ms": 14284.701099999438,
+      "has_summary": true,
+      "preview": "Hello! \ud83d\udc4b I'm O.P.S., your AI assistant designed to help with technical tasks, provide insights, and support your work. Whether you need guidance, troubleshootin..."
+    },
+    {
+      "turn": 2,
+      "user": "I am building a Python application.",
+      "mode": "OTHER_SUPPORTED_TASK",
+      "status": "PASS",
+      "crawler_triggered": false,
+      "latency_ms": 13776.545100001385,
+      "has_summary": true,
+      "preview": "Hello! \ud83d\udc4b I'm O.P.S., your AI assistant designed to help with technical tasks, provide insights, and support your work. Whether you need guidance, troubleshootin..."
+    },
+    {
+      "turn": 3,
+      "user": "What framework should I use?",
+      "mode": "OTHER_SUPPORTED_TASK",
+      "status": "PASS",
+      "crawler_triggered": false,
+      "latency_ms": 16734.172699998453,
+      "has_summary": true,
+      "preview": "To choose the right framework for your Python application, consider these factors:   - **Web apps**: Django (full-stack, robust) vs. Flask (microservices, flexi..."
+    },
+    {
+      "turn": 4,
+      "user": "Why would you recommend that?",
+      "mode": "OTHER_SUPPORTED_TASK",
+      "status": "PASS",
+      "crawler_triggered": false,
+      "latency_ms": 10927.157299998726,
+      "has_summary": true,
+      "preview": "- **Django** is ideal for large-scale web apps requiring robust features like admin panels, ORM, and built-in security. It\u2019s easier to get started with and scal..."
+    },
+    {
+      "turn": 5,
+      "user": "Give me a simple example.",
+      "mode": "OTHER_SUPPORTED_TASK",
+      "status": "PASS",
+      "crawler_triggered": false,
+      "latency_ms": 10338.058400000591,
+      "has_summary": true,
+      "preview": "```python # Example: Create a simple Django project and app # 1. Install Django (pip install django) # 2. Create a new project: django-admin startproject myproj..."
+    },
+    {
+      "turn": 6,
+      "user": "Now explain the second approach.",
+      "mode": "OTHER_SUPPORTED_TASK",
+      "status": "PASS",
+      "crawler_triggered": false,
+      "latency_ms": 15124.995500000296,
+      "has_summary": true,
+      "preview": "## \ud83d\ude80 Second Approach: Flask (Microframework)   Flask is a lightweight, flexible Python web framework ideal for small to medium-sized projects. It emphasizes sim..."
+    }
+  ],
+  "chronological_messages_count": 12,
+  "context_isolation_passed": true,
+  "cancellation_passed": true
+}

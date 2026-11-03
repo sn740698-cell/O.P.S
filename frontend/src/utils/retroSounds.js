@@ -252,6 +252,56 @@ class RetroSoundEngine {
       console.warn('Audio synthesis unavailable:', e);
     }
   }
+
+  /**
+   * Tactical subtle keyclick for prompt dispatch
+   */
+  playKeyClick() {
+    try {
+      const ctx = this._getCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1200, now);
+      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.03);
+    } catch (_) {}
+  }
+
+  /**
+   * HUD Beep chime for status indicators and completion
+   */
+  playBeep(freq = 520, duration = 0.08) {
+    try {
+      const ctx = this._getCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration);
+    } catch (_) {}
+  }
 }
 
-export const retroSoundEngine = new RetroSoundEngine();
+const baseEngine = new RetroSoundEngine();
+export const retroSoundEngine = new Proxy(baseEngine, {
+  get(target, prop) {
+    if (prop in target) {
+      return typeof target[prop] === 'function' ? target[prop].bind(target) : target[prop];
+    }
+    return () => {}; // Safe no-op fallback
+  }
+});

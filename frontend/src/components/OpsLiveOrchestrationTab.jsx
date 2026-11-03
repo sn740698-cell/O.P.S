@@ -24,8 +24,14 @@ import {
   ShieldCheck,
   Radio,
   FileCode,
-  Zap
+  Zap,
+  Sparkles,
+  Copy,
+  Check,
+  Volume2
 } from 'lucide-react';
+import MarkdownRenderer from './MarkdownRenderer';
+import CockpitLoadingSkeleton from './skeletons/CockpitLoadingSkeleton';
 import { retroSoundEngine } from '../utils/retroSounds';
 
 // ==================== O.P.S. CANONICAL AGENT TOPOLOGY (v3.0) ====================
@@ -41,172 +47,183 @@ import { retroSoundEngine } from '../utils/retroSounds';
 // Stage 03: Specialized Agent Fleet (Developer, Debugger, Tester, Reviewer, Web, Research, Automation, Browser, RAG)
 // Stage 04: Verification & Response (Ground-Truth Verifier, Response Engine)
 
-const LAYERS = [2, 2, 9, 2];
+const LAYERS = [2, 4, 5, 2];
 const LAST = LAYERS.length - 1;
 
 const STAGE_LABELS = [
-  "STAGE 01: INGRESS & ROUTING",
-  "STAGE 02: PLANNING & MISSION CONTROL",
-  "STAGE 03: SPECIALIZED AGENT FLEET",
-  "STAGE 04: VERIFICATION & RESPONSE"
+  "GROUP 01: GLOBAL INTELLIGENCE",
+  "GROUP 02: ANSWERING ENGINE",
+  "GROUP 03: AUTOMATION ENGINE",
+  "GROUP 04: COMPOSITE COORDINATION & DELIVERY"
 ];
 
 const AGENT_NODES = [
-  // Stage 01: Ingress & Routing
+  // Group 01: Global Intelligence (2 Reasoning Agents)
   [
     {
-      id: "router",
-      name: "Fast Router",
-      tag: "FAST ROUTER",
+      id: "global_intent_router",
+      name: "Global Intent Router",
+      tag: "INTENT ROUTER",
       model: "Qwen3 0.6B Q8_0",
-      type: "routing",
-      task: "Classifies intent in <50ms across 5 modes: CHAT, TASK, MISSION, MEMORY, CLARIFICATION.",
-      matchKeys: ["router", "fast router", "intent router", "classify", "mode"]
+      type: "reasoning_agent",
+      role: "Determines directive category (ANSWER, AUTOMATION, COMPOSITE, CLARIFICATION) and response mode in <100ms.",
+      tool: "Ollama Qwen3 0.6B Fast Classifier",
+      parent: "USER DIRECTIVE",
+      child: "Task Understanding & Planner",
+      matchKeys: ["global_intent_router", "router", "intent", "request_understanding", "request_router", "fast_route"]
     },
     {
-      id: "supervisor",
-      name: "Canonical Supervisor",
-      tag: "ORCHESTRATOR",
+      id: "task_understanding_planner",
+      name: "Task Understanding & Planner",
+      tag: "SUPERVISOR AGENT",
       model: "Qwen3 1.7B Q8_0",
-      type: "supervisor",
-      task: "Coordinates execution pipeline, delegates to specialists, and oversees mission execution.",
-      matchKeys: ["supervisor", "orchestrator", "canonical supervisor", "lead supervisor"]
+      type: "reasoning_agent",
+      role: "Decomposes directives into execution plans, subtasks, agent dependencies, and approval gates.",
+      tool: "Ollama Qwen3 1.7B Orchestrator",
+      parent: "Global Intent Router",
+      child: "Group 2 / Group 3 / Group 4",
+      matchKeys: ["task_understanding_planner", "task_planner", "supervisor", "research_planner", "planner"]
     }
   ],
-  // Stage 02: Planning & Mission Control
+  // Group 02: Answering Engine (3 Reasoning Agents + 1 Research Fleet Worker)
   [
     {
-      id: "mission_manager",
-      name: "Mission Manager",
-      tag: "MISSION ENGINE",
-      model: "Stateful Core",
-      type: "mission",
-      task: "Tracks multi-step state, step dependencies, and manages 3-retry bounded recovery loops.",
-      matchKeys: ["mission manager", "mission", "task manager", "mission engine"]
+      id: "local_reasoning_agent",
+      name: "Local Reasoning Agent",
+      tag: "REASONING AGENT",
+      model: "Qwen3 1.7B Q8_0",
+      type: "reasoning_agent",
+      role: "Direct LLM reasoning for coding, logic, conceptual queries, and prior context synthesis.",
+      tool: "Ollama Qwen3 1.7B Local Reasoner",
+      parent: "Task Understanding & Planner",
+      child: "Answer Synthesis / Result Formatter",
+      matchKeys: ["local_reasoning_agent", "fast_route", "local_reasoning", "reasoning_engine"]
     },
     {
-      id: "planner",
-      name: "Lead Planner",
-      tag: "DAG PLANNER",
+      id: "web_research_agent",
+      name: "Web Research Agent",
+      tag: "RESEARCH FLEET",
+      model: "HTTPX, Crawlee, BS4, Playwright",
+      type: "execution_worker",
+      role: "Executes search query generation, URL discovery, concurrent crawling, and HTML extraction.",
+      tool: "Brave Search, Crawlee, Playwright, BS4",
+      parent: "Task Understanding & Planner",
+      child: "Evidence Validation Agent",
+      matchKeys: ["web_research_agent", "web_prep", "search_worker", "crawling_worker", "browser_rendering_worker", "content_extraction_worker", "content_processing_worker"]
+    },
+    {
+      id: "evidence_validation_agent",
+      name: "Evidence Validation Agent",
+      tag: "VERIFICATION AGENT",
+      model: "Fact & Grounding Verifier",
+      type: "reasoning_agent",
+      role: "Validates retrieved claims against scraped passages, filters contradictions, and scores evidence sufficiency.",
+      tool: "Evidence Grounding Engine",
+      parent: "Web Research Agent",
+      child: "Answer Synthesis Agent",
+      matchKeys: ["evidence_validation_agent", "evidence_analysis", "evidence_retrieval_worker", "adaptive_controller"]
+    },
+    {
+      id: "answer_synthesis_agent",
+      name: "Answer Synthesis Agent",
+      tag: "SYNTHESIS AGENT",
       model: "Qwen3 1.7B Q8_0",
-      type: "planner",
-      task: "Decomposes complex goals into explicit, ordered, verifiable plan steps with assigned tools.",
-      matchKeys: ["planner", "lead planner", "task decomposition", "plan", "dag planner"]
+      type: "reasoning_agent",
+      role: "Synthesizes multi-source evidence with bracketed citations [1], [2] into unified answers.",
+      tool: "Ollama Qwen3 1.7B Synthesizer",
+      parent: "Evidence Validation Agent",
+      child: "Result Formatter Agent",
+      matchKeys: ["answer_synthesis_agent", "answer_generation", "citation_result_worker"]
     }
   ],
-  // Stage 03: Specialized Agent Fleet (9 Canonical Agents)
+  // Group 03: Automation Engine (2 Planners/Controllers, 2 Executors, 1 Verifier)
   [
     {
-      id: "developer",
-      name: "Developer Agent",
-      tag: "DEV AGENT",
-      model: "Qwen3 1.7B Q8_0",
-      type: "specialist",
-      task: "Repository inspection, code synthesis, refactoring, and filesystem operations.",
-      capabilities: ["filesystem.read", "filesystem.write", "filesystem.create_directory", "filesystem.delete", "terminal.execute"],
-      matchKeys: ["developer", "code", "dev", "scaffold", "refactor"]
+      id: "automation_planner",
+      name: "Automation Planner",
+      tag: "AUTO PLANNER",
+      model: "Qwen3 1.7B / Deterministic",
+      type: "reasoning_agent",
+      role: "Synthesizes deterministic structured step sequences for desktop and browser automation.",
+      tool: "Automation Step Generator",
+      parent: "HITL & Safety Controller",
+      child: "Desktop / Browser Automation Executor",
+      matchKeys: ["automation_planner", "auto_planner", "automation_service"]
     },
     {
-      id: "debugger",
-      name: "Debugger Agent",
-      tag: "DEBUGGER AGENT",
-      model: "Qwen3 1.7B Q8_0",
-      type: "specialist",
-      task: "Analyzes stack traces, identifies root causes, and generates automated remediation patches.",
-      capabilities: ["terminal.execute", "filesystem.read", "filesystem.write"],
-      matchKeys: ["debugger", "debug", "diagnose", "root cause", "patch"]
+      id: "desktop_automation_executor",
+      name: "Desktop Automation Executor",
+      tag: "PYWINAUTO RUNNER",
+      model: "Pywinauto UIA / Win32",
+      type: "execution_worker",
+      role: "Executes native Windows application control, window management, keyboard, and mouse actions.",
+      tool: "Pywinauto Native Engine",
+      parent: "Automation Planner",
+      child: "Verification & Recovery Agent",
+      matchKeys: ["desktop_automation_executor", "pywinauto", "desktop_executor"]
     },
     {
-      id: "tester",
-      name: "Tester Agent",
-      tag: "TESTER AGENT",
-      model: "Qwen3 1.7B Q8_0",
-      type: "specialist",
-      task: "Executes unit, integration, and end-to-end tests to verify assertions and exit codes.",
-      capabilities: ["terminal.run_tests", "terminal.execute", "filesystem.read"],
-      matchKeys: ["tester", "test", "pytest", "assertion", "test runner"]
+      id: "browser_automation_executor",
+      name: "Browser Automation Executor",
+      tag: "PLAYWRIGHT RUNNER",
+      model: "Playwright Chromium Engine",
+      type: "execution_worker",
+      role: "Executes headless or headed browser navigation, clicking, typing, downloads, and DOM verification.",
+      tool: "Playwright Browser Engine",
+      parent: "Automation Planner",
+      child: "Verification & Recovery Agent",
+      matchKeys: ["browser_automation_executor", "browser_executor", "playwright_browser"]
     },
     {
-      id: "reviewer",
-      name: "Reviewer Agent",
-      tag: "REVIEWER AGENT",
-      model: "Qwen3 1.7B Q8_0",
-      type: "specialist",
-      task: "Inspects code changes for architectural adherence, security guidelines, and safety policies.",
-      capabilities: ["filesystem.read"],
-      matchKeys: ["reviewer", "review", "audit", "compliance", "lint"]
+      id: "verification_recovery_agent",
+      name: "Verification & Recovery Agent",
+      tag: "STATE VERIFIER",
+      model: "AutomationVerifier Engine",
+      type: "reasoning_agent",
+      role: "Empirically verifies step execution postconditions (process list, window state, files) and executes self-healing.",
+      tool: "AutomationVerifier Postcondition Engine",
+      parent: "Desktop / Browser Automation Executor",
+      child: "Composite Task Coordinator / Result Formatter",
+      matchKeys: ["verification_recovery_agent", "verifier", "recovery_agent"]
     },
     {
-      id: "web",
-      name: "Web Agent",
-      tag: "WEB CRAWLER",
-      model: "Qwen3 1.7B Q8_0",
-      type: "specialist",
-      task: "Fetches live web content, search results, and documentation across the untrusted boundary.",
-      capabilities: ["web.search", "web.crawl", "web.extract_structured"],
-      matchKeys: ["web", "web agent", "search", "crawl", "scrape", "crawlee", "beautifulsoup"]
-    },
-    {
-      id: "research",
-      name: "Research Agent",
-      tag: "RESEARCH AGENT",
-      model: "Qwen3 1.7B Q8_0",
-      type: "specialist",
-      task: "Synthesizes multi-source facts, combining live web search with internal RAG memory.",
-      capabilities: ["web.search", "web.crawl", "rag.search"],
-      matchKeys: ["research", "research agent", "fact check", "synthesis"]
-    },
-    {
-      id: "automation",
-      name: "Automation Agent",
-      tag: "DESKTOP GUI",
-      model: "Qwen3 1.7B Q8_0",
-      type: "specialist",
-      task: "Launches installed native desktop applications and interacts with OS files.",
-      capabilities: ["desktop.launch_app", "desktop.open_file", "desktop.hotkey"],
-      matchKeys: ["automation", "automation agent", "launch", "desktop", "os", "installed apps"]
-    },
-    {
-      id: "browser",
-      name: "Browser Agent",
-      tag: "PLAYWRIGHT DOM",
-      model: "Qwen3 1.7B Q8_0",
-      type: "specialist",
-      task: "Navigates browser DOM, fills forms, clicks elements, and executes web interaction flows.",
-      capabilities: ["browser.open", "browser.navigate", "browser.click", "browser.type", "browser.extract"],
-      matchKeys: ["browser", "browser agent", "playwright", "dom", "click", "open web"]
-    },
-    {
-      id: "rag",
-      name: "RAG / Knowledge Agent",
-      tag: "SEMANTIC RAG",
-      model: "Qwen3 1.7B Q8_0",
-      type: "specialist",
-      task: "Queries and indexes persistent ChromaDB vector collections and project documentation.",
-      capabilities: ["rag.search", "rag.index", "rag.ingest"],
-      matchKeys: ["rag", "rag agent", "knowledge", "chroma", "vector", "memory", "semantic rag"]
+      id: "hitl_safety_controller",
+      name: "HITL & Safety Controller",
+      tag: "SAFETY GATE",
+      model: "SafetyPolicy Gatekeeper",
+      type: "adaptive_controller",
+      role: "Enforces non-bypassable human approval for destructive operations and solicits disambiguation.",
+      tool: "SafetyPolicy Risk Evaluator",
+      parent: "Task Understanding & Planner",
+      child: "Automation Planner",
+      matchKeys: ["hitl_safety_controller", "safety_controller", "approval_controller", "safety_policy"]
     }
   ],
-  // Stage 04: Verification & Response
+  // Group 04: Composite Coordination & Delivery (2 Agents)
   [
     {
-      id: "verifier",
-      name: "Ground-Truth Verifier",
-      tag: "GROUND-TRUTH VERIFIER",
-      model: "Deterministic Logic",
-      type: "verifier",
-      task: "Physical state validator. Asserts file existence, process health, and verified exit codes.",
-      capabilities: ["filesystem.exists", "process.running", "tests.passed"],
-      matchKeys: ["verifier", "ground truth", "critic", "verification", "physical state"]
+      id: "composite_task_coordinator",
+      name: "Composite Task Coordinator",
+      tag: "TASK BRIDGER",
+      model: "Cross-Group Orchestrator",
+      type: "reasoning_agent",
+      role: "Bridges multi-phase directives combining web research and automation into a single cohesive pipeline.",
+      tool: "Composite Directive Coordinator",
+      parent: "Group 2 & Group 3",
+      child: "Result Formatter Agent",
+      matchKeys: ["composite_task_coordinator", "composite_coordinator", "task_coordinator"]
     },
     {
-      id: "response",
-      name: "Response Engine",
-      tag: "JARVIS SYNTHESIZER",
-      model: "Llama 3.2 1B Instruct",
-      type: "response",
-      task: "Synthesizes final tactical responses strictly grounded in physically verified evidence.",
-      matchKeys: ["response", "response engine", "synthesizer", "jarvis", "executive voice"]
+      id: "result_formatter_agent",
+      name: "Result Formatter (Persona)",
+      tag: "DELIVERY AGENT",
+      model: "Qwen3 1.7B Q8_0",
+      type: "reasoning_agent",
+      role: "Delivers the final output in the articulate JARVIS persona, compiles bibliographies, and appends Discussion So Far.",
+      tool: "Ollama Qwen3 1.7B Delivery Engine",
+      parent: "Composite Task Coordinator / Synthesis Agent",
+      child: "END",
+      matchKeys: ["result_formatter_agent", "result_formatter", "chat_manager", "persona"]
     }
   ]
 ];
@@ -242,6 +259,10 @@ export default function OpsLiveOrchestrationTab({
   isLoading,
   onDispatchPrompt,
   briefingText,
+  streamingChunk = '',
+  activeTaskPrompt = '',
+  conversationHistory = [],
+  onSpeakText,
   sessionId,
   onClearMemory,
   onStopExecution,
@@ -250,6 +271,7 @@ export default function OpsLiveOrchestrationTab({
   const [quickInput, setQuickInput] = useState('');
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [hoveredAgent, setHoveredAgent] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   // Derived Real-Time Agent State Map derived from actual backend events
   const agentStateMap = useMemo(() => {
@@ -260,10 +282,16 @@ export default function OpsLiveOrchestrationTab({
       layer.forEach((agent) => {
         states[agent.id] = {
           status: 'IDLE',
-          currentTool: null,
+          currentTool: agent.tool || null,
+          taskSummary: agent.role || null,
+          outputSummary: null,
+          startTimestamp: null,
+          completionTimestamp: null,
+          duration: null,
           lastMessage: null,
           lastUpdated: null,
           error: null,
+          retryCount: 0,
           executions: 0
         };
       });
@@ -272,34 +300,35 @@ export default function OpsLiveOrchestrationTab({
     // Reduce live events into canonical agent states
     if (liveEvents && liveEvents.length > 0) {
       liveEvents.forEach((evt) => {
-        const agentId = evt.agent?.id || evt.agent_id;
-        const matched = findActiveNode(agentId || evt.agent?.name || evt.agent_name || evt.agent);
+        const agentKey = evt.node_id || evt.component_name || evt.agent?.id || evt.agent_id || evt.agent?.name || evt.agent;
+        const matched = findActiveNode(agentKey);
         if (matched) {
           const id = matched.node.id;
-          const status = evt.status || 'RUNNING';
-          states[id] = {
-            ...states[id],
-            status: status,
-            currentTool: evt.tool || evt.capability || states[id].currentTool,
-            lastMessage: evt.message || evt.thought || states[id].lastMessage,
-            lastUpdated: evt.timestamp || Date.now(),
-            error: status === 'FAILED' ? (evt.message || evt.error) : null,
-            executions: states[id].executions + 1
-          };
-        }
+          const status = evt.execution_status || evt.status || 'RUNNING';
+          const prev = states[id];
 
-        // Check if tool events belong to an active agent
-        if (evt.event_type === 'TOOL_STARTED' && evt.tool) {
-          const reqAgent = findActiveNode(evt.agent_id || evt.agent?.name);
-          if (reqAgent) {
-            states[reqAgent.node.id].currentTool = evt.tool;
-            states[reqAgent.node.id].status = 'RUNNING';
+          const startTs = evt.event_type === 'NODE_STARTED' ? evt.timestamp : prev.startTimestamp;
+          const endTs = (evt.event_type === 'NODE_COMPLETED' || evt.event_type === 'NODE_SKIPPED') ? evt.timestamp : prev.completionTimestamp;
+          let dur = prev.duration;
+          if (startTs && endTs && endTs >= startTs) {
+            dur = (endTs - startTs).toFixed(2) + 's';
           }
-        } else if (evt.event_type === 'TOOL_COMPLETED') {
-          const reqAgent = findActiveNode(evt.agent_id || evt.agent?.name);
-          if (reqAgent) {
-            states[reqAgent.node.id].currentTool = null;
-          }
+
+          states[id] = {
+            ...prev,
+            status: status,
+            currentTool: evt.tool_name || evt.tool || prev.currentTool,
+            taskSummary: evt.safe_task_summary || evt.message || prev.taskSummary,
+            outputSummary: evt.safe_output_summary || prev.outputSummary,
+            startTimestamp: startTs,
+            completionTimestamp: endTs,
+            duration: dur,
+            lastMessage: evt.safe_task_summary || evt.safe_output_summary || evt.message || prev.lastMessage,
+            lastUpdated: evt.timestamp || Date.now(),
+            error: status === 'FAILED' ? (evt.error_details || evt.message || 'Execution error') : null,
+            retryCount: evt.event_type === 'ROUTING_DECISION' ? (prev.retryCount + 1) : prev.retryCount,
+            executions: prev.executions + 1
+          };
         }
       });
     }
@@ -390,16 +419,14 @@ export default function OpsLiveOrchestrationTab({
     );
 
     // Cross-links and quality loops matching canonical specification:
-    // Ground-Truth Verifier (Stage 3, index 0) loops back to Debugger (Stage 2, index 1)
-    // Tester (Stage 2, index 2) loops back to Debugger (Stage 2, index 1)
     const ARCHITECTURAL_CROSS_LINKS = [
-      { l1: 3, i: 0, l2: 2, j: 1, bow: -45, f: 1.6, sp: 0.0010, ph: 0.5, hue: 0.95, isLoop: true }, // Verifier -> Debugger Recovery loop
-      { l1: 2, i: 2, l2: 2, j: 1, bow: -25, f: 1.4, sp: 0.0009, ph: 0.8, hue: 0.85, isLoop: true }, // Tester -> Debugger Remediate loop
-      { l1: 0, i: 0, l2: 1, j: 1, bow: 12, f: 1.3, sp: 0.0008, ph: 1.1, hue: 0.2 },  // Fast Router -> Lead Planner
-      { l1: 1, i: 0, l2: 2, j: 0, bow: -10, f: 1.3, sp: 0.0008, ph: 1.4, hue: 0.3 }, // Mission Manager -> Developer
-      { l1: 1, i: 0, l2: 2, j: 4, bow: 0, f: 1.3, sp: 0.0008, ph: 1.7, hue: 0.4 },   // Mission Manager -> Web Agent
-      { l1: 1, i: 0, l2: 2, j: 6, bow: 10, f: 1.3, sp: 0.0008, ph: 2.0, hue: 0.5 },  // Mission Manager -> Automation Agent
-      { l1: 1, i: 0, l2: 2, j: 8, bow: 20, f: 1.3, sp: 0.0008, ph: 2.3, hue: 0.6 },  // Mission Manager -> RAG Agent
+      { l1: 2, i: 3, l2: 2, j: 1, bow: -35, f: 1.6, sp: 0.0010, ph: 0.5, hue: 0.95, isLoop: true }, // Verifier -> Desktop Exec Recovery loop
+      { l1: 2, i: 3, l2: 2, j: 2, bow: -20, f: 1.4, sp: 0.0009, ph: 0.8, hue: 0.85, isLoop: true }, // Verifier -> Browser Exec Recovery loop
+      { l1: 0, i: 1, l2: 1, j: 0, bow: 12, f: 1.3, sp: 0.0008, ph: 1.1, hue: 0.2 },  // Planner -> Local Reasoning
+      { l1: 0, i: 1, l2: 1, j: 1, bow: 0, f: 1.3, sp: 0.0008, ph: 1.4, hue: 0.3 },   // Planner -> Web Research
+      { l1: 0, i: 1, l2: 2, j: 4, bow: 15, f: 1.3, sp: 0.0008, ph: 1.7, hue: 0.4 },  // Planner -> HITL Safety Gate
+      { l1: 1, i: 3, l2: 3, j: 0, bow: 10, f: 1.3, sp: 0.0008, ph: 2.0, hue: 0.5 },  // Answer Synthesis -> Composite Coordinator
+      { l1: 2, i: 3, l2: 3, j: 0, bow: -10, f: 1.3, sp: 0.0008, ph: 2.3, hue: 0.6 }, // Verifier -> Composite Coordinator
     ];
 
     const G = [...ARCHITECTURAL_CROSS_LINKS];
@@ -1064,6 +1091,71 @@ export default function OpsLiveOrchestrationTab({
         </div>
       </div>
 
+      {/* ==================== AI EXECUTIVE RESPONSE & LIVE STREAMING OUTPUT ==================== */}
+      {(isLoading || briefingText || streamingChunk) && (
+        <div className="retro-box-red p-4 bg-[#09090c] border border-red-900/80 shadow-2xl space-y-3 font-mono">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-red-500 animate-pulse" />
+              <span className="font-extrabold text-xs text-white uppercase tracking-wider">
+                O.P.S. SYNTHESIZED EXECUTIVE BRIEFING
+              </span>
+              {activeAgent && (
+                <span className="px-2 py-0.5 rounded text-[10px] bg-red-950 border border-red-800 text-red-400 font-bold">
+                  [{activeAgent}]
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {briefingText && !isLoading && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(briefingText);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="px-2.5 py-1 text-[10px] font-bold bg-zinc-900 border border-zinc-700 hover:border-red-600 text-zinc-300 rounded flex items-center gap-1 transition"
+                  title="Copy response to clipboard"
+                >
+                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-zinc-400" />}
+                  <span>{copied ? "COPIED" : "COPY"}</span>
+                </button>
+              )}
+
+              {briefingText && onSpeakText && !isLoading && (
+                <button
+                  type="button"
+                  onClick={() => onSpeakText(briefingText)}
+                  className="px-2.5 py-1 text-[10px] font-bold bg-zinc-900 border border-zinc-700 hover:border-red-600 text-zinc-300 rounded flex items-center gap-1 transition"
+                  title="Speak response"
+                >
+                  <Volume2 className="w-3 h-3 text-red-400" />
+                  <span>TTS</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Real-time Streaming Skeleton or Token Renderer */}
+          {isLoading ? (
+            <CockpitLoadingSkeleton
+              query={quickInput || activeTaskPrompt}
+              activeAgent={activeAgent}
+              currentThought={currentThought}
+              streamingChunk={streamingChunk}
+              onStopExecution={onStopExecution}
+              compact={false}
+            />
+          ) : (
+            <div className="text-xs text-zinc-200 leading-relaxed font-mono select-text">
+              <MarkdownRenderer content={briefingText} />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ==================== 2. MAIN AUTHORITATIVE AGENT TOPOLOGY CANVAS ==================== */}
       <div className="relative bg-[#050505] border-2 border-zinc-800 rounded shadow-2xl overflow-hidden min-h-[580px]">
         {/* Subtle scanline overlay */}
@@ -1076,7 +1168,7 @@ export default function OpsLiveOrchestrationTab({
               O.P.S. v3.0 ORCHESTRATION TOPOLOGY
             </span>
             <span className="text-[10px] text-emerald-400 bg-black/90 px-2 py-0.5 border border-emerald-800/80 font-bold hidden sm:inline-block">
-              ● 15 SPECIALIZED AGENTS ACTIVE
+              ● 13 SPECIALIZED AGENTS ACTIVE
             </span>
           </div>
 
@@ -1090,7 +1182,7 @@ export default function OpsLiveOrchestrationTab({
         </div>
 
         {/* Stage Column Labels Header */}
-        <div className="absolute top-10 left-0 right-0 grid grid-cols-5 px-4 text-center z-20 pointer-events-none">
+        <div className="absolute top-10 left-0 right-0 grid grid-cols-4 px-4 text-center z-20 pointer-events-none">
           {STAGE_LABELS.map((lbl, idx) => (
             <div key={idx} className="text-[9px] font-extrabold text-zinc-400 uppercase tracking-wider">
               {lbl}
@@ -1294,7 +1386,30 @@ export default function OpsLiveOrchestrationTab({
               </button>
             </div>
 
+            {/* Comprehensive Telemetry Grid */}
             <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-black p-2 border border-zinc-800">
+                <span className="text-zinc-500 text-[10px] block uppercase">COMPONENT TYPE</span>
+                <span className="text-white font-bold capitalize mt-0.5 block">
+                  {selectedAgent.type?.replace('_', ' ') || 'Execution Worker'}
+                </span>
+              </div>
+
+              <div className="bg-black p-2 border border-zinc-800">
+                <span className="text-zinc-500 text-[10px] block uppercase">LIVE STATUS</span>
+                <span className={`font-bold text-xs mt-0.5 block ${
+                  agentStateMap[selectedAgent.id]?.status === 'RUNNING'
+                    ? 'text-red-400 animate-pulse'
+                    : agentStateMap[selectedAgent.id]?.status === 'COMPLETED'
+                    ? 'text-emerald-400'
+                    : agentStateMap[selectedAgent.id]?.status === 'SKIPPED'
+                    ? 'text-zinc-500'
+                    : 'text-zinc-300'
+                }`}>
+                  {agentStateMap[selectedAgent.id]?.status || 'IDLE'}
+                </span>
+              </div>
+
               <div className="bg-black p-2 border border-zinc-800">
                 <span className="text-zinc-500 text-[10px] block uppercase">ASSIGNED MODEL</span>
                 <span className="text-white font-bold flex items-center gap-1 mt-0.5">
@@ -1304,37 +1419,88 @@ export default function OpsLiveOrchestrationTab({
               </div>
 
               <div className="bg-black p-2 border border-zinc-800">
-                <span className="text-zinc-500 text-[10px] block uppercase">LIVE STATUS</span>
-                <span className={`font-bold text-xs mt-0.5 block ${
-                  agentStateMap[selectedAgent.id]?.status === 'RUNNING' ? 'text-red-400 animate-pulse' : 'text-zinc-300'
-                }`}>
-                  {agentStateMap[selectedAgent.id]?.status || 'IDLE'}
+                <span className="text-zinc-500 text-[10px] block uppercase">ACTIVE TOOL / LIBRARY</span>
+                <span className="text-red-300 font-bold mt-0.5 block">
+                  {agentStateMap[selectedAgent.id]?.currentTool || selectedAgent.tool || 'None'}
                 </span>
               </div>
             </div>
 
+            {/* Task & Input/Output Summaries */}
             <div className="bg-black p-2 border border-zinc-800 text-xs">
-              <span className="text-zinc-500 text-[10px] block uppercase">RESPONSIBILITY</span>
-              <p className="text-zinc-200 mt-0.5 leading-relaxed">{selectedAgent.role}</p>
+              <span className="text-zinc-500 text-[10px] block uppercase">CURRENT TASK</span>
+              <p className="text-zinc-200 mt-0.5 leading-relaxed">
+                {agentStateMap[selectedAgent.id]?.taskSummary || selectedAgent.role}
+              </p>
             </div>
 
-            {selectedAgent.capabilities && (
-              <div className="bg-black p-2 border border-zinc-800 text-xs">
-                <span className="text-zinc-500 text-[10px] block uppercase">ALLOWED CAPABILITIES</span>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {selectedAgent.capabilities.map((cap, idx) => (
-                    <span key={idx} className="px-1.5 py-0.5 bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px]">
-                      {cap}
-                    </span>
-                  ))}
-                </div>
+            {agentStateMap[selectedAgent.id]?.outputSummary && (
+              <div className="bg-zinc-950 p-2 border border-emerald-900/60 text-xs">
+                <span className="text-emerald-400 text-[10px] block uppercase font-bold">OUTPUT SUMMARY</span>
+                <p className="text-zinc-200 mt-0.5 text-[11px] leading-relaxed">
+                  {agentStateMap[selectedAgent.id].outputSummary}
+                </p>
               </div>
             )}
 
-            {agentStateMap[selectedAgent.id]?.lastMessage && (
-              <div className="bg-zinc-950 p-2 border border-red-900/60 text-xs">
-                <span className="text-red-400 text-[10px] block uppercase font-bold">LATEST AGENT TELEMETRY</span>
-                <p className="text-white mt-0.5 text-[11px] font-mono">{agentStateMap[selectedAgent.id].lastMessage}</p>
+            {/* Timing, Duration & Graph Relationships */}
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="bg-black p-2 border border-zinc-800">
+                <span className="text-zinc-500 text-[10px] block uppercase">START TIME</span>
+                <span className="text-zinc-300 font-mono text-[11px] mt-0.5 block">
+                  {agentStateMap[selectedAgent.id]?.startTimestamp
+                    ? new Date(agentStateMap[selectedAgent.id].startTimestamp * 1000).toLocaleTimeString()
+                    : 'N/A'}
+                </span>
+              </div>
+
+              <div className="bg-black p-2 border border-zinc-800">
+                <span className="text-zinc-500 text-[10px] block uppercase">COMPLETION</span>
+                <span className="text-zinc-300 font-mono text-[11px] mt-0.5 block">
+                  {agentStateMap[selectedAgent.id]?.completionTimestamp
+                    ? new Date(agentStateMap[selectedAgent.id].completionTimestamp * 1000).toLocaleTimeString()
+                    : 'N/A'}
+                </span>
+              </div>
+
+              <div className="bg-black p-2 border border-zinc-800">
+                <span className="text-zinc-500 text-[10px] block uppercase">DURATION</span>
+                <span className="text-emerald-400 font-bold font-mono text-[11px] mt-0.5 block">
+                  {agentStateMap[selectedAgent.id]?.duration || '0.00s'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-black p-2 border border-zinc-800">
+                <span className="text-zinc-500 text-[10px] block uppercase">PARENT NODE</span>
+                <span className="text-zinc-300 font-mono text-[11px] mt-0.5 block">
+                  {selectedAgent.parent || 'START'}
+                </span>
+              </div>
+
+              <div className="bg-black p-2 border border-zinc-800">
+                <span className="text-zinc-500 text-[10px] block uppercase">CHILD NODE</span>
+                <span className="text-zinc-300 font-mono text-[11px] mt-0.5 block">
+                  {selectedAgent.child || 'END'}
+                </span>
+              </div>
+            </div>
+
+            {/* Retry & Error Visibility */}
+            {agentStateMap[selectedAgent.id]?.retryCount > 0 && (
+              <div className="bg-black p-2 border border-amber-900/60 text-xs">
+                <span className="text-amber-400 text-[10px] block uppercase font-bold">RETRY / LOOP COUNT</span>
+                <span className="text-amber-300 font-bold font-mono">
+                  {agentStateMap[selectedAgent.id].retryCount} Adaptive Iteration(s)
+                </span>
+              </div>
+            )}
+
+            {agentStateMap[selectedAgent.id]?.error && (
+              <div className="bg-red-950/60 p-2 border border-red-800 text-xs">
+                <span className="text-red-400 text-[10px] block uppercase font-bold">ERROR DETAILS</span>
+                <p className="text-red-200 mt-0.5 font-mono text-[11px]">{agentStateMap[selectedAgent.id].error}</p>
               </div>
             )}
           </div>

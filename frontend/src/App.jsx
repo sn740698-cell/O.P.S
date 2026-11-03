@@ -18,20 +18,28 @@ import OpsTerminalConsole from './components/OpsTerminalConsole';
 import OpsBriefingCard from './components/OpsBriefingCard';
 import OpsMobileDrawer from './components/OpsMobileDrawer';
 import OpsLiveOrchestrationTab from './components/OpsLiveOrchestrationTab';
-import OpsUserMemoriesTab from './components/OpsUserMemoriesTab';
 import OpsHeart from './components/OpsHeart';
 import OpsSplashClean from './components/OpsSplashClean';
 import OpsSecurityModal from './components/OpsSecurityModal';
+import HumanApprovalModal from './components/HumanApprovalModal';
 import { retroSoundEngine } from './utils/retroSounds';
-
 
 export default function App() {
   // Splash Screen Display State (5 second retro intro on boot)
   const [showSplash, setShowSplash] = useState(true);
   const handleSplashDone = useCallback(() => setShowSplash(false), []);
 
-  // Temporary Chat Session Identifier (RAM-only; reloads create a fresh ID automatically)
+  // Continuous Conversation Lifecycle (Module: Chat Management & Lifecycle)
+  const [conversationId, setConversationId] = useState(() => {
+    return localStorage.getItem('ops_conversation_id') || ('conv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8));
+  });
   const [sessionId, setSessionId] = useState(() => 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+
+  // Human-in-the-Loop (HITL) Approval Modal State
+  const [isHitlModalOpen, setIsHitlModalOpen] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(null);
+  const [isHitlLoading, setIsHitlLoading] = useState(false);
+  const [hitlError, setHitlError] = useState(null);
 
   // Backend & WS Status
   const [backendHealth, setBackendHealth] = useState('checking');
@@ -51,6 +59,17 @@ export default function App() {
   const [briefingText, setBriefingText] = useState('');
   const [currentTaskPrompt, setCurrentTaskPrompt] = useState('');
   const [conversationHistory, setConversationHistory] = useState([]);
+  const [streamingChunk, setStreamingChunk] = useState('');
+  const [activeMode, setActiveMode] = useState(null); // 'LLM' | 'WEB' | 'HYBRID'
+  const [modeReason, setModeReason] = useState('');
+  const [activeStages, setActiveStages] = useState([]);
+  const [currentStage, setCurrentStage] = useState('');
+  const [researchTelemetry, setResearchTelemetry] = useState({
+    sourcesCount: 0,
+    pagesCount: 0,
+    domains: [],
+    evidenceStatus: ''
+  });
 
   // Feeds & Live Orchestration Events
   const [liveEvents, setLiveEvents] = useState([]);
@@ -63,13 +82,15 @@ export default function App() {
   // Voice & UI Modals & Navigation Tabs
   const [isListening, setIsListening] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('cockpit'); // 'cockpit', 'orchestration'
+  const [activeTab, setActiveTab] = useState('cockpit'); // 'cockpit', 'orchestration', 'memories'
 
-  // WebSocket references
+  // WebSocket and Stream references
   const agentWs = useRef(null);
   const permWs = useRef(null);
   const termWs = useRef(null);
   const mobileWs = useRef(null);
+  const sseRef = useRef(null);
+  const abortCtrlRef = useRef(null);
 
   const getWsUrl = (path) => {
     const loc = window.location;
@@ -92,17 +113,62 @@ export default function App() {
       const resp = await fetch('/api/v1/audit/logs/');
       if (resp.ok) {
         const data = await resp.json();
-        setAuditLogs(data.results || data || []);
+        setAuditLogs(data.results || data.events || data || []);
       }
     } catch (e) {
       console.error(e);
     }
   };
 
-  // Connect WebSockets
+  // Load Active Conversation Chronological History from Backend on Boot
+  const loadConversation = useCallback(async (convId) => {
+    try {
+      const endpoint = convId ? `/api/chat/conversations/${convId}/` : '/api/chat/conversations/active/';
+      const resp = await fetch(endpoint);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.conversation_id && data.conversation_id !== conversationId) {
+          setConversationId(data.conversation_id);
+          localStorage.setItem('ops_conversation_id', data.conversation_id);
+        }
+        if (data.messages && data.messages.length > 0) {
+          const loadedHistory = data.messages.map((m) => ({
+            role: m.role,
+            text: m.content,
+            status: m.status,
+            category: m.metadata?.response_mode || m.metadata?.mode || 'LLM',
+            plan: m.metadata?.plan,
+            citations: m.metadata?.citations,
+            summary: m.metadata?.conversation_summary
+          }));
+          setConversationHistory(loadedHistory);
+
+          const lastBot = [...data.messages].reverse().find((m) => m.role === 'assistant');
+          if (lastBot) {
+            setBriefingText(lastBot.content);
+            if (lastBot.metadata?.plan) setPlanSteps(lastBot.metadata.plan);
+          }
+        }
+      } else if (resp.status === 404) {
+        const activeResp = await fetch('/api/chat/conversations/active/');
+        if (activeResp.ok) {
+          const activeData = await activeResp.json();
+          if (activeData.conversation_id) {
+            setConversationId(activeData.conversation_id);
+            localStorage.setItem('ops_conversation_id', activeData.conversation_id);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Conversation load notice:', e);
+    }
+  }, [conversationId]);
+
+  // Connect WebSockets and Initial Conversation
   useEffect(() => {
     checkHealth();
     loadAuditLogs();
+    loadConversation(conversationId);
     const interval = setInterval(checkHealth, 10000);
 
     // 1. Agent WebSocket
@@ -113,22 +179,17 @@ export default function App() {
         ws.onopen = () => setWsStatuses((prev) => ({ ...prev, agent: true }));
         ws.onclose = () => {
           setWsStatuses((prev) => ({ ...prev, agent: false }));
-          setTimeout(connectAgentWs, 3000);
+          setTimeout(connectAgentWs, 20000);
         };
         ws.onmessage = (e) => {
           try {
             const data = JSON.parse(e.data);
-            const timeStr = new Date().toLocaleTimeString();
-
-            // A. Capture Canonical Structured OPSEvent (v3.0 Architecture)
             if (data.event_type || data.event_id || data.agent || data.status) {
               const structuredEvt = {
                 ...data,
                 timestamp: data.timestamp || Date.now() / 1000
               };
               setLiveEvents((prev) => [...prev.slice(-300), structuredEvt]);
-
-              // Synchronize pipeline status & active agent dynamically
               if (data.event_type === 'ROUTER_STARTED' || data.event_type === 'SUPERVISOR_STARTED') {
                 setIsLoading(true);
                 setActiveAgent(data.agent?.name || 'Router');
@@ -140,88 +201,7 @@ export default function App() {
               } else if (data.event_type === 'PLAN_CREATED') {
                 const steps = data.metadata?.plan?.steps || data.plan || [];
                 if (steps.length > 0) setPlanSteps(steps);
-              } else if (data.event_type === 'TOOL_STARTED') {
-                setCurrentThought(`Tool: ${data.tool || data.metadata?.tool || 'Executing tool...'}`);
-              } else if (data.event_type === 'RESPONSE_COMPLETED' || data.event_type === 'MISSION_COMPLETED') {
-                setIsLoading(false);
-                setActiveAgent('');
-                setCurrentThought('Execution completed.');
-              } else if (data.event_type === 'SESSION_STOPPED') {
-                setIsLoading(false);
-                setActiveAgent('');
-                setCurrentThought('Execution halted.');
-              } else if (data.event_type === 'SESSION_RESET') {
-                setLiveEvents([]);
-                setIsLoading(false);
-                setActiveAgent('');
               }
-            }
-
-            // B. Backward Compatible Legacy Events
-            if (data.event === 'task_started') {
-              setIsLoading(true);
-              setActiveAgent(data.agent || 'Fast Router');
-              setCurrentThought(data.thought || `Directive received: "${data.prompt}"`);
-              if (data.prompt) setCurrentTaskPrompt(data.prompt);
-              setBriefingText('');
-              setPlanSteps([]);
-              setTerminalLogs((prev) => [
-                ...prev.slice(-150),
-                { stream: 'ops_event', data: `>> [TASK INITIATED] "${data.prompt || 'Directive'}"`, timestamp: timeStr }
-              ]);
-            } else if (data.event === 'agent_thought') {
-              setIsLoading(true);
-              setCurrentThought(`${data.agent}: ${data.thought}`);
-              setActiveAgent(data.agent || '');
-              setTerminalLogs((prev) => [
-                ...prev.slice(-150),
-                { stream: 'ops_thought', data: `[${data.agent || 'AGENT'}] ${data.thought}`, timestamp: timeStr }
-              ]);
-            } else if (data.event === 'agent_plan') {
-              setPlanSteps(data.plan || data.plan_steps || []);
-              setTerminalLogs((prev) => [
-                ...prev.slice(-150),
-                { stream: 'ops_thought', data: `[PLAN] ${(data.plan || []).join(' -> ')}`, timestamp: timeStr }
-              ]);
-            } else if (data.event === 'agent_status') {
-              if (data.status === 'EXECUTING' || data.status === 'THINKING') {
-                setIsLoading(true);
-              } else if (data.status === 'IDLE' || data.status === 'COMPLETED') {
-                setIsLoading(false);
-              }
-            } else if (data.event === 'task_completed') {
-              setBriefingText(data.final_answer || data.response || '');
-              if (data.plan && data.plan.length > 0) {
-                setPlanSteps(data.plan);
-              }
-              setTerminalLogs((prev) => [
-                ...prev.slice(-150),
-                { stream: 'ops_success', data: `[TASK COMPLETED] ${data.intent || 'SUCCESS'}`, timestamp: timeStr }
-              ]);
-              if (
-                data.intent === 'WORKSTATION_MEMORY_CAPTURE' ||
-                data.category === 'WORKSTATION_MEMORY_CAPTURE' ||
-                (data.final_answer && (data.final_answer.includes('COMMITTED TO POSTGRESQL') || data.final_answer.includes('WORKSTATION MEMORY COMMITTED')))
-              ) {
-                retroSoundEngine.playMemoryStore();
-                window.dispatchEvent(new CustomEvent('ops_memory_added'));
-              }
-              setIsLoading(false);
-              setActiveAgent('');
-              setCurrentThought('Task execution complete.');
-              loadAuditLogs();
-            } else if (data.event === 'memory_added') {
-              retroSoundEngine.playMemoryStore();
-              window.dispatchEvent(new CustomEvent('ops_memory_added'));
-            } else if (data.event === 'task_failed') {
-              setBriefingText(`Execution Error: ${data.error}`);
-              setIsLoading(false);
-              setActiveAgent('');
-              setCurrentThought(`Execution Failed: ${data.error}`);
-              setTerminalLogs((prev) => [
-                ...prev.slice(-150),
-                { stream: 'stderr', data: `[ERROR] ${data.error}`, timestamp: timeStr }
-              ]);
             }
           } catch (err) {
             console.error(err);
@@ -240,7 +220,7 @@ export default function App() {
         ws.onopen = () => setWsStatuses((prev) => ({ ...prev, permissions: true }));
         ws.onclose = () => {
           setWsStatuses((prev) => ({ ...prev, permissions: false }));
-          setTimeout(connectPermWs, 3000);
+          setTimeout(connectPermWs, 20000);
         };
         ws.onmessage = (e) => {
           try {
@@ -268,7 +248,7 @@ export default function App() {
         ws.onopen = () => setWsStatuses((prev) => ({ ...prev, terminal: true }));
         ws.onclose = () => {
           setWsStatuses((prev) => ({ ...prev, terminal: false }));
-          setTimeout(connectTermWs, 3000);
+          setTimeout(connectTermWs, 20000);
         };
         ws.onmessage = (e) => {
           try {
@@ -285,7 +265,7 @@ export default function App() {
       }
     };
 
-    // 4. Mobile WebSocket
+    // 4. Mobile Companion WebSocket
     const connectMobileWs = () => {
       try {
         const ws = new WebSocket(getWsUrl('/ws/mobile/'));
@@ -293,7 +273,7 @@ export default function App() {
         ws.onopen = () => setWsStatuses((prev) => ({ ...prev, mobile: true }));
         ws.onclose = () => {
           setWsStatuses((prev) => ({ ...prev, mobile: false }));
-          setTimeout(connectMobileWs, 3000);
+          setTimeout(connectMobileWs, 20000);
         };
         ws.onmessage = (e) => {
           try {
@@ -325,18 +305,83 @@ export default function App() {
       if (permWs.current) permWs.current.close();
       if (termWs.current) termWs.current.close();
       if (mobileWs.current) mobileWs.current.close();
+      if (sseRef.current) {
+        try { sseRef.current.close(); } catch (_) {}
+        sseRef.current = null;
+      }
+      if (abortCtrlRef.current) {
+        try { abortCtrlRef.current.abort(); } catch (_) {}
+        abortCtrlRef.current = null;
+      }
     };
-  }, []);
+  }, [conversationId, loadConversation]);
 
-  // Universal Command Dispatcher (Canonical O.P.S. Orchestration Execution)
-  const handleDispatchCommand = async (prompt) => {
+  // Desktop Overlay & Human-in-the-Loop Real-Time Gate Listeners
+  useEffect(() => {
+    // 1. Periodically check for backend PENDING Human-in-the-Loop approvals (every 2.5s)
+    const checkPendingApprovals = async () => {
+      try {
+        const resp = await fetch(`/api/chat/approvals/pending/?conversation_id=${conversationId}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.approvals && data.approvals.length > 0) {
+            const topAppr = data.approvals[0];
+            setPendingApproval((prev) => {
+              if (prev?.approval_id === topAppr.approval_id) return prev;
+              return topAppr;
+            });
+            setIsHitlModalOpen(true);
+          }
+        }
+      } catch (err) {
+        // silent background check
+      }
+    };
+
+    const approvalInterval = setInterval(checkPendingApprovals, 2500);
+
+    // 2. Custom Window Event: Quick Action (Ctrl + Alt + Space)
+    const handleQuickAction = () => {
+      const inputEl = document.getElementById('ops-command-input');
+      if (inputEl) {
+        inputEl.focus();
+        inputEl.select();
+      }
+    };
+
+    // 3. Custom Window Event: Direct HITL Approval trigger from Desktop Overlay
+    const handleDesktopHitl = (e) => {
+      if (e.detail) {
+        setPendingApproval(e.detail);
+        setIsHitlModalOpen(true);
+      }
+    };
+
+    window.addEventListener('ops:quick-action', handleQuickAction);
+    window.addEventListener('ops:hitl-approval', handleDesktopHitl);
+
+    return () => {
+      clearInterval(approvalInterval);
+      window.removeEventListener('ops:quick-action', handleQuickAction);
+      window.removeEventListener('ops:hitl-approval', handleDesktopHitl);
+    };
+  }, [conversationId]);
+
+  // Continuous Conversation Command Dispatcher
+  const handleDispatchCommand = async (prompt, inputType = 'text') => {
+    if (!prompt || !prompt.trim() || isLoading) return;
     setIsLoading(true);
     setCurrentTaskPrompt(prompt);
-    setBriefingText('');
+    setStreamingChunk('');
+    setActiveMode(null);
+    setModeReason('Analyzing directive intent...');
+    setActiveStages(['Understanding request', 'Classifying intent', 'Preparing reasoning context', 'Generating answer', 'Completing response']);
+    setCurrentStage('Understanding request');
+    setResearchTelemetry({ sourcesCount: 0, pagesCount: 0, domains: [], evidenceStatus: '' });
     setPlanSteps([]);
-    setActiveAgent('Fast Router');
-    setCurrentThought(`Routing directive: "${prompt}"...`);
-    
+    setActiveAgent('Request Understanding Agent');
+    setCurrentThought(`Analyzing directive: "${prompt}"...`);
+
     // Add user turn immediately to conversation history
     setConversationHistory((prev) => [...prev, { role: 'user', text: prompt }]);
 
@@ -346,93 +391,289 @@ export default function App() {
       { stream: 'ops_event', data: `>> [USER DIRECTIVE] "${prompt}"`, timestamp: timeStr }
     ]);
 
+    const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+
+    // Close any previous SSE stream or abort pending request
+    if (sseRef.current) {
+      try { sseRef.current.close(); } catch (_) {}
+      sseRef.current = null;
+    }
+    if (abortCtrlRef.current) {
+      try { abortCtrlRef.current.abort(); } catch (_) {}
+    }
+    const abortCtrl = new AbortController();
+    abortCtrlRef.current = abortCtrl;
+
+    // Connect to Real-Time LangGraph Server-Sent Events (SSE) Stream
     try {
-      // Primary: Canonical O.P.S. v3.0 Execution Endpoint
-      let resp = await fetch('/api/v1/ops/execute/', {
+      const sseSource = new EventSource(`/api/chat/conversations/${conversationId}/events/`);
+      sseRef.current = sseSource;
+
+      sseSource.onmessage = (e) => {
+        try {
+          const evt = JSON.parse(e.data);
+          if (evt.event_type === 'STREAM_CONNECTED' || evt.event_type === 'STREAM_CLOSED') return;
+          if (evt.event_type === 'text_chunk' && evt.chunk) {
+            setStreamingChunk((prev) => prev + evt.chunk);
+            return;
+          }
+          if (evt.event_type === 'MODE_SELECTED' || evt.event_type === 'MODE_CHANGED') {
+            const m = evt.response_mode || evt.new_mode;
+            if (m) setActiveMode(m);
+            if (evt.mode_reason || evt.reason) setModeReason(evt.mode_reason || evt.reason);
+            if (evt.stages) setActiveStages(evt.stages);
+            if (evt.current_stage) setCurrentStage(evt.current_stage);
+            if (evt.safe_task_summary) setCurrentThought(evt.safe_task_summary);
+            return;
+          }
+          if (evt.event_type === 'SEARCH_COMPLETED') {
+            setResearchTelemetry((prev) => ({
+              ...prev,
+              sourcesCount: evt.sources_discovered || prev.sourcesCount
+            }));
+            if (evt.current_stage) setCurrentStage(evt.current_stage);
+            return;
+          }
+          if (evt.event_type === 'PAGE_RETRIEVED') {
+            setResearchTelemetry((prev) => ({
+              ...prev,
+              pagesCount: evt.pages_retrieved || prev.pagesCount,
+              domains: evt.domains || prev.domains
+            }));
+            if (evt.current_stage) setCurrentStage(evt.current_stage);
+            return;
+          }
+          if (evt.event_type === 'EVIDENCE_VALIDATED') {
+            setResearchTelemetry((prev) => ({
+              ...prev,
+              evidenceStatus: evt.evidence_status || 'Validated'
+            }));
+            if (evt.current_stage) setCurrentStage(evt.current_stage);
+            return;
+          }
+          if (evt.event_type === 'ANSWER_GENERATING') {
+            if (evt.current_stage) setCurrentStage(evt.current_stage);
+            return;
+          }
+          if (evt.event_type === 'NODE_THOUGHT') {
+            if (evt.safe_output_summary) {
+              setCurrentThought((prev) => {
+                const chunk = evt.safe_output_summary;
+                return (prev && prev.length < 240) ? (prev + chunk) : chunk;
+              });
+            }
+            return;
+          }
+          if (evt.event_type === 'response_completed') {
+            const finalVal = evt.final_answer || evt.content;
+            if (finalVal) setStreamingChunk(finalVal);
+          }
+          setLiveEvents((prev) => [...prev.slice(-300), evt]);
+          if (evt.component_name) {
+            setActiveAgent(evt.component_name);
+          }
+          if (evt.safe_task_summary) {
+            setCurrentThought(evt.safe_task_summary);
+          }
+        } catch (err) {
+          console.warn('SSE parse warning:', err);
+        }
+      };
+      sseSource.onerror = () => {
+        // SSE errors can happen on close; do not close aggressively
+      };
+    } catch (e) {
+      console.warn('SSE connection warning:', e);
+    }
+
+    try {
+      // Primary: Conversation Messages Endpoint with Multi-Turn Context
+      let resp = await fetch(`/api/chat/conversations/${conversationId}/messages/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, session_id: sessionId })
+        body: JSON.stringify({ content: prompt, input_type: inputType, request_id: requestId }),
+        signal: abortCtrl.signal
       });
 
-      // Fallback: Agent run workflow if canonical not matching
-      if (!resp.ok && resp.status === 404) {
-        resp = await fetch('/api/v1/agent/run/', {
+      // Fallback: Web Research Execute Endpoint
+      if (!resp.ok) {
+        resp = await fetch('/api/v1/ops/execute/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, session_id: sessionId })
+          body: JSON.stringify({ prompt, conversation_id: conversationId, session_id: sessionId, request_id: requestId }),
+          signal: abortCtrl.signal
         });
       }
 
       const data = await resp.json();
-      const botAnswer = data.content || data.final_answer || data.response || JSON.stringify(data, null, 2);
+      const botAnswer = data.content || data.final_answer || data.response || (data.error ? `⚠️ ${data.error}` : "Directive acknowledged.");
       setBriefingText(botAnswer);
-      setActiveCategory(data.mode || data.category || '');
+      setStreamingChunk('');
+      setActiveCategory(data.mode || 'WEB_RESEARCH');
       if (data.plan) setPlanSteps(data.plan);
 
       // Add bot turn to conversation history
       setConversationHistory((prev) => [
         ...prev,
-        { role: 'bot', text: botAnswer, category: data.mode || data.category, plan: data.plan }
+        {
+          role: 'bot',
+          text: botAnswer,
+          category: data.mode || 'WEB_RESEARCH',
+          plan: data.plan,
+          citations: data.citations,
+          summary: data.conversation_summary
+        }
       ]);
-
-      // Play retro sound whenever something is added to memory
-      if (
-        data.intent === 'WORKSTATION_MEMORY_CAPTURE' ||
-        data.category === 'WORKSTATION_MEMORY_CAPTURE' ||
-        data.tool_output?.action === 'workstation_memory_capture' ||
-        (botAnswer && (botAnswer.includes('COMMITTED TO POSTGRESQL') || botAnswer.includes('WORKSTATION MEMORY COMMITTED')))
-      ) {
-        retroSoundEngine.playMemoryStore();
-        window.dispatchEvent(new CustomEvent('ops_memory_added'));
-      }
-
-      // If browser search output present, feed it to the browser cards
-      if (data.browser_output?.search_result?.results) {
-        setSearchResults(data.browser_output.search_result.results);
-      } else if (data.browser_output?.scrape_result) {
-        setLastScrape(data.browser_output.scrape_result);
-      }
 
       loadAuditLogs();
     } catch (err) {
-      const errMsg = `Error: ${err.message}`;
-      setBriefingText(errMsg);
-      setConversationHistory((prev) => [...prev, { role: 'bot', text: errMsg, isError: true }]);
+      if (err.name === 'AbortError') {
+        // Ignored, user stopped generation
+      } else {
+        const errMsg = `Error: ${err.message}`;
+        setBriefingText(errMsg);
+        setConversationHistory((prev) => [...prev, { role: 'bot', text: errMsg, isError: true }]);
+      }
     } finally {
+      if (sseRef.current) {
+        try { sseRef.current.close(); } catch (_) {}
+        sseRef.current = null;
+      }
+      abortCtrlRef.current = null;
       setIsLoading(false);
       setActiveAgent('');
       setCurrentThought('Standing by.');
+      setStreamingChunk('');
     }
   };
 
-  // Erase Temporary Conversation Memory & Reset Session (Canonical Session Refresh)
-  const handleClearMemory = async () => {
-    let newSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-    try {
-      const resp = await fetch('/api/v1/ops/session/refresh/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId })
-      });
-      const data = await resp.json();
-      if (data.new_session_id) {
-        newSessionId = data.new_session_id;
-      }
-    } catch (e) {
-      console.warn('Memory refresh fallback:', e);
+  // Emergency Halt / Stop Generation
+  const handleEmergencyHalt = async () => {
+    if (abortCtrlRef.current) {
+      try { abortCtrlRef.current.abort(); } catch (_) {}
+      abortCtrlRef.current = null;
     }
-    setSessionId(newSessionId);
-    setLiveEvents([]);
-    setBriefingText('');
-    setPlanSteps([]);
-    setCurrentTaskPrompt('');
-    setConversationHistory([]);
-    setCurrentThought('[•] VOLATILE MEMORY PURGED // FRESH SESSION INITIALIZED');
-    setTerminalLogs((prev) => [
-      ...prev.slice(-150),
-      { stream: 'ops_event', data: `[SESSION REFRESH] Active context wiped. Persistent memory intact. New session: ${newSessionId}`, timestamp: new Date().toLocaleTimeString() }
-    ]);
-    retroSoundEngine.playMemoryErase();
+    if (sseRef.current) {
+      try { sseRef.current.close(); } catch (_) {}
+      sseRef.current = null;
+    }
+
+    try {
+      await fetch(`/api/chat/conversations/${conversationId}/cancel/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      console.error('Stop execution notice:', e);
+    }
+
+    if (streamingChunk) {
+      const stoppedText = streamingChunk + "\n\n*[⏹ Generation stopped by user]*";
+      setBriefingText(stoppedText);
+      setConversationHistory((prev) => [
+        ...prev,
+        { role: 'bot', text: stoppedText, category: 'CANCELLED' }
+      ]);
+    } else {
+      setBriefingText("*[⏹ Generation stopped by user]*");
+    }
+
+    setIsLoading(false);
+    setActiveAgent('');
+    setCurrentThought('⏹ SYSTEM EXECUTION HALTED (Context Preserved)');
+    setStreamingChunk('');
+    loadAuditLogs();
+  };
+
+  // Step 1 of HITL: Request Approval from Backend and Open Popup
+  const handleRequestRefreshApproval = async () => {
+    setHitlError(null);
+    setIsHitlLoading(true);
+    try {
+      const resp = await fetch(`/api/chat/conversations/${conversationId}/refresh-approval/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to create pending approval (${resp.status})`);
+      }
+
+      const data = await resp.json();
+      setPendingApproval(data);
+      setIsHitlModalOpen(true);
+    } catch (err) {
+      console.error('Refresh approval initiation error:', err);
+      setCurrentThought(`[ERROR] Approval request failed: ${err.message}`);
+    } finally {
+      setIsHitlLoading(false);
+    }
+  };
+
+  // Step 2: User Selects DENY in HITL Popup
+  const handleDenyApproval = async () => {
+    if (pendingApproval?.approval_id) {
+      try {
+        await fetch(`/api/chat/conversations/${conversationId}/refresh-approval/${pendingApproval.approval_id}/deny/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (e) {
+        console.warn('Deny approval notification notice:', e);
+      }
+    }
+    setIsHitlModalOpen(false);
+    setPendingApproval(null);
+    setHitlError(null);
+    setCurrentThought('Human approval DENIED. Active conversation preserved intact.');
+    loadAuditLogs();
+  };
+
+  // Step 3: User Selects ACCEPT in HITL Popup
+  const handleAcceptApproval = async () => {
+    if (!pendingApproval?.approval_id) return;
+    setIsHitlLoading(true);
+    setHitlError(null);
+
+    try {
+      const resp = await fetch(`/api/chat/conversations/${conversationId}/refresh-approval/${pendingApproval.approval_id}/accept/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || `Server returned error status ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      const newConvId = data.new_conversation_id || ('conv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8));
+
+      // Update Active Conversation ID
+      setConversationId(newConvId);
+      setSessionId('sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+      localStorage.setItem('ops_conversation_id', newConvId);
+
+      // Reset Active Chat Interface
+      setConversationHistory([]);
+      setLiveEvents([]);
+      setBriefingText('');
+      setPlanSteps([]);
+      setCurrentTaskPrompt('');
+      setCurrentThought('Active conversation permanently reset. Fresh session initialized.');
+      setStreamingChunk('');
+
+      // Play retro memory erase sound
+      retroSoundEngine.playMemoryErase();
+      setIsHitlModalOpen(false);
+      setPendingApproval(null);
+      loadAuditLogs();
+    } catch (err) {
+      setHitlError(err.message || 'Failed to permanently delete conversation.');
+    } finally {
+      setIsHitlLoading(false);
+    }
   };
 
   // Direct Terminal Execution
@@ -467,7 +708,7 @@ export default function App() {
     }
   };
 
-  // Toggle Voice
+  // Toggle Voice Input
   const handleToggleVoice = async () => {
     setIsListening((prev) => !prev);
     try {
@@ -478,31 +719,14 @@ export default function App() {
       });
       const data = await resp.json();
       if (data.transcript) {
-        handleDispatchCommand(data.transcript);
+        handleDispatchCommand(data.transcript, 'voice');
       }
     } catch (e) {
       console.error(e);
     }
   };
 
-  // Emergency Halt / Stop Execution (Preserves session context)
-  const handleEmergencyHalt = async () => {
-    try {
-      await fetch('/api/v1/ops/session/stop/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId })
-      });
-    } catch (e) {
-      console.error('Stop execution notice:', e);
-    }
-    setIsLoading(false);
-    setActiveAgent('');
-    setCurrentThought('⏹ SYSTEM EXECUTION HALTED (Session Context Preserved)');
-    loadAuditLogs();
-  };
-
-  // Resolve Permission
+  // Resolve HITL Permission
   const handleResolvePermission = async (requestId, decision) => {
     if (permWs.current && permWs.current.readyState === WebSocket.OPEN) {
       permWs.current.send(JSON.stringify({
@@ -527,11 +751,27 @@ export default function App() {
   return (
     <>
       {showSplash && <OpsSplashClean onDone={handleSplashDone} />}
+
+      {/* HITL Security Confirmation Modal (Automations) */}
       <OpsSecurityModal
         activeRequest={activePermissionReq}
         onResolvePermission={handleResolvePermission}
         auditLogs={auditLogs}
       />
+
+      {/* Reusable Human-in-the-Loop (HITL) Approval Modal */}
+      <HumanApprovalModal
+        isOpen={isHitlModalOpen}
+        title="Human Approval Required"
+        subtitle="Delete Current Conversation?"
+        conversationId={conversationId}
+        approvalId={pendingApproval?.approval_id}
+        loading={isHitlLoading}
+        error={hitlError}
+        onAccept={handleAcceptApproval}
+        onDeny={handleDenyApproval}
+      />
+
       <div className="retro-scanlines min-h-screen bg-[#050505] text-zinc-100 flex flex-col font-mono selection:bg-red-600 selection:text-white">
         {/* 90s Retro Tactical HUD Header */}
         <header className="border-b border-zinc-800 bg-black sticky top-0 z-40 px-4 py-2">
@@ -574,17 +814,6 @@ export default function App() {
           >
             <span>[ 02: LIVE ORCHESTRATION & AGENTS ]</span>
           </button>
-
-          <button
-            onClick={() => setActiveTab('memories')}
-            className={`px-3 py-1.5 font-bold transition flex items-center gap-1.5 ${
-              activeTab === 'memories'
-                ? 'bg-red-600 text-white border-2 border-red-500 shadow-md'
-                : 'bg-zinc-950 text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-600'
-            }`}
-          >
-            <span>[ 03: MY WORKSTATION MEMORIES ]</span>
-          </button>
         </div>
       </nav>
 
@@ -609,7 +838,7 @@ export default function App() {
                   isListening={isListening}
                   onEmergencyHalt={handleEmergencyHalt}
                   sessionId={sessionId}
-                  onRefreshSession={handleClearMemory}
+                  onRefreshSession={handleRequestRefreshApproval}
                 />
               </div>
 
@@ -647,6 +876,15 @@ export default function App() {
                 activePermissionReq={activePermissionReq}
                 onResolvePermission={handleResolvePermission}
                 conversationHistory={conversationHistory}
+                conversationId={conversationId}
+                onRefreshConversation={handleRequestRefreshApproval}
+                onStopExecution={handleEmergencyHalt}
+                streamingChunk={streamingChunk}
+                activeMode={activeMode}
+                modeReason={modeReason}
+                stages={activeStages}
+                currentStage={currentStage}
+                researchTelemetry={researchTelemetry}
               />
             </div>
           </div>
@@ -661,16 +899,15 @@ export default function App() {
             isLoading={isLoading}
             onDispatchPrompt={handleDispatchCommand}
             briefingText={briefingText}
-            sessionId={sessionId}
-            onClearMemory={handleClearMemory}
+            streamingChunk={streamingChunk}
+            activeTaskPrompt={currentTaskPrompt}
+            conversationHistory={conversationHistory}
+            onSpeakText={handleSpeakText}
+            sessionId={conversationId}
+            onClearMemory={handleRequestRefreshApproval}
             onStopExecution={handleEmergencyHalt}
             liveEvents={liveEvents}
           />
-        )}
-
-        {/* TAB 3: User Personal Workstation Memories (PostgreSQL ops_db) */}
-        {activeTab === 'memories' && (
-          <OpsUserMemoriesTab onDispatchCommand={handleDispatchCommand} />
         )}
       </main>
 

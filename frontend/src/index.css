@@ -3,12 +3,37 @@
 @tailwind utilities;
 
 @layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+  #root {
+    width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+  }
+  /* Desktop Pop-up Cockpit floating window (Zero outer scrollbars) */
+  html.cockpit-mode, body.cockpit-mode, body.cockpit-mode #root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden !important;
+  }
   body {
     background-color: #050505;
     color: #f4f4f5;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 400;
-    overflow-x: hidden;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
@@ -121,5 +146,49 @@
 }
 .retro-cursor {
   animation: retro-blink 0.8s infinite;
+}
+
+/* Futuristic Cyber Shimmer Animation for Loading Skeletons */
+@keyframes ops-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.ops-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(24, 24, 27, 0.8) 0%,
+    rgba(39, 39, 42, 0.9) 25%,
+    rgba(71, 85, 105, 0.35) 50%,
+    rgba(39, 39, 42, 0.9) 75%,
+    rgba(24, 24, 27, 0.8) 100%
+  );
+  background-size: 200% 100%;
+  animation: ops-shimmer 2s infinite ease-in-out;
+}
+
+.ops-skeleton-shimmer-red {
+  background: linear-gradient(
+    90deg,
+    rgba(24, 24, 27, 0.8) 0%,
+    rgba(69, 10, 10, 0.4) 30%,
+    rgba(153, 27, 27, 0.5) 50%,
+    rgba(69, 10, 10, 0.4) 70%,
+    rgba(24, 24, 27, 0.8) 100%
+  );
+  background-size: 200% 100%;
+  animation: ops-shimmer 2.2s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ops-skeleton-shimmer,
+  .ops-skeleton-shimmer-red {
+    animation: none !important;
+    background: rgba(39, 39, 42, 0.85) !important;
+  }
 }
 

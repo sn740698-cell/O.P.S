@@ -1,0 +1,66 @@
+{
+  "tasks": [
+    {
+      "task_id": 1,
+      "label": "LangGraph Docs",
+      "query": "Search the web for the official documentation of LangGraph.",
+      "mode": "WEB_RESEARCH",
+      "status": "PASS",
+      "latency_s": 30.64,
+      "citations_count": 1,
+      "plan_steps": 3,
+      "answer_preview": "Certainly. Here is the synthesized briefing regarding **Search the web for the official documentation of LangGraph.**.  ### \ud83d\udd0d Key Findings & Intelligence  - **Technical Specificati..."
+    },
+    {
+      "task_id": 2,
+      "label": "Local AI Models",
+      "query": "Research the latest developments in local AI models.",
+      "mode": "WEB_RESEARCH",
+      "status": "PASS",
+      "latency_s": 36.7,
+      "citations_count": 1,
+      "plan_steps": 3,
+      "answer_preview": "Certainly. Here is the synthesized briefing regarding **Research the latest developments in local AI models.**.  ### \ud83d\udd0d Key Findings & Intelligence  - **Technical Specifications - l..."
+    },
+    {
+      "task_id": 3,
+      "label": "Django vs FastAPI",
+      "query": "Search the web to compare Django and FastAPI using reliable sources.",
+      "mode": "WEB_RESEARCH",
+      "status": "PASS",
+      "latency_s": 35.51,
+      "citations_count": 1,
+      "plan_steps": 3,
+      "answer_preview": "Certainly. Here is the synthesized briefing regarding **Search the web to compare Django and FastAPI using reliable sources.**.  ### \ud83d\udd0d Key Findings & Intelligence  - **Technical Sp..."
+    },
+    {
+      "task_id": 4,
+      "label": "Ollama Keep-Alive",
+      "query": "Find the official documentation for Ollama and explain how model keep-alive works on the web.",
+      "mode": "OTHER_SUPPORTED_TASK",
+      "status": "PARTIAL",
+      "latency_s": 11.32,
+      "citations_count": 0,
+      "plan_steps": 0,
+      "answer_preview": "## \ud83d\udccc Discussion So Far   - **Ollama Documentation**: The user requested official Ollama documentation, which is available on [ollama.ai](https://ollama.ai).   - **Model Keep-Alive*..."
+    },
+    {
+      "task_id": 5,
+      "label": "React Latest",
+      "query": "Research the latest version of React and summarize its important changes.",
+      "mode": "WEB_RESEARCH",
+      "status": "PASS",
+      "latency_s": 39.43,
+      "citations_count": 1,
+      "plan_steps": 3,
+      "answer_preview": "Certainly. Here is the synthesized briefing regarding **Research the latest version of React and summarize its important changes.**.  ### \ud83d\udd0d Key Findings & Intelligence  - **Technic..."
+    }
+  ],
+  "hallucination_test": {
+    "status": "FAIL",
+    "admitted_unverified": false,
+    "invented_fake_feature": false,
+    "answer": "Certainly. Here is the synthesized briefing regarding **Search the web for the official documentation proving that O.P.S. has a built-in feature called Quantum Memory Engine.**.\n\n### \ud83d\udd0d Key Findings & Intelligence\n\n- **Technical Specifications - Official documentation of O.P.S. Quantum Memory Engine** [1]: Navigation index modules | Python \u00bb 3.15.2 documentation \u00bb Search Theme Auto Light Dark | Search Searching for multiple words only shows matches that contain all words. \u00ab Search Searching for multiple words only shows matches that contain a...\n\n\ud83d\udca1 *Additional specialized workflows can be executed upon your directive.*\n\n## \ud83d\udccc Discussion So Far\n\n- Research local AI model advancements.\n- Compare Django/FastAPI for local AI development.\n- Find Ollama documentation and explain model keep-alive."
+  },
+  "non_trigger_passed": true
+}

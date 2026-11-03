@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Mic, Send, RefreshCw, Terminal, Globe, Play, Loader2, Volume2, ShieldAlert, Cpu, Sparkles
+  Mic, Send, RefreshCw, Square, Loader2, Sparkles, AlertTriangle
 } from 'lucide-react';
 
 export default function OpsCommandCore({
@@ -24,12 +24,12 @@ export default function OpsCommandCore({
   };
 
   const quickDirectives = [
-    { label: "[ 1. YOUTUBE ]", prompt: "Open YouTube and search for Believer" },
-    { label: "[ 2. INSTAGRAM ]", prompt: "Open Instagram and take me to Reels" },
-    { label: "[ 3. VIRAT KOHLI ]", prompt: "Who is Virat Kohli?" },
-    { label: "[ 4. AI NEWS ]", prompt: "Tell me the latest AI news." },
-    { label: "[ 5. DESKTOP FOLDER ]", prompt: "Create an O.P.S. folder on Desktop" },
-    { label: "[ 6. OPEN VLC ]", prompt: "Open VLC" }
+    { label: "[ 1. PYTHON CREATOR ]", prompt: "Who created Python programming language and why?" },
+    { label: "[ 2. WEB FRAMEWORKS ]", prompt: "What are its main web frameworks?" },
+    { label: "[ 3. CONTINUED COMPARISON ]", prompt: "Compare that with Rust." },
+    { label: "[ 4. ROOM TEMP SUPERCONDUCTOR ]", prompt: "What are the latest breakthroughs in room temperature superconductors?" },
+    { label: "[ 5. TOKAMAK FUSION ]", prompt: "Do the same analysis for tokamak fusion progress in 2026." },
+    { label: "[ 6. AI DISCOVERIES ]", prompt: "Summarize top autonomous AI agent research papers this year." }
   ];
 
   return (
@@ -60,27 +60,39 @@ export default function OpsCommandCore({
                   ? 'bg-red-600 text-white border-red-500 animate-bounce'
                   : 'bg-black text-zinc-400 border-zinc-800'
               }`}>
-                {isLoading ? `[BUSY: ${activeAgent || 'PIPELINE'}]` : isListening ? '[LISTENING: WISPR FLOW]' : '[STANDBY: READY]'}
+                {isLoading ? `[BUSY: ${activeAgent || 'LANGGRAPH'}]` : isListening ? '[LISTENING: WISPR FLOW]' : '[STANDBY: READY]'}
               </span>
             </div>
             <p className="text-xs text-zinc-400 max-w-md truncate font-mono mt-0.5">
-              &gt; {currentThought || "Continuous session context active. Speak or type directive."}
+              &gt; {currentThought || "Continuous multi-turn session active. Type or speak follow-ups."}
             </p>
           </div>
         </div>
 
-        {/* Action Controls: Refresh Session */}
+        {/* Action Controls: Refresh Session & Emergency Stop */}
         <div className="flex items-center gap-2 self-end md:self-center">
-          {/* Refresh / Reset Session Button */}
+          {isLoading && onEmergencyHalt && (
+            <button
+              type="button"
+              onClick={onEmergencyHalt}
+              className="px-2.5 py-1.5 bg-red-950 hover:bg-red-900 border border-red-700 text-red-300 text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1.5 transition shadow"
+              title="Stop ongoing generation"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+              <span>[ ⏹ STOP ]</span>
+            </button>
+          )}
+
+          {/* Refresh / Reset Session Button with Confirmation Dialog */}
           <button
             type="button"
             onClick={onRefreshSession}
             disabled={isLoading}
-            className="retro-btn px-2.5 py-1.5 text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1.5 hover:border-red-600 hover:text-white"
-            title="Reset active conversational context and start clean session"
+            className="retro-btn px-2.5 py-1.5 text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1.5 hover:border-red-600 hover:text-white disabled:opacity-40"
+            title="Permanently delete conversation and start fresh session"
           >
             <RefreshCw className="w-3.5 h-3.5 text-red-400" />
-            <span>[ ↻ REFRESH SESSION ]</span>
+            <span>[ ↻ REFRESH ]</span>
           </button>
         </div>
       </div>
@@ -89,12 +101,13 @@ export default function OpsCommandCore({
       <form onSubmit={handleSubmit} className="mt-3">
         <div className="relative flex items-center">
           <input
+            id="ops-command-input"
             type="text"
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
-            placeholder="Command O.P.S. (e.g. 'Open YouTube', 'Search for Believer', 'Open the first result', 'Play it')..."
+            placeholder="Command O.P.S. (e.g. 'What is Python?', 'What are its web frameworks?', 'Compare that to Rust')..."
             disabled={isLoading}
-            className="w-full bg-black border border-zinc-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-none px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 outline-none pr-28 transition font-mono shadow-inner"
+            className="w-full bg-black border border-zinc-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-none px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 outline-none pr-32 transition font-mono shadow-inner disabled:opacity-60"
           />
 
           <div className="absolute right-1.5 flex items-center gap-1">
@@ -111,15 +124,27 @@ export default function OpsCommandCore({
               <Mic className="w-3.5 h-3.5" />
             </button>
 
-            <button
-              type="submit"
-              disabled={isLoading || !inputPrompt.trim()}
-              className="retro-btn-red px-3 py-1 text-xs disabled:opacity-40 flex items-center gap-1"
-              title="Dispatch Command"
-            >
-              {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              <span>DISPATCH</span>
-            </button>
+            {isLoading && onEmergencyHalt ? (
+              <button
+                type="button"
+                onClick={onEmergencyHalt}
+                className="bg-red-700 hover:bg-red-600 text-white px-2.5 py-1 text-xs font-bold flex items-center gap-1 transition"
+                title="Stop execution"
+              >
+                <Square className="w-3 h-3 fill-current" />
+                <span>STOP</span>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isLoading || !inputPrompt.trim()}
+                className="retro-btn-red px-3 py-1 text-xs disabled:opacity-40 flex items-center gap-1"
+                title="Dispatch Command"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>DISPATCH</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -132,7 +157,7 @@ export default function OpsCommandCore({
               type="button"
               onClick={() => onDispatchCommand(d.prompt)}
               disabled={isLoading}
-              className="retro-btn px-2 py-0.5 text-[10px] font-mono hover:border-red-600 hover:text-white"
+              className="retro-btn px-2 py-0.5 text-[10px] font-mono hover:border-red-600 hover:text-white disabled:opacity-40"
             >
               {d.label}
             </button>

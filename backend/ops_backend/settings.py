@@ -1,125 +1,111 @@
 """
-Django settings for O.P.S. (Over-Engineered Programmed System) project.
+O.P.S. 2.0 Backend Configuration
+Django + LangGraph Web Research Subsystem
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'ops-local-dev-secret-key-change-in-production'
+SECRET_KEY = os.environ.get("OPS_SECRET_KEY", "ops-2.0-clean-slate-secret-key-production-ready")
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*"]
 
-# Application definition
 INSTALLED_APPS = [
-    'daphne',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-
-    # Third party apps
-    'channels',
-    'rest_framework',
-    'corsheaders',
-
-    # O.P.S Core App
-    'ops_core',
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "corsheaders",
+    "rest_framework",
+    "research_system.apps.ResearchSystemConfig",
+    "automation_system.apps.AutomationSystemConfig",
 ]
-
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer'
-    }
-}
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'ops_backend.urls'
+ROOT_URLCONF = "ops_backend.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'ops_backend.wsgi.application'
-ASGI_APPLICATION = 'ops_backend.asgi.application'
+WSGI_APPLICATION = "ops_backend.wsgi.application"
+ASGI_APPLICATION = "ops_backend.asgi.application"
 
-# Primary Relational Database: PostgreSQL 18
-# Configured for persistent user workstation memories, safety logs, and permissions
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'ops_db'),
-        'USER': os.getenv('POSTGRES_USER', 'postgres'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('POSTGRES_HOST', '127.0.0.1'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+# Database Configuration: PostgreSQL default with seamless SQLite fallback
+USE_POSTGRES = os.environ.get("USE_POSTGRES", "false").lower() == "true"
+POSTGRES_DB = os.environ.get("POSTGRES_DB", "ops_db")
+POSTGRES_USER = os.environ.get("POSTGRES_USER", "postgres")
+POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "127.0.0.1")
+POSTGRES_PORT = os.environ.get("POSTGRES_PORT", "5432")
+
+if USE_POSTGRES:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": POSTGRES_DB,
+            "USER": POSTGRES_USER,
+            "PASSWORD": POSTGRES_PASSWORD,
+            "HOST": POSTGRES_HOST,
+            "PORT": POSTGRES_PORT,
+        }
     }
-}
-
-try:
-    import socket
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(1.0)
-    s.connect((DATABASES['default']['HOST'], int(DATABASES['default']['PORT'])))
-    s.close()
-except Exception:
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'ops_db.sqlite3',
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "ops2_research.sqlite3",
+            "OPTIONS": {
+                "timeout": 30,
+            },
+        }
     }
 
 AUTH_PASSWORD_VALIDATORS = []
 
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+STATIC_URL = "static/"
 
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# CORS Configuration for React Frontend
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
-# O.P.S ChromaDB Vector Storage Configuration
-CHROMA_STORAGE_DIR = BASE_DIR / 'chroma_storage'
-
-# O.P.S Ollama Tri-Model Configuration (Per OPS_Local_LLM_Model_Roles.md)
-# Model 1: Fast Router and Intent Detection (Qwen3 0.6B)
-OLLAMA_ROUTER_MODEL = os.getenv("OLLAMA_ROUTER_MODEL", "hf.co/Qwen/Qwen3-0.6B-GGUF:Q8_0")
-
-# Model 2: Main Reasoning, Planning, Code Gen, and Debugging (Qwen3 1.7B)
-OLLAMA_REASONING_MODEL = os.getenv("OLLAMA_REASONING_MODEL", "hf.co/Qwen/Qwen3-1.7B-GGUF:Q8_0")
-
-# Model 3: Conversation, Content Generation, and Jarvis Personality Layer (Llama 3.2 1B Instruct)
-OLLAMA_CONVERSATION_MODEL = os.getenv("OLLAMA_CONVERSATION_MODEL", "hf.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF:Q8_0")
-
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-
+# REST Framework settings
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+}

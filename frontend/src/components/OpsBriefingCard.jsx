@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Sparkles, Layers, Volume2, Cpu, ShieldAlert, CheckCircle2, XCircle, Copy, Check, Loader2, MessageSquare, RefreshCw
+  Sparkles, Layers, Volume2, Cpu, ShieldAlert, CheckCircle2, XCircle, Copy, Check, Loader2, RotateCcw, Square, Bot
 } from 'lucide-react';
-import TypewriterResponse from './TypewriterResponse';
+import AssistantMessage from './AssistantMessage';
+import UserMessage from './UserMessage';
+import MarkdownRenderer from './MarkdownRenderer';
+import CockpitLoadingSkeleton from './skeletons/CockpitLoadingSkeleton';
 
 export default function OpsBriefingCard({
   briefingText,
@@ -15,14 +18,23 @@ export default function OpsBriefingCard({
   onSpeakText,
   activePermissionReq,
   onResolvePermission,
-  conversationHistory = []
+  conversationHistory = [],
+  conversationId = '',
+  onRefreshConversation,
+  onStopExecution,
+  streamingChunk = '',
+  activeMode = null,
+  modeReason = '',
+  stages = [],
+  currentStage = '',
+  researchTelemetry = null
 }) {
   const [copiedIdx, setCopiedIdx] = useState(null);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversationHistory, briefingText, isLoading, currentThought]);
+  }, [conversationHistory, briefingText, isLoading, currentThought, streamingChunk]);
 
   const handleCopy = (text, idx) => {
     if (!text) return;
@@ -33,14 +45,20 @@ export default function OpsBriefingCard({
 
   return (
     <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex flex-col h-full space-y-3 font-mono">
-      {/* Header */}
+      {/* Header with Title, Conversation ID, Turn Counter, and Refresh Icon */}
       <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-red-500" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-200">
             O.P.S. Executive Query Output
           </h3>
+          {conversationId && (
+            <span className="text-[10px] text-zinc-500 font-mono hidden sm:inline" title={`Conversation ID: ${conversationId}`}>
+              [{conversationId.slice(0, 14)}]
+            </span>
+          )}
         </div>
+
         <div className="flex items-center gap-2">
           {activeCategory && (
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-zinc-900 border border-zinc-800 text-red-400">
@@ -51,6 +69,19 @@ export default function OpsBriefingCard({
             <span className="text-[10px] text-zinc-500 font-semibold">
               [{conversationHistory.length} TURNS]
             </span>
+          )}
+
+          {/* Section 4: Refresh Button in Header */}
+          {onRefreshConversation && (
+            <button
+              type="button"
+              onClick={onRefreshConversation}
+              disabled={isLoading}
+              className="p-1 rounded text-zinc-400 hover:text-red-400 hover:bg-zinc-900 border border-zinc-800 hover:border-red-600 transition disabled:opacity-40"
+              title="Permanent Conversation Reset (Delete & Refresh)"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
       </div>
@@ -95,7 +126,7 @@ export default function OpsBriefingCard({
             {planSteps.map((step, i) => (
               <div key={i} className="text-xs text-zinc-300 flex items-start gap-2">
                 <span className="text-red-500 text-[10px] font-bold">{i + 1}.</span>
-                <span>{step}</span>
+                <span>{typeof step === 'string' ? step : step.description || JSON.stringify(step)}</span>
               </div>
             ))}
           </div>
@@ -109,61 +140,40 @@ export default function OpsBriefingCard({
             <Cpu className="w-8 h-8 text-zinc-700 stroke-1" />
             <div className="text-xs font-medium text-zinc-400">Awaiting Directive</div>
             <div className="text-[11px] text-zinc-500 max-w-xs leading-normal">
-              Continuous multi-turn session active.<br />
-              user / bot conversation loop persists until Refresh.
+              Continuous multi-turn conversational session active.<br />
+              Context persists across messages until Permanent Refresh.
             </div>
           </div>
         ) : (
           <>
             {conversationHistory.map((turn, idx) => (
-              <div key={idx} className="space-y-1 pb-2 border-b border-zinc-900/70 last:border-b-0">
-                <div className="flex items-center justify-between">
-                  <span className={`font-bold text-[11px] uppercase tracking-wider ${
-                    turn.role === 'user' ? 'text-red-400' : 'text-sky-400'
-                  }`}>
-                    {turn.role === 'user' ? 'user :' : 'bot :'}
-                  </span>
-                  {turn.role === 'bot' && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(turn.text, idx)}
-                        className="text-zinc-500 hover:text-zinc-300 p-0.5"
-                        title="Copy turn"
-                      >
-                        {copiedIdx === idx ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onSpeakText && onSpeakText(turn.text)}
-                        className="text-zinc-500 hover:text-red-400 p-0.5"
-                        title="Speak (Piper TTS)"
-                      >
-                        <Volume2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className={`text-xs whitespace-pre-wrap leading-relaxed ${
-                  turn.role === 'user' ? 'text-white font-medium pl-1' : 'text-zinc-200 pl-1'
-                }`}>
-                  {turn.text}
-                </div>
-              </div>
+              turn.role === 'user' ? (
+                <UserMessage key={idx} turn={turn} />
+              ) : (
+                <AssistantMessage
+                  key={idx}
+                  turn={turn}
+                  idx={idx}
+                  onSpeakText={onSpeakText}
+                />
+              )
             ))}
 
-            {/* Live Thinking / Synthesis Ticker */}
+            {/* Live Streaming Response or Intelligent Animated Skeleton */}
             {isLoading && (
-              <div className="space-y-1 pt-1">
-                <div className="font-bold text-[11px] uppercase tracking-wider text-sky-400">
-                  bot :
-                </div>
-                <div className="text-xs text-red-400 animate-pulse flex items-center gap-2 pl-1 font-mono">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                  <span>{currentThought || 'Formulating tactical response...'}</span>
-                </div>
-              </div>
+              <CockpitLoadingSkeleton
+                query={activeTaskPrompt}
+                activeAgent={activeAgent}
+                currentThought={currentThought}
+                streamingChunk={streamingChunk}
+                onStopExecution={onStopExecution}
+                compact={false}
+                activeMode={activeMode}
+                modeReason={modeReason}
+                stages={stages}
+                currentStage={currentStage}
+                researchTelemetry={researchTelemetry}
+              />
             )}
           </>
         )}

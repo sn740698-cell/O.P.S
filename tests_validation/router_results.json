@@ -1,0 +1,149 @@
+[
+  {
+    "id": 1,
+    "prompt": "Hello O.P.S., how are you?",
+    "expected_type": "Greetings",
+    "expected_routes": [
+      "GENERAL_CHAT"
+    ],
+    "actual_route": "GENERAL_CHAT",
+    "router_latency_ms": 3.9,
+    "total_latency_ms": 7866.86,
+    "status": "PASS",
+    "unintended_crawler": false,
+    "preview": "Hello! I'm O.P.S., your AI assistant designed to help with a wide range of tasks"
+  },
+  {
+    "id": 2,
+    "prompt": "What is artificial intelligence?",
+    "expected_type": "General knowledge",
+    "expected_routes": [
+      "SIMPLE_QUESTION",
+      "GENERAL_CHAT"
+    ],
+    "actual_route": "SIMPLE_QUESTION",
+    "router_latency_ms": 3.55,
+    "total_latency_ms": 12740.23,
+    "status": "PASS",
+    "unintended_crawler": false,
+    "preview": "Artificial intelligence (AI) is the simulation of human intelligence in machines"
+  },
+  {
+    "id": 3,
+    "prompt": "Calculate 25 multiplied by 48.",
+    "expected_type": "Simple calculations",
+    "expected_routes": [
+      "SIMPLE_QUESTION"
+    ],
+    "actual_route": "SIMPLE_QUESTION",
+    "router_latency_ms": 2.42,
+    "total_latency_ms": 11136.24,
+    "status": "PASS",
+    "unintended_crawler": false,
+    "preview": "## \ud83d\udccc Discussion So Far   - The user asked to calculate 25 multiplied by 48.   - "
+  },
+  {
+    "id": 4,
+    "prompt": "What is the latest AI news?",
+    "expected_type": "Current information",
+    "expected_routes": [
+      "WEB_RESEARCH"
+    ],
+    "actual_route": "WEB_RESEARCH",
+    "router_latency_ms": 1.68,
+    "total_latency_ms": 37325.05,
+    "status": "PASS",
+    "unintended_crawler": false,
+    "preview": "Certainly. Here is the synthesized briefing regarding **What is the latest AI ne"
+  },
+  {
+    "id": 5,
+    "prompt": "Open Chrome.",
+    "expected_type": "Desktop operations",
+    "expected_routes": [
+      "SYSTEM_AUTOMATION"
+    ],
+    "actual_route": "SYSTEM_AUTOMATION",
+    "router_latency_ms": 2.05,
+    "total_latency_ms": 10080.25,
+    "status": "PASS",
+    "unintended_crawler": false,
+    "preview": "## \ud83d\ude80 Action Required   I cannot directly open applications like Chrome, but I ca"
+  },
+  {
+    "id": 6,
+    "prompt": "Create a folder named OPS_Test on my Desktop.",
+    "expected_type": "Desktop operations",
+    "expected_routes": [
+      "SYSTEM_AUTOMATION"
+    ],
+    "actual_route": "SYSTEM_AUTOMATION",
+    "router_latency_ms": 1.81,
+    "total_latency_ms": 9896.86,
+    "status": "PASS",
+    "unintended_crawler": false,
+    "preview": "## \ud83d\udccc Discussion So Far   - The user requested to create a folder named **OPS_Tes"
+  },
+  {
+    "id": 7,
+    "prompt": "Explain this Python code.",
+    "expected_type": "Programming / explanation",
+    "expected_routes": [
+      "SIMPLE_QUESTION",
+      "CODE_GENERATION"
+    ],
+    "actual_route": "SIMPLE_QUESTION",
+    "router_latency_ms": 1.98,
+    "total_latency_ms": 14483.94,
+    "status": "PASS",
+    "unintended_crawler": false,
+    "preview": "## \ud83d\udccc Discussion So Far   - The user requested to explain a Python code snippet. "
+  },
+  {
+    "id": 8,
+    "prompt": "Find information about LangGraph.",
+    "expected_type": "Research / information lookup",
+    "expected_routes": [
+      "OTHER_SUPPORTED_TASK",
+      "SIMPLE_QUESTION",
+      "WEB_RESEARCH"
+    ],
+    "actual_route": "OTHER_SUPPORTED_TASK",
+    "router_latency_ms": 2.22,
+    "total_latency_ms": 14606.07,
+    "status": "PASS",
+    "unintended_crawler": false,
+    "preview": "## \ud83d\udccc Discussion So Far   - The user requested information about **LangGraph**, a"
+  },
+  {
+    "id": 9,
+    "prompt": "Write a professional email requesting a project meeting.",
+    "expected_type": "Email or document writing",
+    "expected_routes": [
+      "OTHER_SUPPORTED_TASK",
+      "GENERAL_CHAT"
+    ],
+    "actual_route": "OTHER_SUPPORTED_TASK",
+    "router_latency_ms": 2.27,
+    "total_latency_ms": 13713.1,
+    "status": "PASS",
+    "unintended_crawler": false,
+    "preview": "## \ud83d\udccc Discussion So Far   - The user requested a professional email requesting a "
+  },
+  {
+    "id": 10,
+    "prompt": "Search my project files for the Django API implementation.",
+    "expected_type": "Local project-file lookup",
+    "expected_routes": [
+      "OTHER_SUPPORTED_TASK",
+      "SYSTEM_AUTOMATION",
+      "WEB_RESEARCH"
+    ],
+    "actual_route": "OTHER_SUPPORTED_TASK",
+    "router_latency_ms": 7.47,
+    "total_latency_ms": 15883.75,
+    "status": "PASS",
+    "unintended_crawler": false,
+    "preview": "## \ud83d\udccc Discussion So Far   - The user requested to search their project files for "
+  }
+]
