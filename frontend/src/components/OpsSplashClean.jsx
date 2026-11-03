@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import LayeredText from "./LayeredText";
+import SignalType from "./SignalType";
 
 // Dimensions & Geometry constants calibrated to the reference image (1024x547 -> 2224x1132 scale)
 const CX = 1112;
@@ -836,21 +837,51 @@ export default function OpsSplashClean({ onComplete, onDone }) {
       `}</style>
 
       {/* 3D LAYERED GLASS BRAND TITLE IN CENTER (ZERO OVERLAPPING, PURE TRANSPARENT) */}
+      {/* SIGNAL TYPE NEON FLICKER LOGO */}
       <div
         style={{
           position: "absolute",
-          top: "18px",
+          top: "16px",
           left: "50%",
           transform: "translateX(-50%)",
-          width: "90%",
-          maxWidth: "680px",
+          width: "95%",
+          maxWidth: "780px",
           zIndex: 30,
           pointerEvents: "auto",
+          textAlign: "center",
         }}
       >
-        <LayeredText
-          text="O.P.S an Over-Engineered Program System"
-          height={52}
+        <SignalType
+          text="O.P.S AN OVER-ENGINEERED PROGRAM SYSTEM"
+          preset="ops"
+          color="#ff5256"
+          glowColor="#ef4444"
+          unlit="outline"
+          outlineWidth={1.2}
+          outlineOpacity={0.32}
+          glow={0.95}
+          glowSize={1.15}
+          flash={1.25}
+          flickers={3}
+          speed={1.05}
+          stagger={0.038}
+          order="random"
+          trigger="view"
+          clickCycle={true}
+          instability={0.25}
+          style={{
+            fontFamily: "'Arial Black', Impact, sans-serif",
+            fontWeight: 900,
+            fontStyle: "italic",
+            fontSize: "clamp(16px, 2.5vw, 25px)",
+            letterSpacing: "0.06em",
+            wordSpacing: "0.18em",
+            transform: "skewX(-6deg)",
+            WebkitBoxReflect: "below 1px linear-gradient(transparent 30%, rgba(239, 68, 68, 0.28) 100%)",
+            filter: "drop-shadow(0 6px 16px rgba(239, 68, 68, 0.45))",
+            cursor: "pointer",
+          }}
+          className="ops-signal-type-header"
         />
       </div>
 
