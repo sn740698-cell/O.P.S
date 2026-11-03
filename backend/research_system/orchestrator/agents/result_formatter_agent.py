@@ -119,23 +119,46 @@ def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
             steps = state.get("execution_plan", [])
             auto_res = state.get("automation_results", {})
             verif_res = state.get("verification_results", {})
-            all_verified = verif_res.get("all_verified", True)
 
-            icon = "✅" if all_verified else "⚠️"
-            status_word = "COMPLETED" if all_verified else "PARTIAL"
+            desktop_res = auto_res.get("desktop_results", [])
+            browser_res = auto_res.get("browser_results", [])
+            all_exec_steps = desktop_res + browser_res
+
+            has_failures = any(not r.get("success", False) for r in all_exec_steps)
+            has_steps = len(all_exec_steps) > 0
+
+            # Empirical verification check
+            all_verified = (has_steps and not has_failures and verif_res.get("all_verified", True))
+            if not has_steps and len(steps) > 0:
+                all_verified = False
+
+            icon = "✅" if all_verified else ("⚠️" if has_steps else "❌")
+            status_word = "COMPLETED" if all_verified else ("PARTIAL" if has_steps else "FAILED")
 
             step_lines = []
             for s in steps:
-                step_lines.append(f"- ✅ **Step {s.get('step_id')}**: {s.get('title')} `[{mode}]`")
+                s_id = s.get("step_id")
+                matching_res = next((r for r in all_exec_steps if r.get("step_id") == s_id), None)
+                if matching_res:
+                    s_ok = matching_res.get("success", False)
+                    s_icon = "✅" if s_ok else "❌"
+                    s_info = matching_res.get("video_title") or matching_res.get("window_title") or matching_res.get("current_url") or ""
+                    extra = f" (*{s_info}*)" if s_info else ""
+                    step_lines.append(f"- {s_icon} **Step {s_id}**: {s.get('title')} `[{mode}]`{extra}")
+                else:
+                    step_lines.append(f"- ✅ **Step {s_id}**: {s.get('title')} `[{mode}]`")
 
-            steps_formatted = "\n".join(step_lines) if step_lines else "- ✅ Automated action executed."
+            steps_formatted = "\n".join(step_lines) if step_lines else "- Automated actions logged."
+            verif_summary = "All operations and empirical state verifications succeeded." if all_verified else (
+                "One or more actions encountered an issue during execution or verification." if has_steps else "No automation actions were executed."
+            )
 
             final_text = (
                 f"## {icon} {mode} AUTOMATION EXECUTION {status_word}\n\n"
                 f"**Directive**: `{query}`\n\n"
                 f"### 🛠️ Execution Pipeline Steps\n\n"
                 f"{steps_formatted}\n\n"
-                f"All operations and empirical state verifications succeeded.\n\n"
+                f"{verif_summary}\n\n"
                 f"## 📌 Discussion So Far\n\n"
                 f"- Executed {mode} automation directive: '{query[:50]}'\n"
                 f"- Status: `{status_word}` across {len(steps)} planned step(s)\n"

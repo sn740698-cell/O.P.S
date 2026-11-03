@@ -326,8 +326,107 @@ class AutomationPlanner:
                 "requires_approval": False
             }
 
-        # 7. Browser: Open YouTube ("Open YouTube", "Open YouTube in my browser")
-        if "youtube" in q_lower and any(w in q_lower for w in ["open", "launch", "navigate", "go to", "visit"]):
+        # 7. Browser: Click First Result (Follow-up)
+        if any(q_lower == v or q_lower.startswith(v) for v in [
+            "open the first result", "click the first result", "open first result",
+            "click first result", "play the first result", "play first result", "open the first one"
+        ]):
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": "Click top search result in active browser tab",
+                    "executor": "browser",
+                    "action": "click_first_result",
+                    "params": {},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "browser_page_state"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_BROWSER,
+                "mode_reason": "Follow-up workflow to open the top result in active browser session.",
+                "steps": steps,
+                "target_apps": ["Playwright Browser"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # 8. Browser: Go Back (Follow-up)
+        if any(q_lower == v or q_lower.startswith(v) for v in [
+            "go back to the previous results", "go back to previous results", "go back", "previous results", "back to results"
+        ]):
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": "Navigate back to previous page in browser history",
+                    "executor": "browser",
+                    "action": "go_back",
+                    "params": {},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "browser_page_state"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_BROWSER,
+                "mode_reason": "Follow-up workflow to traverse back in browser history.",
+                "steps": steps,
+                "target_apps": ["Playwright Browser"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # 9. Browser: YouTube Multi-Step Workflow or Search
+        if "youtube" in q_lower or (
+            any(w in q_lower for w in ["song", "music video", "play "]) and not any(w in q_lower for w in ["explain", "what is", "how to"])
+        ):
+            # Extract target song/video name
+            song_name = "Believer by Imagine Dragons"
+            # Patterns: "search for X and open the first result", "search for X on youtube", "play X"
+            m = re.search(r'search\s+(?:for\s+)?(.*?)(?:\s+and\s+open|\s+and\s+play|\s+on\s+youtube|$)', query, re.IGNORECASE)
+            if m and m.group(1).strip():
+                clean_term = m.group(1).strip(" \"'")
+                if clean_term and clean_term.lower() not in ["a song", "another song", "music", "it"]:
+                    song_name = clean_term
+            elif "play" in q_lower:
+                m_play = re.search(r'play\s+(.*?)(?:\s+on\s+youtube|$)', query, re.IGNORECASE)
+                if m_play and m_play.group(1).strip():
+                    song_name = m_play.group(1).strip(" \"'")
+
+            # Check if user asked to search AND open first result
+            has_chain_click = any(w in q_lower for w in ["open the first", "click the first", "play the first", "first result"])
+            has_search_directive = any(w in q_lower for w in ["search for", "search", "play", "find"])
+
+            if has_chain_click or has_search_directive:
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": f"Search YouTube for '{song_name}' and play the first result",
+                        "executor": "browser",
+                        "action": "youtube_search_and_play",
+                        "params": {"query": song_name},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "youtube_video_active"}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_BROWSER,
+                    "mode_reason": f"Deterministic YouTube search and playback workflow for '{song_name}'.",
+                    "steps": steps,
+                    "target_apps": ["Playwright Browser (YouTube)"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
+
+            # Plain navigate to YouTube
             target_url = "https://www.youtube.com"
             steps = [
                 {
@@ -352,23 +451,62 @@ class AutomationPlanner:
                 "requires_approval": False
             }
 
-        # 8. Browser: Search Google ("Search Google for ...")
+        # 10. Browser: Instagram & Reels Workflows
+        if "instagram" in q_lower or "reels" in q_lower:
+            is_reels = "reels" in q_lower
+            action = "instagram_reels" if is_reels else "instagram_open"
+            desc = "Navigate to Instagram Reels feed" if is_reels else "Navigate to Instagram homepage"
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": desc,
+                    "executor": "browser",
+                    "action": action,
+                    "params": {},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "instagram_view"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_BROWSER,
+                "mode_reason": f"Deterministic browser workflow for Instagram ({'Reels' if is_reels else 'Home'}).",
+                "steps": steps,
+                "target_apps": ["Playwright Browser (Instagram)"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # 11. Browser: Search Google ("Search Google for ...")
         if "google" in q_lower and any(w in q_lower for w in ["search", "look up", "find"]):
             search_term = re.sub(r'^(?:please\s+)?(?:can\s+you\s+)?(?:search\s+google\s+for|search\s+for|google)\s+', '', query, flags=re.IGNORECASE).strip()
-            target_url = f"https://www.google.com/search?q={search_term.replace(' ', '+')}"
             steps = [
                 {
                     "step_id": 1,
                     "title": f"Search Google in browser for '{search_term}'",
                     "executor": "browser",
-                    "action": "navigate",
-                    "params": {"url": target_url},
+                    "action": "google_search",
+                    "params": {"query": search_term},
                     "depends_on": [],
                     "risk_level": RISK_LOW,
                     "status": "PENDING",
                     "verification": {"type": "page_title_loaded"}
                 }
             ]
+            if any(w in q_lower for w in ["open the first", "click the first", "top result", "first result"]):
+                steps.append({
+                    "step_id": 2,
+                    "title": "Open first organic result from Google search",
+                    "executor": "browser",
+                    "action": "google_click_top",
+                    "params": {},
+                    "depends_on": [1],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "browser_page_state"}
+                })
             return {
                 "status": "READY",
                 "automation_mode": MODE_BROWSER,

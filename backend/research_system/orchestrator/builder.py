@@ -102,6 +102,16 @@ def hybrid_fanout_node(state: CentralGraphState) -> Dict[str, Any]:
     return state_update
 
 
+def route_after_answer_synthesis(state: CentralGraphState) -> str:
+    """
+    Routes composite workflows to automation planning after research validation,
+    or directly to result formatter for pure answering workflows.
+    """
+    if state.get("task_type") == "COMPOSITE":
+        return "automation_planner"
+    return "result_formatter_agent"
+
+
 def build_central_ops_graph():
     """
     Constructs and compiles the canonical 13-component LangGraph orchestrator.
@@ -151,7 +161,14 @@ def build_central_ops_graph():
     # Web Research Path
     workflow.add_edge("web_research_agent", "evidence_validation_agent")
     workflow.add_edge("evidence_validation_agent", "answer_synthesis_agent")
-    workflow.add_edge("answer_synthesis_agent", "result_formatter_agent")
+    workflow.add_conditional_edges(
+        "answer_synthesis_agent",
+        route_after_answer_synthesis,
+        {
+            "automation_planner": "automation_planner",
+            "result_formatter_agent": "result_formatter_agent"
+        }
+    )
 
     # Hybrid Path: converges at evidence_validation_agent
     workflow.add_edge("hybrid_fanout", "evidence_validation_agent")

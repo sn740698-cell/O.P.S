@@ -19,6 +19,8 @@ def emit_agent_started(state: CentralGraphState, agent_id: str, agent_name: str,
     req_id = state.get("request_id") or f"req_{state.get('task_id', 'task')}"
     task_id = state.get("task_id", "task")
     conv_id = state.get("conversation_id")
+    active_engine = state.get("active_engine") or ("AUTOMATION" if "automation" in agent_id or group_id == "automation_engine" else "ANSWERING")
+    response_mode = state.get("response_mode") or state.get("automation_mode") or state.get("answering_mode") or "LLM"
 
     event_bus.publish(
         request_id=req_id,
@@ -34,6 +36,9 @@ def emit_agent_started(state: CentralGraphState, agent_id: str, agent_name: str,
         agent_name=agent_name,
         group_id=group_id,
         status="ACTIVE",
+        active_engine=active_engine,
+        response_mode=response_mode,
+        current_stage=summary,
         timestamp=now
     )
 
@@ -44,6 +49,8 @@ def emit_agent_progress(state: CentralGraphState, agent_id: str, agent_name: str
     req_id = state.get("request_id") or f"req_{state.get('task_id', 'task')}"
     task_id = state.get("task_id", "task")
     conv_id = state.get("conversation_id")
+    active_engine = state.get("active_engine") or ("AUTOMATION" if "automation" in agent_id or group_id == "automation_engine" else "ANSWERING")
+    response_mode = state.get("response_mode") or state.get("automation_mode") or state.get("answering_mode") or "LLM"
 
     event_bus.publish(
         request_id=req_id,
@@ -60,6 +67,9 @@ def emit_agent_progress(state: CentralGraphState, agent_id: str, agent_name: str
         agent_name=agent_name,
         group_id=group_id,
         status="ACTIVE",
+        active_engine=active_engine,
+        response_mode=response_mode,
+        current_stage=summary,
         timestamp=now
     )
 
@@ -70,6 +80,8 @@ def emit_agent_completed(state: CentralGraphState, agent_id: str, agent_name: st
     req_id = state.get("request_id") or f"req_{state.get('task_id', 'task')}"
     task_id = state.get("task_id", "task")
     conv_id = state.get("conversation_id")
+    active_engine = state.get("active_engine") or ("AUTOMATION" if "automation" in agent_id or group_id == "automation_engine" else "ANSWERING")
+    response_mode = state.get("response_mode") or state.get("automation_mode") or state.get("answering_mode") or "LLM"
 
     event_bus.publish(
         request_id=req_id,
@@ -86,6 +98,9 @@ def emit_agent_completed(state: CentralGraphState, agent_id: str, agent_name: st
         agent_name=agent_name,
         group_id=group_id,
         status="COMPLETED",
+        active_engine=active_engine,
+        response_mode=response_mode,
+        current_stage=summary,
         duration_s=duration_s,
         timestamp=now
     )

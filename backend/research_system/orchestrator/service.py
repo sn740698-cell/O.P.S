@@ -4,10 +4,13 @@ Coordinates execution of the 13-component multi-agent graph with
 Django persistence, real-time SSE streaming, and thread checkpointing.
 """
 
+import os
 import time
 import uuid
 import logging
 from typing import Dict, Any, Optional
+
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 from django.utils import timezone
 from research_system.orchestrator.state import CentralGraphState
 from research_system.orchestrator.builder import central_orchestrator, central_checkpointer
@@ -51,11 +54,21 @@ class CentralOrchestratorService:
         is_approval_resume = bool(approval_id and approval_decision)
         is_approved = approval_decision in ["approve", "accept", "yes", "true"] if is_approval_resume else False
 
+        # Retrieve previous conversation history for contextual follow-up awareness
+        recent_history = []
+        try:
+            prev_msgs = conv.messages.order_by("-created_at")[:8]
+            for pm in reversed(prev_msgs):
+                recent_history.append({"role": pm.role, "content": pm.content})
+        except Exception as e_hist:
+            logger.debug(f"History retrieval notice: {e_hist}")
+
         initial_state: CentralGraphState = {
             "task_id": tid,
             "conversation_id": conversation_id,
             "request_id": req_id,
             "user_query": query,
+            "conversation_history": recent_history,
             "task_type": "ANSWER",
             "answering_mode": "LLM",
             "automation_mode": "DESKTOP",

@@ -36,7 +36,7 @@ CONSEQUENTIAL_ACTIONS = {
 # High-Risk Keywords in Directives
 CONSEQUENTIAL_KEYWORDS = [
     r"\b(?:delete|remove|erase|destroy|purge|wipe)\b.*?\b(?:file|files|folder|folders|dir|directory|data)\b",
-    r"\b(?:install|uninstall|setup)\b.*?\b(?:software|application|package|driver|installer)\b",
+    r"\b(?:install|uninstall|setup)\b",
     r"\b(?:taskkill|kill\s+process|shutdown|format|repartition)\b",
     r"\boverwrite\b.*?\b(?:file|document|code)\b",
     r"\b(?:submit|send|buy|purchase|pay|commit)\b",

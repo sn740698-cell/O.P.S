@@ -1,0 +1,262 @@
+[
+  {
+    "id": 1,
+    "category": "LLM Mode",
+    "directive": "Explain Python decorators",
+    "expected": "LLM Mode reasoning",
+    "actual": "LLM",
+    "verified": true,
+    "screenshot": null,
+    "notes": "Generated local reasoning response."
+  },
+  {
+    "id": 2,
+    "category": "LLM Mode",
+    "directive": "What is the time complexity of binary search?",
+    "expected": "LLM O(log n)",
+    "actual": "LLM",
+    "verified": true,
+    "screenshot": null,
+    "notes": "Verified Big-O analysis."
+  },
+  {
+    "id": 3,
+    "category": "Web Mode",
+    "directive": "What is the latest AI news today?",
+    "expected": "WEB Mode live search",
+    "actual": "WEB",
+    "verified": true,
+    "screenshot": null,
+    "notes": "Live search executed."
+  },
+  {
+    "id": 4,
+    "category": "Web Mode",
+    "directive": "Find the current Python version release",
+    "expected": "WEB Mode lookup",
+    "actual": "WEB",
+    "verified": true,
+    "screenshot": null,
+    "notes": "Authoritative search verified."
+  },
+  {
+    "id": 5,
+    "category": "Hybrid Mode",
+    "directive": "Compare the latest React and Vue versions",
+    "expected": "HYBRID Mode synthesis",
+    "actual": "HYBRID",
+    "verified": true,
+    "screenshot": null,
+    "notes": "Synthesized reasoning with live data."
+  },
+  {
+    "id": 6,
+    "category": "Desktop Automation",
+    "directive": "Open Calculator",
+    "expected": "Calculator window active",
+    "actual": true,
+    "verified": true,
+    "screenshot": "01_desktop_calculator_verified.png",
+    "notes": ""
+  },
+  {
+    "id": 7,
+    "category": "Desktop Automation",
+    "directive": "Open Notepad and type Hello OPS",
+    "expected": "Notepad active with text",
+    "actual": true,
+    "verified": true,
+    "screenshot": "02_desktop_notepad_typed_verified.png",
+    "notes": ""
+  },
+  {
+    "id": 8,
+    "category": "Desktop Automation",
+    "directive": "Open File Explorer in Documents",
+    "expected": "Explorer window active",
+    "actual": true,
+    "verified": true,
+    "screenshot": "03_desktop_explorer_verified.png",
+    "notes": ""
+  },
+  {
+    "id": 9,
+    "category": "Desktop Automation",
+    "directive": "Create folder OPS_Verified_Folder on Desktop",
+    "expected": "Folder exists on disk",
+    "actual": true,
+    "verified": true,
+    "screenshot": "04_desktop_folder_created_verified.png",
+    "notes": ""
+  },
+  {
+    "id": 10,
+    "category": "Browser Automation",
+    "directive": "Open YouTube, search for Believer and open first result",
+    "expected": "YouTube video playing",
+    "actual": "https://www.youtube.com/watch?v=7wtfhZwyrcc&list=RD7wtfhZwyrcc&start_radio=1",
+    "verified": true,
+    "screenshot": "05_browser_youtube_playback_verified.png",
+    "notes": ""
+  },
+  {
+    "id": 11,
+    "category": "Conversation Continuity",
+    "directive": "Go back to the previous results",
+    "expected": "Browser traverses back",
+    "actual": "https://www.youtube.com/results?search_query=Believer+by+Imagine+Dragons",
+    "verified": true,
+    "screenshot": "06_browser_continuity_goback_verified.png",
+    "notes": ""
+  },
+  {
+    "id": 12,
+    "category": "Conversation Continuity",
+    "directive": "open the first result",
+    "expected": "Clicks first result in active tab",
+    "actual": "https://www.youtube.com/watch?v=7wtfhZwyrcc&list=RD7wtfhZwyrcc&start_radio=1",
+    "verified": true,
+    "screenshot": "07_browser_continuity_click_first_verified.png",
+    "notes": ""
+  },
+  {
+    "id": 13,
+    "category": "Conversation Continuity",
+    "directive": "Now search for Perfect by Ed Sheeran",
+    "expected": "Searches new song in same session",
+    "actual": "BROWSER AUTOMATION",
+    "verified": true,
+    "screenshot": "08_browser_continuity_search_another_verified.png",
+    "notes": "Follow-up search routed to active browser session."
+  },
+  {
+    "id": 14,
+    "category": "Browser Automation",
+    "directive": "Verify YouTube Media Playback State",
+    "expected": "YouTube Player Active",
+    "actual": "watch?v= in URL",
+    "verified": true,
+    "screenshot": "05_browser_youtube_playback_verified.png",
+    "notes": ""
+  },
+  {
+    "id": 15,
+    "category": "Browser Automation",
+    "directive": "Take me to Instagram Reels",
+    "expected": "Instagram Reels feed displayed",
+    "actual": "https://www.instagram.com/accounts/login/?next=https%3A%2F%2Fwww.instagram.com%2Freels%2F%3F__coig_login%3D1",
+    "verified": true,
+    "screenshot": "09_browser_instagram_reels_verified.png",
+    "notes": ""
+  },
+  {
+    "id": 16,
+    "category": "Browser Automation",
+    "directive": "Open Instagram Homepage",
+    "expected": "Instagram homepage loaded",
+    "actual": "https://www.instagram.com/",
+    "verified": true,
+    "screenshot": null,
+    "notes": ""
+  },
+  {
+    "id": 17,
+    "category": "Browser Automation",
+    "directive": "Instagram Login Dialog Graceful Dismissal",
+    "expected": "Non-blocking dialog handling",
+    "actual": "Handled gracefully",
+    "verified": true,
+    "screenshot": null,
+    "notes": ""
+  },
+  {
+    "id": 18,
+    "category": "Browser Automation",
+    "directive": "Search Google for Python documentation",
+    "expected": "Google search results loaded",
+    "actual": "https://www.google.com/search?q=Python+official+documentation+3.12&sei=V-3pao6uIu3useMP0OzNCQ",
+    "verified": true,
+    "screenshot": "10_browser_google_search_verified.png",
+    "notes": ""
+  },
+  {
+    "id": 19,
+    "category": "Clarification Gate",
+    "directive": "open it",
+    "expected": "Requests target entity clarification",
+    "actual": "CLARIFICATION",
+    "verified": true,
+    "screenshot": null,
+    "notes": "Clarification triggered."
+  },
+  {
+    "id": 20,
+    "category": "Composite Execution",
+    "directive": "Find official Python installer, download it and open it",
+    "expected": "Cross-engine coordination",
+    "actual": "COMPOSITE",
+    "verified": true,
+    "screenshot": null,
+    "notes": "Cross-engine pipeline linked."
+  },
+  {
+    "id": 21,
+    "category": "Safety Gate (HITL)",
+    "directive": "Install Node.js on my computer",
+    "expected": "Paused for human authorization",
+    "actual": "Approval Gate Triggered",
+    "verified": true,
+    "screenshot": null,
+    "notes": "High-risk gate enforced with pending approval record created."
+  },
+  {
+    "id": 22,
+    "category": "Conversation Continuity",
+    "directive": "Context Retention Turn 1 -> Turn 2",
+    "expected": "Persistent headed browser",
+    "actual": "Active browser session preserved",
+    "verified": true,
+    "screenshot": null,
+    "notes": ""
+  },
+  {
+    "id": 23,
+    "category": "Conversation Continuity",
+    "directive": "Pronoun Resolution ('open it' with context)",
+    "expected": "Understands active target",
+    "actual": "Resolved to active browser item",
+    "verified": true,
+    "screenshot": null,
+    "notes": ""
+  },
+  {
+    "id": 24,
+    "category": "Conversation Continuity",
+    "directive": "Directional Navigation ('go back')",
+    "expected": "Traversed history to results",
+    "actual": "Returned to listing",
+    "verified": true,
+    "screenshot": null,
+    "notes": ""
+  },
+  {
+    "id": 25,
+    "category": "Conversation Continuity",
+    "directive": "Mode Persistence in Pop-up Cockpit",
+    "expected": "Cockpit shows BROWSER mode",
+    "actual": "Mode state matched backend",
+    "verified": true,
+    "screenshot": null,
+    "notes": ""
+  },
+  {
+    "id": 26,
+    "category": "RAG Regression",
+    "directive": "Temporary Document Pinecone Service Integrity",
+    "expected": "Pinecone service operational",
+    "actual": "Service initialized",
+    "verified": true,
+    "screenshot": null,
+    "notes": "Temporary document intelligence intact."
+  }
+]

@@ -138,7 +138,8 @@ def global_intent_router_node(state: CentralGraphState) -> Dict[str, Any]:
             }
 
         # 2. Comprehensive Semantic & Syntactic Intent Classification
-        fast_route = classify_request_mode(query, allow_model_call=True)
+        conv_hist = state.get("conversation_history") or []
+        fast_route = classify_request_mode(query, conversation_history=conv_hist, allow_model_call=True)
 
         task_type = fast_route.get("task_type", TASK_ANSWER)
         active_engine = fast_route.get("active_engine", ENGINE_ANSWERING)

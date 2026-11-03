@@ -1,9 +1,10 @@
 """
 Agent 9: Browser Automation Executor
 Group 3: Automation Engine
-Technology: Playwright (Chromium Headless/Headed Engine)
-Executes web portal automation, page navigation, form interactions, credential protection,
-element clicks, and non-blocking file downloads.
+Technology: Playwright (Chromium Headed/Headed Engine via BrowserSessionManager)
+Executes web portal automation, page navigation, search queries, element clicks,
+first-result selections, and media playback.
+Maintains persistent session state across conversation turns.
 """
 
 import time
@@ -11,7 +12,14 @@ import logging
 from typing import Dict, Any, List
 from research_system.orchestrator.state import CentralGraphState
 from research_system.orchestrator.agents.base import emit_agent_started, emit_agent_progress, emit_agent_completed, emit_agent_failed
-from automation_system.executors.browser_executor import BrowserExecutor
+from automation_system.browser.browser_manager import BrowserSessionManager
+from automation_system.browser.navigation_engine import NavigationEngine
+from automation_system.browser.search_engine import SearchEngine
+from automation_system.browser.interaction_engine import InteractionEngine
+from automation_system.browser.verification_engine import BrowserVerificationEngine
+from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
+from automation_system.browser.adapters.instagram_adapter import InstagramAdapter
+from automation_system.browser.adapters.google_adapter import GoogleAdapter
 
 logger = logging.getLogger("OPS.Agent.BrowserExecutor")
 
@@ -23,15 +31,19 @@ COMPONENT_TYPE = "execution_worker"
 
 def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]:
     """
-    Agent 9 node: Executes browser automation steps using Playwright.
+    Agent 9 node: Executes browser automation steps using persistent Playwright session.
     """
     t0 = time.time()
     steps = state.get("execution_plan", [])
     browser_steps = [s for s in steps if s.get("executor") == "browser"]
+    conv_id = state.get("conversation_id", "default_session")
 
     emit_agent_started(state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE, f"Executing {len(browser_steps)} browser operation(s)...")
 
-    executor = BrowserExecutor(headless=True)
+    # Retrieve or instantiate persistent session page for this conversation
+    session_mgr = BrowserSessionManager()
+    page = session_mgr.get_or_create_page(conv_id)
+
     try:
         executed_results: List[Dict[str, Any]] = []
         overall_ok = True
@@ -44,26 +56,63 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
             emit_agent_progress(state, AGENT_ID, AGENT_NAME, GROUP_ID, f"Executing browser action: {title}...")
 
             res: Dict[str, Any] = {}
+
             if action == "navigate":
-                res = executor.navigate(url=params.get("url", "https://github.com"))
+                url = params.get("url", "https://www.google.com")
+                res = NavigationEngine.navigate(page, url=url)
+                res["verification"] = BrowserVerificationEngine.verify_page_state(page, url_substring=url.split("//")[-1].split("/")[0])
+
+            elif action == "search":
+                q = params.get("query", "")
+                custom_sel = params.get("selector")
+                res = SearchEngine.execute_search(page, query=q, custom_selector=custom_sel)
+
             elif action == "click":
-                res = executor.click(
-                    selector=params.get("selector", ""),
+                res = InteractionEngine.click(
+                    page,
+                    selector=params.get("selector"),
                     name=params.get("name"),
                     role=params.get("role")
                 )
+
+            elif action == "click_first_result":
+                res = InteractionEngine.click_first_result(page)
+
+            elif action == "go_back":
+                res = NavigationEngine.go_back(page)
+
             elif action == "fill_form":
-                res = executor.fill_form(
+                res = InteractionEngine.fill_form(
+                    page,
                     selector_or_label=params.get("field") or params.get("selector", ""),
                     text=params.get("text", ""),
                     is_secret=params.get("is_secret", False)
                 )
-            elif action == "download_file":
-                res = executor.download_file(
-                    trigger_selector=params.get("trigger_selector"),
-                    direct_url=params.get("direct_url"),
-                    target_dir=params.get("target_dir")
-                )
+
+            elif action == "youtube_search_and_play":
+                q = params.get("query", "")
+                res = YouTubeAdapter.execute_full_search_and_play(page, query=q)
+
+            elif action == "youtube_search":
+                q = params.get("query", "")
+                res = YouTubeAdapter.search_song_or_video(page, query=q)
+
+            elif action == "youtube_click_first":
+                res = YouTubeAdapter.click_first_video(page)
+
+            elif action == "instagram_reels":
+                res = InstagramAdapter.navigate_reels(page)
+
+            elif action == "instagram_open":
+                res = InstagramAdapter.open_home(page)
+
+            elif action == "google_search":
+                q = params.get("query", "")
+                res = GoogleAdapter.search(page, query=q)
+
+            elif action == "google_click_top":
+                res = GoogleAdapter.click_top_result(page)
+
             else:
                 res = {"success": True, "action": action, "info": f"Completed {action}"}
 
@@ -76,7 +125,7 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
                 break
 
         duration = round(time.time() - t0, 2)
-        status_text = "All browser actions executed." if overall_ok else "Browser operation halted on error."
+        status_text = "All browser actions executed." if overall_ok else "Browser operation encountered an issue."
 
         emit_agent_completed(
             state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE,
@@ -90,9 +139,15 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
         prev_browser.extend(executed_results)
         prev_results["browser_results"] = prev_browser
 
+        # Record verification results
+        verif_results = state.get("verification_results") or {}
+        verif_results["browser_verified"] = overall_ok
+        verif_results["all_verified"] = overall_ok and verif_results.get("desktop_verified", True)
+
         return {
             "current_agent": AGENT_ID,
-            "automation_results": prev_results
+            "automation_results": prev_results,
+            "verification_results": verif_results
         }
 
     except Exception as e:
@@ -102,5 +157,3 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
             "current_agent": AGENT_ID,
             "errors": [f"Browser execution failed: {e}"]
         }
-    finally:
-        executor.close()

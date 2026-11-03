@@ -70,7 +70,7 @@ def answer_synthesis_agent_node(state: CentralGraphState) -> Dict[str, Any]:
             prompt=user_prompt,
             system_prompt=system_prompt,
             temperature=0.2,
-            num_predict=2048
+            num_predict=512
         )
 
         duration = round(time.time() - t0, 2)

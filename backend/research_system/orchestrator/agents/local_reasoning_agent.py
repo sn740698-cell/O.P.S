@@ -117,7 +117,7 @@ def local_reasoning_agent_node(state: CentralGraphState) -> Dict[str, Any]:
             prompt=f"User Query:\n{query}\n\nProvide a comprehensive, authoritative explanation.",
             system_prompt=system_prompt,
             temperature=0.2,
-            num_predict=2048
+            num_predict=512
         )
 
         duration = round(time.time() - t0, 2)

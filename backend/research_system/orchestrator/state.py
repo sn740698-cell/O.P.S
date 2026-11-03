@@ -12,6 +12,7 @@ class CentralGraphState(TypedDict, total=False):
     conversation_id: str
     request_id: str
     user_query: str
+    conversation_history: List[Dict[str, Any]]
 
     # Routing and Classifications
     task_type: str              # 'ANSWER' | 'AUTOMATION' | 'COMPOSITE' | 'CLARIFICATION'

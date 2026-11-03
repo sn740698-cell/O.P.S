@@ -193,6 +193,93 @@ def classify_request_mode(
     words = q_lower.split()
 
     # =========================================================================
+    # 0. Conversation History & Follow-Up Directives Inspection
+    # =========================================================================
+    recent_text = ""
+    if conversation_history:
+        recent_turns = conversation_history[-6:]
+        recent_text = " ".join([str(m.get("content", "") or m.get("text", "")) for m in recent_turns]).lower()
+
+    has_recent_youtube = "youtube" in recent_text or "song" in recent_text or "video" in recent_text or "watch" in recent_text
+    has_recent_instagram = "instagram" in recent_text or "reels" in recent_text
+    has_recent_browser = has_recent_youtube or has_recent_instagram or "google" in recent_text or "browser" in recent_text or "website" in recent_text
+
+    # Follow-up: "open the first result", "click the first result", "open first result"
+    if any(q_lower == v or q_lower.startswith(v) for v in [
+        "open the first result", "click the first result", "open first result",
+        "click first result", "play the first result", "play first result", "open the first one"
+    ]):
+        return _build_router_result(
+            task_type=TASK_AUTOMATION,
+            active_engine=ENGINE_AUTOMATION,
+            mode=MODE_BROWSER_AUTO,
+            intent="BROWSER_CLICK_FIRST_RESULT",
+            goal=f"Click top result in active browser tab: {q}",
+            requires_web=False,
+            requires_llm=False,
+            reason="Conversational follow-up targeting first result on active browser page.",
+            search_query="",
+            confidence=0.99,
+            t_start=t_start
+        )
+
+    # Follow-up: "go back to previous results", "go back", "back"
+    if any(q_lower == v or q_lower.startswith(v) for v in [
+        "go back to the previous results", "go back to previous results", "go back", "previous results", "back to results"
+    ]):
+        return _build_router_result(
+            task_type=TASK_AUTOMATION,
+            active_engine=ENGINE_AUTOMATION,
+            mode=MODE_BROWSER_AUTO,
+            intent="BROWSER_NAVIGATE_BACK",
+            goal=f"Traverse back in browser history: {q}",
+            requires_web=False,
+            requires_llm=False,
+            reason="Conversational follow-up to return to previous browser page.",
+            search_query="",
+            confidence=0.99,
+            t_start=t_start
+        )
+
+    # Follow-up: "now search for another song", "search for another song", "now search for ..."
+    if (has_recent_browser or "result" in recent_text or "open" in recent_text or "first" in recent_text or "song" in q_lower or "video" in q_lower or q_lower.startswith("now search for ") or q_lower.startswith("now search ")) and (
+        q_lower.startswith("now search for ") or
+        q_lower.startswith("search for another ") or
+        q_lower.startswith("now search ") or
+        ("search for " in q_lower and ("another" in q_lower or "song" in q_lower or "video" in q_lower or "result" in q_lower))
+    ):
+        return _build_router_result(
+            task_type=TASK_AUTOMATION,
+            active_engine=ENGINE_AUTOMATION,
+            mode=MODE_BROWSER_AUTO,
+            intent="BROWSER_FOLLOWUP_SEARCH",
+            goal=f"Execute follow-up search in active browser session: {q}",
+            requires_web=False,
+            requires_llm=False,
+            reason="Conversational follow-up search in active browser workflow.",
+            search_query="",
+            confidence=0.98,
+            t_start=t_start
+        )
+
+    # Follow-up when active context was YouTube/media and user provides song query (e.g. "Perfect by Ed Sheeran")
+    if has_recent_youtube and (" by " in q_lower or len(words) <= 5) and not any(q_lower.startswith(w) for w in ["what ", "who ", "why ", "when ", "how ", "explain "]):
+        if any(w in q_lower for w in [" by ", "feat", "ft.", "song", "remix"]) or (len(words) <= 4 and not any(w in q_lower for w in ["yes", "no", "ok", "okay", "sure", "cancel"])):
+            return _build_router_result(
+                task_type=TASK_AUTOMATION,
+                active_engine=ENGINE_AUTOMATION,
+                mode=MODE_BROWSER_AUTO,
+                intent="BROWSER_FOLLOWUP_SEARCH_AND_PLAY",
+                goal=f"Search and play requested media in active browser session: {q}",
+                requires_web=False,
+                requires_llm=False,
+                reason="Conversational continuation for media query in active browser session.",
+                search_query="",
+                confidence=0.98,
+                t_start=t_start
+            )
+
+    # =========================================================================
     # 1. Ambiguity / Clarification Detection (Section 3.A #4)
     # =========================================================================
     vague_directives = [
@@ -201,6 +288,22 @@ def classify_request_mode(
         "do that now", "start it", "fix it", "make it happen"
     ]
     if q_lower in vague_directives or (len(words) <= 3 and any(v == q_lower for v in ["do that", "open it", "run it", "click it", "delete it"])):
+        # If there's recent browser context, resolve rather than asking clarification
+        if has_recent_browser and q_lower in ["open it", "run it", "click it"]:
+            return _build_router_result(
+                task_type=TASK_AUTOMATION,
+                active_engine=ENGINE_AUTOMATION,
+                mode=MODE_BROWSER_AUTO,
+                intent="BROWSER_CLICK_FIRST_RESULT",
+                goal=f"Click active item in browser: {q}",
+                requires_web=False,
+                requires_llm=False,
+                reason="Resolved pronoun directive using active browser context.",
+                search_query="",
+                confidence=0.95,
+                t_start=t_start
+            )
+
         clarification_q = "Could you please specify which application, website, file, or target action you would like me to execute?"
         return _build_router_result(
             task_type=TASK_CLARIFICATION,
@@ -304,20 +407,37 @@ def classify_request_mode(
                 approval_reason=approval_reason
             )
 
-        # B. Browser Automation Signals (YouTube, Google search, websites, web forms)
-        browser_destinations = ["youtube", "google", "wikipedia", "github.com", "reddit", "twitter", "x.com", "linkedin", "amazon", "netflix", "instagram"]
+        # B. Browser Automation Signals (YouTube, Google search, Instagram, websites, web forms)
+        browser_destinations = [
+            "youtube", "google", "instagram", "reels", "wikipedia",
+            "github.com", "reddit", "twitter", "x.com", "linkedin", "amazon", "netflix",
+            "chrome", "google chrome", "browser", "web browser"
+        ]
         has_browser_site = any(site in q_lower for site in browser_destinations)
-        has_browser_explicit = any(w in q_lower for w in ["in browser", "in my browser", "in the browser", "web browser", "open website", "navigate to", "fill out form"])
-        has_browser_search = bool(re.search(r"^\bsearch\s+google\s+for\b", q_lower)) or bool(re.search(r"\bsearch\s+in\s+google\b", q_lower))
+        has_browser_explicit = any(w in q_lower for w in ["in browser", "in my browser", "in the browser", "web browser", "open website", "navigate to", "fill out form", "take me to"])
+        has_browser_search = (
+            bool(re.search(r"^\bsearch\s+(?:google|youtube|instagram)\s+for\b", q_lower)) or
+            bool(re.search(r"\bsearch\s+in\s+(?:google|youtube|instagram)\b", q_lower)) or
+            bool(re.search(r"\bsearch\s+for\s+.*?\s+on\s+(?:youtube|google|instagram)\b", q_lower)) or
+            bool(re.search(r"\bsearch\s+for\s+a\s+song\b", q_lower)) or
+            bool(re.search(r"^\bsearch\s+google\s+for\b", q_lower)) or
+            bool(re.search(r"^\bsearch\s+youtube\s+for\b", q_lower))
+        )
 
         is_browser_automation = False
         if has_browser_search:
             is_browser_automation = True
-        elif has_browser_site and any(q_lower.startswith(w) for w in ["open ", "launch ", "go to ", "navigate to ", "visit "]):
+        elif "take me to" in q_lower and any(w in q_lower for w in ["reels", "instagram", "youtube", "google", "website", "page"]):
             is_browser_automation = True
-        elif has_browser_explicit and any(q_lower.startswith(w) for w in ["open ", "navigate to ", "go to ", "visit ", "search "]):
+        elif has_browser_site and any(q_lower.startswith(w) for w in ["open ", "launch ", "go to ", "navigate to ", "visit ", "take me to "]):
+            is_browser_automation = True
+        elif has_browser_explicit and any(q_lower.startswith(w) for w in ["open ", "navigate to ", "go to ", "visit ", "search ", "take me to "]):
             is_browser_automation = True
         elif any(q_lower.startswith(w) for w in ["navigate to https://", "navigate to http://"]):
+            is_browser_automation = True
+        elif "youtube" in q_lower and any(w in q_lower for w in ["search", "play", "first result", "open"]):
+            is_browser_automation = True
+        elif "instagram" in q_lower and any(w in q_lower for w in ["reels", "open", "go to", "show"]):
             is_browser_automation = True
 
         if is_browser_automation:
