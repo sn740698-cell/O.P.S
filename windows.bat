@@ -8,15 +8,36 @@ CD /D "%ROOT_DIR%"
 
 echo ======================================================================
 echo           O.P.S. 2.0 [Over-Engineered Programmed System]              
-echo      Unified Launcher: LangGraph Web Research & Cockpit UI            
+echo      Unified Launcher: LangGraph Web Research ^& Cockpit UI            
 echo ======================================================================
 echo.
+
+:: ----------------------------------------------------------------------
+:: 0. Check Core Prerequisites (Python & Node.js)
+:: ----------------------------------------------------------------------
+where python >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Python was not found on your system PATH!
+    echo Please install Python 3.11+ and ensure 'Add to PATH' is checked.
+    echo.
+    pause
+    exit /b 1
+)
+
+where npm >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Node.js / npm was not found on your system PATH!
+    echo Please install Node.js and ensure npm is added to your PATH.
+    echo.
+    pause
+    exit /b 1
+)
 
 :: ----------------------------------------------------------------------
 :: 1. Check Ollama Local Model Server (Port 11434)
 :: ----------------------------------------------------------------------
 echo [1/4] Verifying Ollama Engine...
-netstat -ano | findstr :11434 >nul
+curl.exe -s http://127.0.0.1:11434/ >nul 2>&1
 if not errorlevel 1 (
     echo       Ollama server is active on http://127.0.0.1:11434
 ) else (
@@ -24,7 +45,7 @@ if not errorlevel 1 (
     where ollama >nul 2>&1
     if not errorlevel 1 (
         start "Ollama Engine" /min ollama serve
-        timeout /t 3 /nobreak >nul
+        ping 127.0.0.1 -n 4 >nul
     ) else (
         echo       [WARN] Ollama command not found on PATH. Ensure Ollama is running.
     )
@@ -34,51 +55,69 @@ if not errorlevel 1 (
 :: 2. Check Database Service (PostgreSQL 18 / SQLite Fallback)
 :: ----------------------------------------------------------------------
 echo [2/4] Verifying Database Layer...
-netstat -ano | findstr :5432 >nul
+netstat -ano | findstr :5432 >nul 2>&1
 if not errorlevel 1 (
     echo       PostgreSQL service is active on port 5432.
 ) else (
-    if exist "D:\Program Files\program Files (postgreSQL)\18\bin\postgres.exe" (
-        echo       Launching PostgreSQL 18 background engine...
-        start "O.P.S PostgreSQL" /min "D:\Program Files\program Files (postgreSQL)\18\bin\postgres.exe" -D "D:\Program Files\program Files (postgreSQL)\18\data"
-        timeout /t 2 /nobreak >nul
-    ) else (
-        echo       PostgreSQL not detected. Backend will use SQLite WAL fallback.
-    )
+    echo       PostgreSQL service not active. Backend will use SQLite WAL fallback: ops2_research.sqlite3.
 )
 
 :: ----------------------------------------------------------------------
 :: 3. Launch Django LangGraph Backend (Port 8000)
 :: ----------------------------------------------------------------------
-echo [3/4] Launching O.P.S. 2.0 Backend (Django + LangGraph Engine)...
-netstat -ano | findstr :8000 >nul
+echo [3/4] Launching O.P.S. 2.0 Backend: Django + LangGraph Engine...
+curl.exe -s http://127.0.0.1:8000/api/health/ >nul 2>&1
 if not errorlevel 1 (
     echo       Django backend is already running on http://127.0.0.1:8000
 ) else (
-    if exist "%ROOT_DIR%backend\venv\Scripts\activate.bat" (
-        start "O.P.S 2.0 Backend (Django + LangGraph)" cmd /k "cd /d "%ROOT_DIR%backend" && call "%ROOT_DIR%backend\venv\Scripts\activate.bat" && python manage.py runserver 0.0.0.0:8000"
+    pushd "%ROOT_DIR%backend"
+    if exist "venv\Scripts\activate.bat" (
+        start "O.P.S 2.0 Backend - Django LangGraph" cmd /k "call venv\Scripts\activate.bat && python manage.py runserver 0.0.0.0:8000"
     ) else (
-        start "O.P.S 2.0 Backend (Django + LangGraph)" cmd /k "cd /d "%ROOT_DIR%backend" && python manage.py runserver 0.0.0.0:8000"
+        start "O.P.S 2.0 Backend - Django LangGraph" cmd /k python manage.py runserver 0.0.0.0:8000
     )
+    popd
 )
 
 :: ----------------------------------------------------------------------
 :: 4. Launch React Cockpit Frontend (Vite Port 3000)
 :: ----------------------------------------------------------------------
-echo [4/4] Launching O.P.S. 2.0 Cockpit Frontend (Vite)...
-netstat -ano | findstr :3000 >nul
+echo [4/4] Launching O.P.S. 2.0 Cockpit Frontend: Vite...
+curl.exe -s http://localhost:3000/ >nul 2>&1
 if not errorlevel 1 (
     echo       Vite frontend is already running on http://localhost:3000
 ) else (
-    start "O.P.S 2.0 Frontend (Vite Cockpit)" cmd /k "cd /d "%ROOT_DIR%frontend" && npm run dev"
+    pushd "%ROOT_DIR%frontend"
+    start "O.P.S 2.0 Frontend - Vite Cockpit" cmd /k npm run dev
+    popd
 )
 
 :: ----------------------------------------------------------------------
 :: 5. Launch Main Browser Application & Native Desktop Cockpit Overlay
 :: ----------------------------------------------------------------------
-echo [5/5] Launching Browser Application & Native Cockpit Overlay...
-echo Waiting for servers to initialize...
-timeout /t 3 /nobreak >nul
+echo [5/5] Launching Browser Application ^& Native Cockpit Overlay...
+echo Waiting for backend and frontend services to be ready...
+
+set WAIT_COUNT=0
+:WAIT_LOOP
+set /a WAIT_COUNT+=1
+if %WAIT_COUNT% gtr 15 goto READY_NOW
+
+curl.exe -s http://127.0.0.1:8000/api/health/ >nul 2>&1
+if errorlevel 1 (
+    ping 127.0.0.1 -n 2 >nul
+    goto WAIT_LOOP
+)
+
+curl.exe -s http://localhost:3000/ >nul 2>&1
+if errorlevel 1 (
+    ping 127.0.0.1 -n 2 >nul
+    goto WAIT_LOOP
+)
+
+:READY_NOW
+echo       Services initialized and responding!
+ping 127.0.0.1 -n 2 >nul
 
 :: Launch Main Application in Default Web Browser (Full Dashboard & Management)
 start http://localhost:3000
