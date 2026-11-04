@@ -74,7 +74,7 @@ if not errorlevel 1 (
     if exist "venv\Scripts\activate.bat" (
         start "O.P.S 2.0 Backend - Django LangGraph" cmd /k "call venv\Scripts\activate.bat && python manage.py runserver 0.0.0.0:8000"
     ) else (
-        start "O.P.S 2.0 Backend - Django LangGraph" cmd /k python manage.py runserver 0.0.0.0:8000
+        start "O.P.S 2.0 Backend - Django LangGraph" cmd /k "python manage.py runserver 0.0.0.0:8000"
     )
     popd
 )
@@ -88,7 +88,7 @@ if not errorlevel 1 (
     echo       Vite frontend is already running on http://localhost:3000
 ) else (
     pushd "%ROOT_DIR%frontend"
-    start "O.P.S 2.0 Frontend - Vite Cockpit" cmd /k npm run dev
+    start "O.P.S 2.0 Frontend - Vite Cockpit" cmd /k "npm run dev"
     popd
 )
 
@@ -101,7 +101,7 @@ echo Waiting for backend and frontend services to be ready...
 set WAIT_COUNT=0
 :WAIT_LOOP
 set /a WAIT_COUNT+=1
-if %WAIT_COUNT% gtr 15 goto READY_NOW
+if %WAIT_COUNT% gtr 30 goto TIMEOUT_CHECK
 
 curl.exe -s http://127.0.0.1:8000/api/health/ >nul 2>&1
 if errorlevel 1 (
@@ -115,15 +115,36 @@ if errorlevel 1 (
     goto WAIT_LOOP
 )
 
+goto READY_NOW
+
+:TIMEOUT_CHECK
+echo.
+echo [WARNING] One or more services took longer than 30 seconds to respond:
+curl.exe -s http://127.0.0.1:8000/api/health/ >nul 2>&1
+if errorlevel 1 (
+    echo   - Backend (Port 8000): NOT RESPONDING yet. (Check backend console window)
+) else (
+    echo   - Backend (Port 8000): ONLINE
+)
+curl.exe -s http://localhost:3000/ >nul 2>&1
+if errorlevel 1 (
+    echo   - Frontend (Port 3000): NOT RESPONDING yet. (Check frontend console window)
+) else (
+    echo   - Frontend (Port 3000): ONLINE
+)
+echo Proceeding with launch...
+goto LAUNCH_TARGETS
+
 :READY_NOW
 echo       Services initialized and responding!
 ping 127.0.0.1 -n 2 >nul
 
+:LAUNCH_TARGETS
 :: Launch Main Application in Default Web Browser (Full Dashboard & Management)
-start http://localhost:3000
+start "" "http://localhost:3000"
 
 :: Launch Separate Pop-up Cockpit as Native Desktop Overlay Window
-start "O.P.S 2.0 Desktop Cockpit Overlay" python -m desktop_overlay.main --frontend-url "http://localhost:3000/?mode=cockpit"
+start "O.P.S 2.0 Desktop Cockpit Overlay" cmd /k "python -m desktop_overlay.main --frontend-url http://localhost:3000/?mode=cockpit"
 
 echo.
 echo ======================================================================
