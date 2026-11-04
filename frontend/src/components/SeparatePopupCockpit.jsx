@@ -299,8 +299,9 @@ export default function SeparatePopupCockpit() {
             }
 
             // Agent Execution Status Events
-            if (parsed.event_type === 'AGENT_STARTED') {
-              if (parsed.component_name) setActiveAgent(parsed.component_name);
+            if (parsed.event_type === 'AGENT_STARTED' || parsed.event_type === 'AGENT_PROGRESS' || parsed.event_type === 'NODE_STARTED') {
+              const agentLabel = parsed.component_name || parsed.agent_name || parsed.node_id;
+              if (agentLabel) setActiveAgent(agentLabel);
               if (parsed.active_engine) setActiveEngine(parsed.active_engine);
               if (parsed.response_mode) setActiveMode(parsed.response_mode);
               if (parsed.current_stage) setCurrentStage(parsed.current_stage);
@@ -668,6 +669,7 @@ export default function SeparatePopupCockpit() {
       setIsLoading(false);
       setCurrentThought('');
       setStreamingChunk('');
+      setActiveAgent('');
     }
   };
 

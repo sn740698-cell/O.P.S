@@ -26,6 +26,7 @@ JS_HEAVY_PATTERNS = [
 # High-authority domains for technical & factual grounding
 HIGH_AUTHORITY_PATTERNS = [
     "docs.", "devguide.", "developer.", "blog.", "github.com",
+    "djangoproject.com", "fastapi.tiangolo.com",
     "python.org", "langchain.com", "huggingface.co", "wikipedia.org",
     "arxiv.org", "pypi.org", "mozilla.org", "microsoft.com", "google.com"
 ]

@@ -398,12 +398,18 @@ class DesktopExecutor:
         except Exception as e:
             return {"success": False, "action": "create_folder", "error": str(e)}
 
-    def save_file(self, title: str, file_path: str) -> Dict[str, Any]:
+    def save_file(self, title: str, file_path: str, expected_content: Optional[str] = None) -> Dict[str, Any]:
         """
         Saves the document in an editor (such as Notepad) to a specified file path.
+        Properly separates target directory from filename to guarantee Windows file dialog compatibility.
+        Navigates directory via address bar, enters ONLY filename into File name field, handles overwrites,
+        and verifies saved file existence and content.
         """
-        expanded = os.path.expanduser(file_path)
-        os.makedirs(os.path.dirname(expanded), exist_ok=True)
+        expanded = os.path.abspath(os.path.expanduser(file_path))
+        target_dir = os.path.dirname(expanded)
+        filename = os.path.basename(expanded)
+        os.makedirs(target_dir, exist_ok=True)
+
         conn = self.connect_window(title)
         if not conn.get("success"):
             return conn
@@ -411,6 +417,7 @@ class DesktopExecutor:
         try:
             win = self._active_window
             win.set_focus()
+            time.sleep(0.3)
             # Send Ctrl+S to trigger Save or Save As dialog
             win.type_keys("^s")
             time.sleep(0.8)
@@ -422,27 +429,85 @@ class DesktopExecutor:
             except Exception:
                 pass
 
-            if save_dialog and save_dialog.exists():
+            if not (save_dialog and save_dialog.exists()):
+                # Check top-level windows on desktop if modal was detached
                 try:
-                    save_dialog.type_keys(expanded, with_spaces=True)
-                    time.sleep(0.4)
-                    save_dialog.type_keys("{ENTER}")
-                    time.sleep(0.8)
+                    from pywinauto import Desktop
+                    desktop = Desktop(backend=self.default_backend)
+                    for w in desktop.windows():
+                        w_title = w.window_text()
+                        if "save as" in w_title.lower() or "save" in w_title.lower():
+                            save_dialog = w
+                            break
                 except Exception:
                     pass
 
-            verif = AutomationVerifier.verify_file_exists(expanded, min_size=0, timeout=3.0)
-            if not verif.get("verified", False):
-                # Ensure the file exists on disk as safety fallback
-                if not os.path.exists(expanded):
-                    with open(expanded, "a", encoding="utf-8") as f:
+            if save_dialog and save_dialog.exists():
+                try:
+                    save_dialog.set_focus()
+                    time.sleep(0.3)
+
+                    # 1. Navigate to target directory using address bar (Ctrl+L or Alt+D)
+                    try:
+                        save_dialog.type_keys("^l")
+                        time.sleep(0.3)
+                        save_dialog.type_keys(target_dir, with_spaces=True)
+                        time.sleep(0.2)
+                        save_dialog.type_keys("{ENTER}")
+                        time.sleep(0.6)
+                    except Exception as e_nav:
+                        logger.warning(f"Address bar navigation notice: {e_nav}")
+
+                    # 2. Focus File name field using universal Alt+N shortcut
+                    save_dialog.type_keys("%n")
+                    time.sleep(0.3)
+                    save_dialog.type_keys("^a{BACKSPACE}")
+                    time.sleep(0.2)
+                    save_dialog.type_keys(filename, with_spaces=True)
+                    time.sleep(0.3)
+                    save_dialog.type_keys("{ENTER}")
+                    time.sleep(1.0)
+
+                    # 3. Handle potential overwrite confirmation dialog (Alt+Y for Yes)
+                    try:
+                        confirm_dialog = save_dialog.child_window(title_re=".*Confirm.*|.*already exists.*", control_type="Window")
+                        if confirm_dialog.exists():
+                            confirm_dialog.type_keys("%y")
+                            time.sleep(0.5)
+                    except Exception:
                         pass
-                verif = AutomationVerifier.verify_file_exists(expanded, min_size=0, timeout=2.0)
+                except Exception as e_dlg:
+                    logger.warning(f"Save As dialog interaction notice: {e_dlg}")
+
+            # Verify file exists on disk
+            verif = AutomationVerifier.verify_file_exists(expanded, min_size=0, timeout=4.0)
+
+            # Verification: Read back saved file contents and compare
+            content_verified = True
+            content_preview = ""
+            if verif.get("verified", False) and os.path.exists(expanded):
+                try:
+                    with open(expanded, "r", encoding="utf-8", errors="replace") as f:
+                        read_text = f.read()
+                        content_preview = read_text[:200]
+                        if expected_content and expected_content.strip():
+                            content_verified = expected_content.strip() in read_text
+                except Exception as e_read:
+                    logger.warning(f"Content readback verification notice: {e_read}")
+            elif not verif.get("verified", False):
+                content_verified = False
+
+            overall_success = verif.get("verified", False) and content_verified
 
             return {
-                "success": verif.get("verified", False),
+                "success": overall_success,
                 "action": "save_file",
                 "file_path": expanded,
+                "target_directory": target_dir,
+                "filename": filename,
+                "file_exists": verif.get("verified", False),
+                "content_verified": content_verified,
+                "content_preview": content_preview,
                 "verification": verif
             }
         except Exception as e:

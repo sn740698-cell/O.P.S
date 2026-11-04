@@ -58,17 +58,39 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
         executed_results: List[Dict[str, Any]] = []
         overall_ok = True
 
+        if not browser_steps:
+            emit_agent_failed(state, AGENT_ID, AGENT_NAME, GROUP_ID, "No browser automation steps were planned or found.")
+            return {
+                "current_agent": AGENT_ID,
+                "automation_results": {"browser_results": []},
+                "verification_results": {"browser_verified": False, "all_verified": False},
+                "errors": ["No browser automation steps were planned or executed."]
+            }
+
         for step in browser_steps:
             action = step.get("action", "")
             params = step.get("params", {})
             title = step.get("title", f"Step {step.get('step_id')}")
+            raw_query = state.get("user_query", "")
 
             emit_agent_progress(state, AGENT_ID, AGENT_NAME, GROUP_ID, f"Executing browser action: {title}...")
 
             res: Dict[str, Any] = {}
 
             if action == "navigate":
-                url = params.get("url", "https://www.google.com")
+                url = params.get("url") or params.get("target_url") or params.get("destination")
+                if not url:
+                    q_low = raw_query.lower()
+                    if "django" in q_low:
+                        url = "https://docs.djangoproject.com/en/stable/"
+                    elif "youtube" in q_low:
+                        url = "https://www.youtube.com"
+                    elif "instagram" in q_low:
+                        url = "https://www.instagram.com"
+                    elif "python" in q_low:
+                        url = "https://www.python.org"
+                    else:
+                        url = "https://www.google.com"
                 res = NavigationEngine.navigate(page, url=url)
                 res["verification"] = BrowserVerificationEngine.verify_page_state(page, url_substring=url.split("//")[-1].split("/")[0])
 
@@ -175,14 +197,23 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
                 break
 
         duration = round(time.time() - t0, 2)
-        status_text = "All browser actions executed." if overall_ok else "Browser operation encountered an issue."
+        has_real_actions = len(executed_results) > 0 and any(r.get("success", False) for r in executed_results)
+        overall_ok = overall_ok and has_real_actions
 
-        emit_agent_completed(
-            state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE,
-            status_text,
-            output_summary=f"Executed: {len(executed_results)}/{len(browser_steps)} steps in {duration}s",
-            duration_s=duration
-        )
+        if overall_ok:
+            status_text = "All browser actions executed and verified."
+            emit_agent_completed(
+                state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE,
+                status_text,
+                output_summary=f"Executed and verified: {len(executed_results)}/{len(browser_steps)} steps in {duration}s",
+                duration_s=duration
+            )
+        else:
+            status_text = "Browser automation failed: no actions completed or postcondition verification failed."
+            emit_agent_failed(
+                state, AGENT_ID, AGENT_NAME, GROUP_ID,
+                status_text
+            )
 
         prev_results = state.get("automation_results") or {}
         prev_browser = prev_results.get("browser_results", [])

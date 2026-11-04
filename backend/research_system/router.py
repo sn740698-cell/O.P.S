@@ -651,13 +651,27 @@ def _build_router_result(
         ]
         required_tools = ["DuckDuckGoSearch", "PlaywrightBrowser", "PywinautoDesktop", "AutomationVerifier"]
     elif task_type == TASK_AUTOMATION:
-        required_agents = [
-            "global_intent_router", "task_understanding_planner", "automation_planner",
-            "hitl_safety_controller",
-            "browser_automation_executor" if mode == MODE_BROWSER_AUTO else "desktop_automation_executor",
-            "verification_recovery_agent", "result_formatter_agent"
-        ]
-        required_tools = ["PlaywrightBrowser"] if mode == MODE_BROWSER_AUTO else ["PywinautoDesktop", "AutomationVerifier"]
+        if mode == MODE_HYBRID_AUTO:
+            required_agents = [
+                "global_intent_router", "task_understanding_planner", "automation_planner",
+                "hitl_safety_controller", "browser_automation_executor", "desktop_automation_executor",
+                "verification_recovery_agent", "result_formatter_agent"
+            ]
+            required_tools = ["PlaywrightBrowser", "PywinautoDesktop", "AutomationVerifier"]
+        elif mode == MODE_BROWSER_AUTO:
+            required_agents = [
+                "global_intent_router", "task_understanding_planner", "automation_planner",
+                "hitl_safety_controller", "browser_automation_executor",
+                "verification_recovery_agent", "result_formatter_agent"
+            ]
+            required_tools = ["PlaywrightBrowser", "AutomationVerifier"]
+        else:
+            required_agents = [
+                "global_intent_router", "task_understanding_planner", "automation_planner",
+                "hitl_safety_controller", "desktop_automation_executor",
+                "verification_recovery_agent", "result_formatter_agent"
+            ]
+            required_tools = ["PywinautoDesktop", "AutomationVerifier"]
     else:  # ANSWER
         if mode == MODE_WEB:
             required_agents = ["global_intent_router", "task_understanding_planner", "web_research_agent", "evidence_validation_agent", "answer_synthesis_agent", "result_formatter_agent"]

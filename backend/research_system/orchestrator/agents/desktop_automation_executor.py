@@ -12,6 +12,7 @@ from typing import Dict, Any, List
 from research_system.orchestrator.state import CentralGraphState
 from research_system.orchestrator.agents.base import emit_agent_started, emit_agent_progress, emit_agent_completed, emit_agent_failed
 from automation_system.executors.desktop_executor import DesktopExecutor
+from automation_system.executors.file_system_executor import FileSystemExecutor
 
 logger = logging.getLogger("OPS.Agent.DesktopExecutor")
 
@@ -74,9 +75,25 @@ def desktop_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
                     control_id=params.get("control_id")
                 )
             elif action in ["save_file", "save_as"]:
+                exp_content = params.get("expected_content") or params.get("text")
                 res = executor.save_file(
                     title=params.get("title", "Notepad"),
-                    file_path=params.get("path") or params.get("file_path", "")
+                    file_path=params.get("path") or params.get("file_path", ""),
+                    expected_content=exp_content
+                )
+            elif action in ["create_file", "write_file"]:
+                res = FileSystemExecutor.create_file(
+                    path=params.get("path") or params.get("file_path", ""),
+                    content=params.get("content", ""),
+                    overwrite=params.get("overwrite", True)
+                )
+            elif action in ["delete_file", "remove_file"]:
+                res = FileSystemExecutor.delete_file(
+                    path=params.get("path") or params.get("file_path", "")
+                )
+            elif action in ["delete_folder", "remove_folder"]:
+                res = FileSystemExecutor.delete_folder(
+                    path=params.get("path") or params.get("folder_path", "")
                 )
             elif action == "click_element" or action == "click_button":
                 res = executor.click_button(

@@ -86,12 +86,12 @@ class AutomationPlanner:
         q_lower = query.lower()
 
         # Hybrid Signals: mentions downloading/scraping web AND opening/editing desktop application
-        has_browser_kw = any(w in q_lower for w in ["browser", "website", "web", "url", "download", "github", "http://", "https://", "form", "page", "youtube", "google"])
-        has_desktop_kw = any(w in q_lower for w in ["notepad", "vscode", "vs code", "code", "desktop", "folder", "directory", "word", "explorer", "window", "calc", "calculator", "app", "application", "extract", "installer"])
+        has_browser_kw = any(w in q_lower for w in ["browser", "chrome", "website", "web", "url", "download", "github", "http://", "https://", "form", "page", "youtube", "google", "docs", "documentation", "navigate"])
+        has_desktop_kw = any(w in q_lower for w in ["notepad", "vscode", "vs code", "code", "desktop", "folder", "directory", "word", "explorer", "window", "calc", "calculator", "app", "application", "extract", "installer", "save as", "save to", "save it"])
 
         if has_browser_kw and has_desktop_kw:
             # Check if it connects web action with desktop action
-            if any(w in q_lower for w in ["and open", "then open", "extract and", "open in", "download and", "organize"]):
+            if any(w in q_lower for w in ["and open", "then open", "extract and", "open in", "download and", "organize", "and save", "save it", "save as", "save to", "write the actual", "write the url", "then"]):
                 return MODE_HYBRID, "Task requires browser action followed by Windows desktop action."
 
         # Desktop priority if desktop app or local system is targeted
@@ -845,6 +845,8 @@ class AutomationPlanner:
                     "requires_approval": False
                 }
             elif is_dms:
+                m_user = re.search(r'(?:open\s+(?:conversation\s+with\s+|chat\s+with\s+|conversation\s+)?|with\s+)([a-zA-Z0-9_\.\-]+)$', query.strip(" .!?"), re.IGNORECASE)
+                user_contact = m_user.group(1).strip() if m_user and m_user.group(1).lower() not in ["dms", "messages", "inbox", "conversation"] else None
                 steps = [
                     {
                         "step_id": 1,
@@ -858,14 +860,38 @@ class AutomationPlanner:
                         "verification": {"type": "browser_page_state"}
                     }
                 ]
+                if user_contact:
+                    steps.append({
+                        "step_id": 2,
+                        "title": f"Open Instagram conversation with '{user_contact}'",
+                        "executor": "browser",
+                        "action": "instagram_open_conversation",
+                        "params": {"username": user_contact},
+                        "depends_on": [1],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "browser_page_state"}
+                    })
+                    if any(w in q_lower for w in ["read", "read messages", "show messages"]):
+                        steps.append({
+                            "step_id": 3,
+                            "title": f"Read visible messages in conversation with '{user_contact}'",
+                            "executor": "browser",
+                            "action": "instagram_read_messages",
+                            "params": {"username": user_contact},
+                            "depends_on": [2],
+                            "risk_level": RISK_LOW,
+                            "status": "PENDING",
+                            "verification": {"type": "browser_page_state"}
+                        })
                 return {
                     "status": "READY",
                     "automation_mode": MODE_BROWSER,
-                    "mode_reason": "Deterministic browser workflow for Instagram Direct Messages.",
+                    "mode_reason": f"Deterministic browser workflow for Instagram Direct Messages{' with ' + user_contact if user_contact else ''}.",
                     "steps": steps,
                     "target_apps": ["Playwright Browser (Instagram)"],
                     "risk_level": RISK_LOW,
-                    "requires_approval": False
+                    "requires_approval": True
                 }
 
             is_reels = "reels" in q_lower
@@ -894,9 +920,9 @@ class AutomationPlanner:
                 "requires_approval": False
             }
 
-        # 11. Browser: Search Google ("Search Google for ...")
+        # 11. Browser: Search Google ("Search Google for ...", "Open Google and search for ...")
         if "google" in q_lower and any(w in q_lower for w in ["search", "look up", "find"]):
-            search_term = re.sub(r'^(?:please\s+)?(?:can\s+you\s+)?(?:search\s+google\s+for|search\s+for|google)\s+', '', query, flags=re.IGNORECASE).strip()
+            search_term = re.sub(r'^(?:please\s+)?(?:can\s+you\s+)?(?:open\s+google\s+(?:and\s+)?(?:search\s+for|search)|search\s+google\s+for|search\s+for|google)\s+', '', query, flags=re.IGNORECASE).strip(" \"'.,;:!?")
             steps = [
                 {
                     "step_id": 1,
@@ -1025,7 +1051,14 @@ class AutomationPlanner:
             if url_match:
                 target_url = url_match.group(0)
 
-            out_filename = "django_docs_url.txt" if is_django else "web_reference.txt"
+            # Explicitly parse destination filename from query
+            out_filename = "OPS_Hybrid_Automation_Test.txt" if "OPS_Hybrid_Automation_Test" in query else ("django_docs_url.txt" if is_django else "web_reference.txt")
+            m_fn = re.search(r'(?:as|to|name(?:d)?)\s+([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)', query, re.IGNORECASE)
+            if m_fn:
+                out_filename = m_fn.group(1).strip()
+            elif re.search(r'([a-zA-Z0-9_\-]+\.txt)', query, re.IGNORECASE):
+                out_filename = re.search(r'([a-zA-Z0-9_\-]+\.txt)', query, re.IGNORECASE).group(1).strip()
+
             out_file_path = os.path.join(os.path.expanduser("~/Desktop"), out_filename)
 
             steps = [

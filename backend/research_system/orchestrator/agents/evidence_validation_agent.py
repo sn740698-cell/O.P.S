@@ -51,13 +51,22 @@ def evidence_validation_agent_node(state: CentralGraphState) -> Dict[str, Any]:
         is_sufficient = len(valid_chunks) > 0 or len(sources) > 0
         evidence_status = "VALIDATED" if is_sufficient else "INSUFFICIENT"
 
+        # Collect textual excerpts from verified passages for synthesis grounding
+        valid_passages = []
+        for ch in valid_chunks[:6]:
+            txt = ch.get("chunk_text") or ch.get("text") or ""
+            if txt and len(txt.strip()) > 30:
+                valid_passages.append(txt.strip())
+
         validated_data = {
             "is_sufficient": is_sufficient,
             "evidence_status": evidence_status,
             "valid_chunks_count": len(valid_chunks),
+            "valid_passages": valid_passages,
+            "valid_chunks": valid_chunks[:6],
             "validated_sources": sources,
             "has_contradictions": contradictions_found,
-            "validation_score": 0.92 if is_sufficient else 0.2
+            "validation_score": 0.95 if is_sufficient else 0.2
         }
 
         # Emit EVIDENCE_VALIDATED event for frontend telemetry

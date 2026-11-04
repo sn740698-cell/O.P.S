@@ -38,25 +38,38 @@ def answer_synthesis_agent_node(state: CentralGraphState) -> Dict[str, Any]:
     try:
         ollama_client = get_ollama_client()
 
-        # Build context prompt
+        # Build context prompt with verified crawled passages and sources
+        valid_passages = validated_evidence.get("valid_passages", [])
         context_parts = []
-        if local_output:
-            context_parts.append(f"### Local Analytical Reasoning:\n{local_output}")
 
         if sources:
             source_lines = []
             for i, s in enumerate(sources, 1):
                 source_lines.append(f"[{i}] {s.get('title')} ({s.get('url')}):\n{s.get('snippet')}")
-            context_parts.append("### Verified Web Research Evidence:\n" + "\n\n".join(source_lines))
+            context_parts.append("### Verified Web Research Sources:\n" + "\n\n".join(source_lines))
+
+        if valid_passages:
+            passages_text = "\n---\n".join(valid_passages[:5])
+            context_parts.append("### Verified Retrieved Page Excerpts:\n" + passages_text)
+
+        if local_output and answering_mode == "HYBRID":
+            context_parts.append(f"### Local Analytical Reasoning (for qualitative synthesis):\n{local_output}")
 
         joined_context = "\n\n".join(context_parts) if context_parts else "No external evidence retrieved."
 
         system_prompt = (
-            "You are the Answer Synthesis Agent for O.P.S. 2.0. "
-            "Synthesize a clear, authoritative, and factually grounded response for the user's query. "
-            "Integrate both analytical insights and external facts seamlessly. "
-            "Use inline bracketed citations [1], [2] when referencing external research facts. "
-            "Maintain an articulate, confident, and professional technical tone."
+            "You are the Answer Synthesis Agent for O.P.S. 2.0 (Over-Engineered Programmed System).\n"
+            "Synthesize an articulate, factually accurate, and rigorously grounded response.\n"
+            "STRICT FACTUAL GROUNDING RULES:\n"
+            "1. Ground all version numbers, release dates, and technical details strictly on the retrieved web research passages.\n"
+            "2. NEVER invent or hallucinate release numbers, publication dates, benchmarks, or URLs.\n"
+            "3. If asked for the latest version or release of software (such as Django), use the exact version stated in the official documentation or release notes. Never use outdated pre-training memory.\n"
+            "4. For technical comparisons (e.g. Django vs FastAPI):\n"
+            "   - Separate official feature facts from qualitative analysis.\n"
+            "   - Label performance conclusions as qualitative unless empirical, verified benchmark evidence is retrieved.\n"
+            "   - NEVER invent requests-per-second numbers or arbitrary benchmark figures.\n"
+            "5. Use inline bracketed citations [1], [2] when referencing external research facts.\n"
+            "6. Maintain a calm, articulate, confident JARVIS-style technical persona."
         )
 
         user_prompt = (

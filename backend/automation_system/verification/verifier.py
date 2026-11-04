@@ -190,6 +190,63 @@ class AutomationVerifier:
         }
 
     @classmethod
+    def verify_file_content(cls, file_path: str, expected_content_substr: str, timeout: float = 4.0) -> Dict[str, Any]:
+        """
+        Verifies that a file contains the expected text content.
+        """
+        t0 = time.time()
+        expanded_path = os.path.abspath(os.path.expanduser(file_path))
+        while time.time() - t0 < timeout:
+            if os.path.exists(expanded_path) and os.path.isfile(expanded_path):
+                try:
+                    with open(expanded_path, "r", encoding="utf-8", errors="replace") as f:
+                        text = f.read()
+                        if expected_content_substr.strip() in text:
+                            return {
+                                "verified": True,
+                                "verification_type": "file_content",
+                                "target": expanded_path,
+                                "matched_snippet": expected_content_substr[:100],
+                                "duration_s": round(time.time() - t0, 2)
+                            }
+                except Exception:
+                    pass
+            time.sleep(0.3)
+
+        return {
+            "verified": False,
+            "verification_type": "file_content",
+            "target": expanded_path,
+            "error": f"Expected content was not found in '{expanded_path}' within {timeout}s.",
+            "duration_s": round(time.time() - t0, 2)
+        }
+
+    @classmethod
+    def verify_file_deleted(cls, file_path: str, timeout: float = 3.0) -> Dict[str, Any]:
+        """
+        Verifies that a file has been deleted and no longer exists on disk.
+        """
+        t0 = time.time()
+        expanded_path = os.path.abspath(os.path.expanduser(file_path))
+        while time.time() - t0 < timeout:
+            if not os.path.exists(expanded_path):
+                return {
+                    "verified": True,
+                    "verification_type": "file_deleted",
+                    "target": expanded_path,
+                    "duration_s": round(time.time() - t0, 2)
+                }
+            time.sleep(0.2)
+
+        return {
+            "verified": False,
+            "verification_type": "file_deleted",
+            "target": expanded_path,
+            "error": f"Target file '{expanded_path}' still exists after deletion attempt.",
+            "duration_s": round(time.time() - t0, 2)
+        }
+
+    @classmethod
     def verify_web_page(cls, page_title: Optional[str] = None, url_pattern: Optional[str] = None, page_obj = None) -> Dict[str, Any]:
         """
         Verifies that a Playwright browser page loaded successfully.
