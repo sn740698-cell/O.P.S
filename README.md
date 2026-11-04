@@ -23,31 +23,28 @@ Whether you need complex programming logic, verified live web intelligence, hand
 
 ## 📸 User Interface Gallery
 
-| **Ambient Operating System Dashboard** | **Standalone Draggable Pop-up Cockpit** |
+| **Ambient Operating System Dashboard** | **13-Component Agent Topology Canvas** |
 | :---: | :---: |
-| ![Main Dashboard](assets/screenshots/dashboard_main.png) | ![Pop-up Cockpit HUD](assets/screenshots/popup_cockpit_hud.png) |
-| *Full-screen mission control with Tri-Model telemetry & Ops Heart* | *Tactical floating HUD with dynamic resizing and hotkey toggle* |
+| ![Ambient OS Dashboard](assets/screenshots/dashboard_main.png) | ![Agent Topology](assets/screenshots/agent_orchestration_topology.png) |
+| *Full-screen mission control with Tri-Model telemetry & Ops Heart* | *Live HTML5 canvas with neural axons and glint telemetry* |
 
-| **13-Component Agent Topology Canvas** | **Real-Time Agent Inspector Modal** |
+| **Desktop Automation (Pywinauto)** | **Browser Automation (Playwright)** |
 | :---: | :---: |
-| ![Agent Topology](assets/screenshots/agent_orchestration_topology.png) | ![Agent Inspector](assets/screenshots/agent_inspector_modal.png) |
-| *Live HTML5 canvas with neural axons and glint telemetry* | *Deep execution logs, parameters, and assigned models* |
+| ![Desktop Automation](assets/screenshots/desktop_automation_notepad.png) | ![Browser Automation](assets/screenshots/browser_automation_youtube.png) |
+| *Native Windows Notepad launch, keyboard actuation & verification* | *Playwright Chromium navigation, YouTube search & playback* |
 
-| **Temporary Document RAG Intelligence** | **Web Research with Verified Citations** |
+| **Temporary Document RAG Intelligence** | **Standalone Pop-up Cockpit HUD** |
 | :---: | :---: |
-| ![Document RAG](assets/screenshots/temporary_document_rag.png) | ![Web Research](assets/screenshots/web_research_sources.png) |
-| *Grounded PDF & Word QA with explicit page references* | *Multi-source scraping with upstream evidence validation* |
-
-| **Desktop Automation (Pywinauto)** | **Human-in-the-Loop Safety Gate** |
-| :---: | :---: |
-| ![Desktop Automation](assets/screenshots/desktop_automation.png) | ![HITL Safety Approval](assets/screenshots/hitl_safety_approval.png) |
-| *Native Windows application launch & window verification* | *Intercepts destructive actions & confirms session refreshes* |
+| ![Temporary Document RAG](assets/screenshots/temporary_document_rag.png) | ![Pop-up Cockpit HUD](assets/screenshots/popup_cockpit_answering_modes.png) |
+| *Grounded Word & PDF QA with Pinecone vector retrieval* | *Continuous desktop overlay with LLM & Web modes* |
 
 ---
 
 ## 🤖 The 13 Canonical Multi-Agents
 
 At the heart of O.P.S. is a centralized, stateful **LangGraph multi-agent architecture** organized across four specialized operational groups:
+
+![13-Agent Orchestration Topology](assets/screenshots/agent_orchestration_topology.png)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -138,16 +135,32 @@ At the heart of O.P.S. is a centralized, stateful **LangGraph multi-agent archit
 ## 🚀 Core Capabilities
 
 ### 1. 💡 Answering Engine (3 Adaptive Modes)
+
+![Pop-up Cockpit HUD Answering Modes](assets/screenshots/popup_cockpit_answering_modes.png)
+
 - **LLM Mode**: Uses the local `Qwen3 1.7B` model for instant, completely offline answers to conceptual, mathematical, and programming queries. Zero telemetry leaves your machine.
 - **Web Mode**: Discovers fresh external intelligence via DuckDuckGo and asynchronous web scrapers, cross-verifies facts, and delivers structured answers with clickable references.
 - **Hybrid Mode**: Simultaneously forks execution to local reasoning and live web research, converging at the synthesizer to produce deep, context-rich analysis grounded in current facts.
 
 ### 2. 🤖 Dual-Engine Workstation Automation
-- **Desktop Automation (Pywinauto)**: Hands-free control over native Windows software (`Notepad`, `Calculator`, `File Explorer`, system dialogs, custom applications).
-- **Browser Automation (Playwright)**: Headless or headed Chromium automation capable of navigating complex modern web apps, clicking interactive controls, and downloading files.
-- **Hybrid & Composite Workflows**: Seamlessly executes cross-engine tasks, such as finding a release number online, downloading the installer in a browser, and launching it on your desktop.
+
+#### A. Desktop Automation (Pywinauto)
+Hands-free control over native Windows software (`Notepad`, `Calculator`, `File Explorer`, system dialogs, custom applications).
+
+![Desktop Automation Notepad](assets/screenshots/desktop_automation_notepad.png)
+
+#### B. Browser Automation (Playwright)
+Headless or headed Chromium automation capable of navigating complex modern web apps, clicking interactive controls, searching YouTube, playing requested media, and downloading files.
+
+![Browser Automation YouTube](assets/screenshots/browser_automation_youtube.png)
+
+#### C. Hybrid & Composite Workflows
+Seamlessly executes cross-engine tasks, such as finding a release number online, downloading the installer in a browser, and launching it on your desktop.
 
 ### 3. 📄 Temporary Document RAG with Pinecone
+
+![Temporary Document RAG Intelligence](assets/screenshots/temporary_document_rag.png)
+
 - **Supported Documents**: Accepts PDF (`.pdf`) and Microsoft Word (`.docx`, `.doc`) documents up to 25 MB directly through the Cockpit paperclip button.
 - **Local Dense Embeddings**: Generates 768-dimensional vector embeddings locally using `nomic-embed-text` in `~112 ms`.
 - **Serverless Vector Indexing**: Indexes chunks into conversation-isolated namespaces in Pinecone (`ops-temporary-rag`).
