@@ -33,8 +33,8 @@ COMPONENT_TYPE = "reasoning_agent"
 
 # Authoritative primary tech domains
 OFFICIAL_DOMAINS = [
-    "djangoproject.com", "python.org", "react.dev", "nodejs.org",
-    "fastapi.tiangolo.com", "postgresql.org", "pypi.org", "github.com",
+    "djangoproject.com", "django-rest-framework.org", "python.org", "react.dev",
+    "nodejs.org", "fastapi.tiangolo.com", "postgresql.org", "pypi.org", "github.com",
     "learn.microsoft.com", "developer.mozilla.org"
 ]
 

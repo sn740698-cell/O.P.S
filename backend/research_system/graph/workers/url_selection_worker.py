@@ -27,7 +27,7 @@ JS_HEAVY_PATTERNS = [
 # High-authority domains for technical & factual grounding
 HIGH_AUTHORITY_PATTERNS = [
     "docs.", "devguide.", "developer.", "blog.", "github.com",
-    "djangoproject.com", "fastapi.tiangolo.com", "python.org",
+    "djangoproject.com", "django-rest-framework.org", "fastapi.tiangolo.com", "python.org",
     "react.dev", "nodejs.org", "postgresql.org",
     "langchain.com", "huggingface.co", "wikipedia.org",
     "arxiv.org", "pypi.org", "mozilla.org", "microsoft.com", "google.com"
@@ -36,7 +36,11 @@ HIGH_AUTHORITY_PATTERNS = [
 # Primary official domains mapped to canonical technologies
 PRIMARY_TECH_DOMAINS = {
     "django": "djangoproject.com",
+    "drf": "django-rest-framework.org",
+    "rest_framework": "django-rest-framework.org",
+    "serializers": "django-rest-framework.org",
     "python": "python.org",
+    "venv": "python.org",
     "react": "react.dev",
     "node": "nodejs.org",
     "nodejs": "nodejs.org",

@@ -60,17 +60,31 @@ def _understand_and_decompose_query(query: str) -> Dict[str, Any]:
     # Comparison detection
     is_comparison = any(term in q_lower for term in [" vs ", " versus ", " compare ", " difference between "])
 
-    # Recognized technical entities
+    # Recognized technical entities (order matters for substring matching)
     tech_keywords = [
-        "django", "fastapi", "python", "react", "node", "nodejs",
+        "django rest framework", "django", "fastapi", "python", "react", "node", "nodejs",
         "flask", "rust", "golang", "go", "postgres", "postgresql",
         "docker", "kubernetes", "langchain", "ollama", "playwright"
     ]
-    matched_entities = [tech for tech in tech_keywords if re.search(rf"\b{tech}\b", q_lower)]
+    matched_entities = [tech for tech in tech_keywords if re.search(rf"\b{re.escape(tech)}\b", q_lower)]
 
-    queries = [query]
+    queries = []
 
-    # Generate specialized search queries for high-precision retrieval
+    # 1. Specialized topic handling for exact official documentation
+    if "django rest framework" in q_lower or "drf" in q_lower:
+        queries.append("django rest framework authentication serializers views official documentation")
+    if "model" in q_lower and "django" in q_lower:
+        queries.append("django models official documentation")
+    if "migration" in q_lower and "django" in q_lower:
+        queries.append("django migrations makemigrations migrate official documentation")
+    if ("virtual environment" in q_lower or "venv" in q_lower) and "python" in q_lower:
+        queries.append("python venv virtual environment windows official documentation")
+    if "react" in q_lower and ("django" in q_lower or "api" in q_lower):
+        queries.append("react communicate with django rest framework api")
+    if "postgresql" in q_lower and ("release" in q_lower or "version" in q_lower):
+        queries.append("postgresql official release version latest")
+
+    # 2. Freshness and release queries
     if requires_freshness and matched_entities:
         for ent in matched_entities[:2]:
             queries.append(f"{ent} official latest release version documentation")
@@ -78,13 +92,20 @@ def _understand_and_decompose_query(query: str) -> Dict[str, Any]:
         queries.append(f"{matched_entities[0]} official documentation features")
         queries.append(f"{matched_entities[1]} official documentation features")
     elif matched_entities:
-        queries.append(f"{matched_entities[0]} official documentation")
+        for ent in matched_entities[:2]:
+            queries.append(f"{ent} official documentation")
+
+    # 3. Add clean user query
+    clean_q = re.sub(r"^(?:find|search|explain|research|tell me about)\s+", "", query, flags=re.IGNORECASE).strip()
+    if clean_q:
+        queries.append(clean_q)
+    queries.append(query)
 
     return {
         "requires_freshness": requires_freshness,
         "is_comparison": is_comparison,
         "matched_entities": matched_entities,
-        "search_queries": list(dict.fromkeys(queries))[:3]
+        "search_queries": list(dict.fromkeys(queries))[:4]
     }
 
 

@@ -1,0 +1,267 @@
+{
+  "total_time_s": 336.65,
+  "pass_count": 10,
+  "partial_count": 0,
+  "tests": [
+    {
+      "test_id": "TEST_1",
+      "name": "Official Framework Documentation (Django Models)",
+      "status": "PASS",
+      "duration_s": 36.33,
+      "crawlee_executed": true,
+      "bs4_executed": true,
+      "urls_discovered": 4,
+      "pages_retrieved": 4,
+      "sources_count": 4,
+      "domains": [
+        "df.readthedocs.io",
+        "django.readthedocs.io",
+        "docs.djangoproject.com"
+      ],
+      "source_urls": [
+        "https://docs.djangoproject.com/",
+        "https://docs.djangoproject.com/en/6.1/topics/db/models/",
+        "https://django.readthedocs.io/en/latest/",
+        "https://df.readthedocs.io/en/stable/topics/db/models.html"
+      ],
+      "evidence_sufficiency": true,
+      "has_conflicts": false,
+      "answer_preview": "The official Django documentation for models is available at [S1] and [S2].  \n\n### **What is a Django Model?**  \nA Django model is the blueprint for your data, defining the structure of the data stored in the database. It specifies the fields (e.g., `name`, `email`), their data t...",
+      "full_answer": "The official Django documentation for models is available at [S1] and [S2].  \n\n### **What is a Django Model?**  \nA Django model is the blueprint for your data, defining the structure of the data stored in the database. It specifies the fields (e.g., `name`, `email`), their data types, and behaviors (e.g., constraints like `unique=True` or `null=False`). Models are the single definitive source of information about your data and map directly to a single database table [S2].  \n\n### **How to Define a Django Model**  \nModels are defined using Python classes that inherit from `models.Model`. For example:  \n```python\nfrom django.db import models\n\nclass BlogPost(models.Model):\n    title = models.CharField(max_length=200)\n    content = models.TextField()\n    published_date = models.DateTimeField(auto_now_add=True)\n``  \n- **Fields**: Each field represents a column in the database table. Example fields include `CharField`, `IntegerField`, `DateTimeField`, etc.  \n- **Constraints**: You can add constraints like `unique=True` or `null=False` to enforce rules (e.g., ensuring a user's email is unique).  \n\n### **Mapping to a Database Table**  \nEach model maps to a single database table. For instance, the `BlogPost` model creates a table named `blog_posts\n\n### Verified Sources & References\n- **[S1] Django documentation | Django documentation | Django** \u2014 https://docs.djangoproject.com/\n- **[S2] Models | Django documentation | Django** \u2014 https://docs.djangoproject.com/en/6.1/topics/db/models/\n- **[S3] Django documentation \u2014 Django 6.2.dev20261103210315 documentation** \u2014 https://django.readthedocs.io/en/latest/\n- **[S4] Models \u2014 Django 1.11.8 documentation** \u2014 https://df.readthedocs.io/en/stable/topics/db/models.html"
+    },
+    {
+      "test_id": "TEST_2",
+      "name": "Latest Software Release (Python)",
+      "status": "PASS",
+      "duration_s": 28.62,
+      "crawlee_executed": true,
+      "bs4_executed": true,
+      "urls_discovered": 4,
+      "pages_retrieved": 4,
+      "sources_count": 4,
+      "domains": [
+        "blog.python.org",
+        "www.python.org",
+        "devguide.python.org"
+      ],
+      "source_urls": [
+        "https://www.python.org/doc/versions/",
+        "https://devguide.python.org/versions/",
+        "https://www.python.org/downloads/latest/",
+        "https://blog.python.org/2026/10/python-31022-31117/"
+      ],
+      "evidence_sufficiency": true,
+      "has_conflicts": false,
+      "answer_preview": "Okay, let's tackle this query step by step. The user wants the latest stable Python release available today, along with the official release announcement and download links. They also mentioned visiting the official Python website, so I need to check the sources provided.\n\nFirst,...",
+      "full_answer": "Okay, let's tackle this query step by step. The user wants the latest stable Python release available today, along with the official release announcement and download links. They also mentioned visiting the official Python website, so I need to check the sources provided.\n\nFirst, looking at the verified research sources. There's [S2] which has a table of Python versions. The main branch is Python 3.16, but the latest stable version might be from the 3.15 series since that's the last one before end-of-life. The table shows 3.15 as the current version with a release date of October 2026. Wait, but [S3] mentions Python 3.15.2 with a release date of October 25, 2026. That's the latest maintenance release for 3.15.\n\nThe user asked for the latest stable version. Since 3.15 is still supported, and 3.16 is the main branch, but the latest stable would be 3.15.2. The official download page for Python 3.15.2 is mentioned in [S3], and the release date is October 25, 2026. However, the user might be looking for the latest version before that. Wait, but [S2] says the main branch is 3.16, and the latest release for each version is on the download page. So the latest stable would be 3.15.2 as per [S3].\n\nBut wait, there's also [S4] which mentions Python 3.10.22, 3.11.17, 3.12.15, 3.13.16, and 3.14.8 are available. But those are older versions. The user wants the latest stable, so 3.15.2 is the most recent. However, the release date in [S3] is October 25, 2026, which is in the future. But the user is asking for the latest available today. If the release date is in the future, then maybe the latest stable is 3.15.2, but it's not yet released. Wait, but the user might be considering that as the latest. However, the problem is that the release date in [S3] is October 25, 2026, which is in the future. So if today is 2023, then 3.15.2 hasn't been released yet. But the user is asking for the latest available today. So maybe the latest stable is 3.15.2, but it's not yet released. However, the user might be expecting the latest version that's already released. \n\nWait, looking at [S2], the table shows that 3.15 is the current branch with a release date of 2026-10-09. The maintenance release 3.15.2 is the second maintenance release, which would be released after the initial 3.15. So if the initial 3.15 was released in October 2026, then 3.15.2 would be the next one. But the user is asking for the latest available today. If the release date is in the future, then the latest stable would be the most recent version that's already been released. However, according to [S3], the 3.15.2 is the latest, but the release date is October 25, 2026. So\n\n### Verified Sources & References\n- **[S1] Python documentation by version | Python.org** \u2014 https://www.python.org/doc/versions/\n- **[S2] Status of Python versions** \u2014 https://devguide.python.org/versions/\n- **[S3] Python Release Python 3.15.2 | Python.org** \u2014 https://www.python.org/downloads/latest/\n- **[S4] Python 3.10.22, 3.11.17, 3.12.15, 3.13.16 and 3.14.8 are now available! | Python Insider** \u2014 https://blog.python.org/2026/10/python-31022-31117/"
+    },
+    {
+      "test_id": "TEST_3",
+      "name": "Official Release Notes (Django)",
+      "status": "PASS",
+      "duration_s": 28.58,
+      "crawlee_executed": true,
+      "bs4_executed": true,
+      "urls_discovered": 4,
+      "pages_retrieved": 4,
+      "sources_count": 4,
+      "domains": [
+        "docs.djangoproject.com",
+        "djangodocs.dev"
+      ],
+      "source_urls": [
+        "https://docs.djangoproject.com/en/6.1/releases/5.2/",
+        "https://docs.djangoproject.com/en/6.1/releases/",
+        "https://djangodocs.dev/en/6.0/releases/",
+        "https://djangodocs.dev/en/dev/releases/"
+      ],
+      "evidence_sufficiency": true,
+      "has_conflicts": false,
+      "answer_preview": "Okay, let's tackle this query. The user wants the latest stable Django release and its official release notes. They also want important new features, improvements, compatibility changes, security fixes, and the release note links.\n\nFirst, I need to check the verified sources. The...",
+      "full_answer": "Okay, let's tackle this query. The user wants the latest stable Django release and its official release notes. They also want important new features, improvements, compatibility changes, security fixes, and the release note links.\n\nFirst, I need to check the verified sources. The user provided several links, but the main one is [S1] which is the Django 5.2 release notes. However, the user mentioned \"latest stable\" so I should confirm if 5.2 is the latest. Wait, the current date isn't given, but based on the context, maybe the latest is 5.2. But I need to check if there's a newer version. However, the sources provided don't mention any newer versions beyond 5.2. The other sources like [S3] and [S4] are for Django 6.0 and dev docs, which are older.\n\nSo, assuming that the latest stable is Django 5.2, as per the given sources. Now, the user wants the release notes. The links provided in [S1] and [S2] are the official release notes for Django 5.2. The user also mentioned to use the exact version from official documentation. So, the answer should reference [S1] and [S2].\n\nNow, the important features. Let me look at the excerpt from [S1]. It mentions several new features. For example, the \"Django 5.2 introduces support for Python 3.11\" which is a major upgrade. Then there's the \"Enhanced performance with new optimizations in the ORM\" and \"Improved security with new protections against common vulnerabilities.\" Also, there's the \"New features in the admin interface\" and \"Better support for async programming.\"\n\nCompatibility changes: The release notes mention that Django 5.2 is compatible with Python 3.11, which is a key point. Also, any backwards-incompatible changes, like changes to the ORM or other modules.\n\nSecurity fixes: The release includes patches for vulnerabilities like CVE-2023-41776 and others. The user might be concerned about security, so highlighting those is important.\n\nThe release note links are [S1] and [S2], which are the official documentation pages. The user also mentioned to provide the actual links, so I should include those.\n\nI need to structure the answer with the latest version, then the features, compatibility, security, and the links. Make sure to cite the sources correctly. Also, check if there are any other changes in the release notes that are important. For example, the \"Django 5.2 introduces support for Python 3.11\" is a major point. Also, the \"Enhanced performance with new optimizations in the ORM\" and \"Improved security with new protections against common vulnerabilities.\"\n\nWait, the user asked for the latest stable, but if the sources don't mention a newer version, then 5.2 is the latest. So the answer should state that Django 5.2 is the latest stable, with the release notes from [S1] and [S2]. Also, note that the release notes are available at the provided links.\n\nI need to make sure all the points are covered and the citations are correct. Avoid any guesses, as per the rules. Also, check if there are any compatibility changes mentioned, like deprecation of certain features or changes in the API. The release notes should mention those as well.\n\nSo, putting it all together: the latest stable is Django 5.2, with release notes at [S1] and [S2]. Key features include Python 3.11 support, ORM optimizations, security patches, admin improvements, and async support. Compatibility\n\n### Verified Sources & References\n- **[S1] Django 5.2 release notes | Django documentation | Django** \u2014 https://docs.djangoproject.com/en/6.1/releases/5.2/\n- **[S2] Release notes | Django documentation | Django** \u2014 https://docs.djangoproject.com/en/6.1/releases/\n- **[S3] Release notes \u2014 Django 6.0 documentation** \u2014 https://djangodocs.dev/en/6.0/releases/\n- **[S4] Release notes \u2014 Django dev documentation** \u2014 https://djangodocs.dev/en/dev/releases/"
+    },
+    {
+      "test_id": "TEST_4",
+      "name": "Multiple Official Sources (Django vs FastAPI)",
+      "status": "PASS",
+      "duration_s": 53.93,
+      "crawlee_executed": true,
+      "bs4_executed": true,
+      "urls_discovered": 4,
+      "pages_retrieved": 4,
+      "sources_count": 4,
+      "domains": [
+        "docs.djangoproject.com",
+        "fastapi.tiangolo.com",
+        "readthedocs.org"
+      ],
+      "source_urls": [
+        "https://docs.djangoproject.com/",
+        "https://fastapi.tiangolo.com/features/",
+        "https://docs.djangoproject.com/en/6.1/intro/overview/",
+        "https://readthedocs.org/projects/django/downloads/pdf/latest/"
+      ],
+      "evidence_sufficiency": true,
+      "has_conflicts": false,
+      "answer_preview": "### Comparison of Django and FastAPI  \n\n#### **1. Architecture**  \n- **Django**: A full-stack framework designed for building robust web applications. It follows a **MVC (Model-View-Controller)** architecture, with a built-in ORM (Object-Rel\n\n### Verified Sources & References\n- *...",
+      "full_answer": "### Comparison of Django and FastAPI  \n\n#### **1. Architecture**  \n- **Django**: A full-stack framework designed for building robust web applications. It follows a **MVC (Model-View-Controller)** architecture, with a built-in ORM (Object-Rel\n\n### Verified Sources & References\n- **[S1] Django documentation | Django documentation | Django** \u2014 https://docs.djangoproject.com/\n- **[S2] Features - FastAPI** \u2014 https://fastapi.tiangolo.com/features/\n- **[S3] Django at a glance | Django documentation | Django** \u2014 https://docs.djangoproject.com/en/6.1/intro/overview/\n- **[S4] Web Page** \u2014 https://readthedocs.org/projects/django/downloads/pdf/latest/"
+    },
+    {
+      "test_id": "TEST_5",
+      "name": "Technical Troubleshooting (Python venv on Windows)",
+      "status": "PASS",
+      "duration_s": 28.61,
+      "crawlee_executed": true,
+      "bs4_executed": true,
+      "urls_discovered": 4,
+      "pages_retrieved": 4,
+      "sources_count": 4,
+      "domains": [
+        "docs.python.org",
+        "www.openpython.org",
+        "packaging.python.org"
+      ],
+      "source_urls": [
+        "https://docs.python.org/3/tutorial/venv.html",
+        "https://docs.python.org/3/library/venv.html",
+        "https://www.openpython.org/articles/python-virtual-environments-pip-guide",
+        "https://packaging.python.org/specifications/virtual-environments/"
+      ],
+      "evidence_sufficiency": true,
+      "has_conflicts": false,
+      "answer_preview": "Python virtual environments are isolated environments for managing project dependencies, ensuring that packages installed in one environment do not interfere with others. They are created using the `venv` module, which is part of Python's standard library [S1]. Here's a step-by-s...",
+      "full_answer": "Python virtual environments are isolated environments for managing project dependencies, ensuring that packages installed in one environment do not interfere with others. They are created using the `venv` module, which is part of Python's standard library [S1]. Here's a step-by-step explanation of how to create, activate, deactivate, and use a virtual environment on Windows:\n\n---\n\n### **1. Creating a Virtual Environment**  \nTo create a virtual environment, run the following command in your terminal or command prompt:  \n```bash\npython -m venv <path-to-environment>\n```  \nFor example:  \n```bash\npython -m venv C:\\myenv\n```  \nThis creates a directory (`C:\\myenv`) containing a `Scripts` folder with the activated environment's Python interpreter and dependencies [S2].\n\n---\n\n### **2. Activating the Virtual Environment**  \nAfter creating the environment, activate it using the batch script provided in the `Scripts` folder:  \n```cmd\nC:\\myenv\\Scripts\\activate.bat\n```  \nThis changes the current shell prompt to indicate the active environment (e.g., `(myenv)`). The activation script also updates the system PATH to prioritize the environment's Python interpreter [S2].\n\n---\n\n### **3. Deactivating the Virtual Environment**  \nTo deactivate the environment, run:\n\n### Verified Sources & References\n- **[S1] 12. Virtual Environments and Packages \u2014 Python 3.15.2 documentation** \u2014 https://docs.python.org/3/tutorial/venv.html\n- **[S2] venv \u2014 Creation of virtual environments \u2014 Python 3.15.2 documentation** \u2014 https://docs.python.org/3/library/venv.html\n- **[S3] Python Virtual Environments Explained: venv, pip, and Requirements Files | OpenPython** \u2014 https://www.openpython.org/articles/python-virtual-environments-pip-guide\n- **[S4] Python Virtual Environments - Python Packaging User Guide** \u2014 https://packaging.python.org/specifications/virtual-environments/"
+    },
+    {
+      "test_id": "TEST_6",
+      "name": "Query Understanding and Relevance (React + DRF)",
+      "status": "PASS",
+      "duration_s": 29.75,
+      "crawlee_executed": true,
+      "bs4_executed": true,
+      "urls_discovered": 4,
+      "pages_retrieved": 4,
+      "sources_count": 4,
+      "domains": [
+        "github.com",
+        "www.geeksforgeeks.org",
+        "www.django-rest-framework.org"
+      ],
+      "source_urls": [
+        "https://www.geeksforgeeks.org/reactjs/how-to-connect-django-with-reactjs/",
+        "https://github.com/GRMaruf/Django-and-React-Connection",
+        "https://www.django-rest-framework.org/api-guide/authentication/",
+        "https://www.django-rest-framework.org/api-guide/serializers/"
+      ],
+      "evidence_sufficiency": true,
+      "has_conflicts": false,
+      "answer_preview": "The integration of Django REST Framework (DRF) with a React frontend involves structured authentication, data serialization, and API handling. Below is a detailed breakdown based on official documentation:\n\n---\n\n### **1. Authentication in Django REST Framework**  \nAuthentication ...",
+      "full_answer": "The integration of Django REST Framework (DRF) with a React frontend involves structured authentication, data serialization, and API handling. Below is a detailed breakdown based on official documentation:\n\n---\n\n### **1. Authentication in Django REST Framework**  \nAuthentication in DRF is **pluggable**, allowing developers to implement custom mechanisms (e.g., token-based, session-based, or OAuth). The core\n\n### Verified Sources & References\n- **[S1] How to Connect Django with Reactjs - GeeksforGeeks** \u2014 https://www.geeksforgeeks.org/reactjs/how-to-connect-django-with-reactjs/\n- **[S2] GitHub - GRMaruf/DRF-6-connect-react-and-perform-crud: A comprehensive guide to connect Django REST Framework (DRF) API services with a React frontend application. \u00b7 GitHub** \u2014 https://github.com/GRMaruf/Django-and-React-Connection\n- **[S3] Authentication - Django REST framework** \u2014 https://www.django-rest-framework.org/api-guide/authentication/\n- **[S4] Serializers - Django REST framework** \u2014 https://www.django-rest-framework.org/api-guide/serializers/"
+    },
+    {
+      "test_id": "TEST_7",
+      "name": "Specific Information Extraction (Django Migrations)",
+      "status": "PASS",
+      "duration_s": 22.06,
+      "crawlee_executed": true,
+      "bs4_executed": true,
+      "urls_discovered": 4,
+      "pages_retrieved": 4,
+      "sources_count": 4,
+      "domains": [
+        "docs.djangoproject.com",
+        "djx.readthedocs.io",
+        "www.geeksforgeeks.org"
+      ],
+      "source_urls": [
+        "https://docs.djangoproject.com/en/6.1/topics/db/models/",
+        "https://www.geeksforgeeks.org/python/django-basic-app-model-makemigrations-and-migrate/",
+        "https://docs.djangoproject.com/en/6.1/topics/migrations/",
+        "https://djx.readthedocs.io/en/stable/topics/migrations.html"
+      ],
+      "evidence_sufficiency": true,
+      "has_conflicts": false,
+      "answer_preview": "Django handles database migrations through a systematic process involving three key commands: `makemigrations`, `migrate`, and `showmigrations`. These commands manage the synchronization of model changes with the database schema. Here's a detailed breakdown:\n\n1. **`makemigrations...",
+      "full_answer": "Django handles database migrations through a systematic process involving three key commands: `makemigrations`, `migrate`, and `showmigrations`. These commands manage the synchronization of model changes with the database schema. Here's a detailed breakdown:\n\n1. **`makemigrations`**:  \n   This command generates new migration files based on changes to your models. When you modify a model (e.g., adding a field, deleting a field, or altering a foreign key), Django detects these changes and creates a migration file that defines the necessary database schema updates.  \n   - **Example**: If you add a `name` field to a `User` model, `makemigrations` creates a migration file (`user/migrations/0001_initial.py`) with the SQL or ORM commands to add the field.  \n   - **Citation**: [S1] (Django documentation on models).\n\n2. **`migrate`**:  \n   This command applies the generated migrations to the database\n\n### Verified Sources & References\n- **[S1] Models | Django documentation | Django** \u2014 https://docs.djangoproject.com/en/6.1/topics/db/models/\n- **[S2] Django App Model - Makemigrations and Migrate - GeeksforGeeks** \u2014 https://www.geeksforgeeks.org/python/django-basic-app-model-makemigrations-and-migrate/\n- **[S3] Migrations | Django documentation | Django** \u2014 https://docs.djangoproject.com/en/6.1/topics/migrations/\n- **[S4] Migrations \u2014 Django 1.11.8 documentation** \u2014 https://djx.readthedocs.io/en/stable/topics/migrations.html"
+    },
+    {
+      "test_id": "TEST_8",
+      "name": "Freshness and Outdated Information (Node.js LTS vs Current)",
+      "status": "PASS",
+      "duration_s": 23.84,
+      "crawlee_executed": true,
+      "bs4_executed": true,
+      "urls_discovered": 4,
+      "pages_retrieved": 4,
+      "sources_count": 4,
+      "domains": [
+        "nodejs.org",
+        "github.com",
+        "beta.docs.nodejs.org"
+      ],
+      "source_urls": [
+        "https://beta.docs.nodejs.org/",
+        "https://nodejs.org/en/about/previous-releases",
+        "https://nodejs.org/en/blog/release/v24.11.0",
+        "https://github.com/nodejs/node/releases"
+      ],
+      "evidence_sufficiency": true,
+      "has_conflicts": false,
+      "answer_preview": "Okay, let's tackle this query step by step. The user wants the current stable Node.js release, whether it's LTS or Current, its version and release info, and the difference between LTS and Current.\n\nFirst, I need to check the official sources. From S1, it mentions Node.js 26.13.0...",
+      "full_answer": "Okay, let's tackle this query step by step. The user wants the current stable Node.js release, whether it's LTS or Current, its version and release info, and the difference between LTS and Current.\n\nFirst, I need to check the official sources. From S1, it mentions Node.js 26.13.0 is the documentation page. But the user asked for the current stable release. Looking at S2, there's a table with versions. The latest entry in the table is v27, which is Alpha, and v26 is LTS released on May 5, 2026. Wait, but the user is asking for the current stable. If v26 is LTS and v27 is Alpha, then maybe the current stable is v26? But the table also has v24 as LTS, which is older.\n\nWait, S3 mentions Node.js 24.11.0 (LTS) with a release date of October 28, 2025. But the user is asking for the current stable. If the latest LTS is v26, then that's the current stable. However, the table in S2 shows v27 as Alpha, and v26 as LTS. So the current stable would be v26. But I need to confirm if v26 is still the latest.\n\nLooking at S2's table, the last entry is v24 (LTS) with a release date of May 6, 2025. Then v25 is EOL, v26 is LTS released on May 5, 2026. So the current stable would be v26. But wait, the user might be asking for the latest version, which is 26.13.0 as per S1. But the table in S2 shows v26 as LTS, and the documentation says 26.13.0. So maybe the current stable is 26.13.0, which is the latest version. But the table's last entry is v26 (LTS) with release date May 5, 2026. So the current stable would be v26, but the documentation says 26.13.0. Hmm, maybe the version number in S1 is 26.13.0, but the LTS is v26. So the current stable is 26.13.0 (LTS) as per the documentation.\n\nWait, the user's question is to find the current stable Node.js release. The latest LTS is v26, which is released on May 5, 2026. But the documentation says 26.13.0. So the version number is 26.13.0, and the release date is October 28, 2026? Wait, no. The table in S2 shows v26 as released on May 5, 2026, and the documentation says 26.13.0. So the current stable is 26.13.0 (LTS) with release date May 5, 2026. But the documentation's page [S1] mentions 26.13.0 as the latest version. So maybe the current stable is 26.13.0, which is the latest LTS version.\n\nThe difference between LTS and Current: LTS (Long Term Support) receives regular updates for a longer period, usually 2 years, while Current releases are more recent and receive updates for a shorter period, typically 6 months. The LTS\n\n### Verified Sources & References\n- **[S1] About this documentation | Node.js 26.13.0 Documentation** \u2014 https://beta.docs.nodejs.org/\n- **[S2] Node.js \u2014 Node.js Releases** \u2014 https://nodejs.org/en/about/previous-releases\n- **[S3] Node.js \u2014 Node.js 24.11.0 (LTS)** \u2014 https://nodejs.org/en/blog/release/v24.11.0\n- **[S4] Releases \u00b7 nodejs/node \u00b7 GitHub** \u2014 https://github.com/nodejs/node/releases"
+    },
+    {
+      "test_id": "TEST_9",
+      "name": "Conflicting Sources (PostgreSQL Releases)",
+      "status": "PASS",
+      "duration_s": 63.51,
+      "crawlee_executed": true,
+      "bs4_executed": true,
+      "urls_discovered": 4,
+      "pages_retrieved": 4,
+      "sources_count": 4,
+      "domains": [
+        "download.postgresql.org",
+        "www.postgresql.org",
+        "bucardo.org"
+      ],
+      "source_urls": [
+        "https://download.postgresql.org/pub/",
+        "https://www.postgresql.org/",
+        "https://www.postgresql.org/docs/release/19.0/",
+        "https://bucardo.org/postgres_all_versions"
+      ],
+      "evidence_sufficiency": true,
+      "has_conflicts": true,
+      "answer_preview": "Okay, let's tackle this query. The user wants to know the current stable PostgreSQL version and compare it with other sources. \n\nFirst, looking at the verified sources. S1 is the Index of /pub/ from the PostgreSQL download page. The latest entry under \"latest/\" is 13-Aug-2026 12:...",
+      "full_answer": "Okay, let's tackle this query. The user wants to know the current stable PostgreSQL version and compare it with other sources. \n\nFirst, looking at the verified sources. S1 is the Index of /pub/ from the PostgreSQL download page. The latest entry under \"latest/\" is 13-Aug-2026 12:53. That's the date for the latest release. But in S2, it says October 15, 2026, for PostgreSQL 19 RC 1. Wait, there's a discrepancy here. The latest version in S1 is 13-Aug-2026, but S2 mentions October 15, 2026. Hmm, need to check if those are different releases.\n\nLooking at S3, the release notes from PostgreSQL.org state that October 15, 2026, PostgreSQL 19 RC 1 was released. The latest version in S1 is 13-Aug-2026, which might be a different release. But the user asked for the current stable version. \n\nWait, the latest version in S1 is \"latest/\" with the date 13-Aug-2026. But S2 mentions October 15, 2026. Maybe there's a confusion between RC (Release Candidate) and the final release. The RC 1 is released on October 15, 2026, but the latest version in S1 is August 13, 2026. That might be a different version. \n\nSo, the current stable version would be the final release. But the latest version in S1 is 13-Aug-2026, which is a snapshot or a specific build. The official release notes from S2 mention October 15, 2026, as the release date for PostgreSQL 19 RC 1. \n\nWait, but the user is asking for the current stable version. If the latest version in S1 is August 13, 2026, and the official release notes say October 15, 2026, then there's a conflict. But maybe the latest version in S1 is a snapshot or a specific build, while the RC 1 is a different release. \n\nThe user needs to know which information is trusted. The official PostgreSQL website (S2) and the release notes (S3) state that PostgreSQL 19 RC 1 was released on October 15, 2026. However, the latest version in S1 is August 13, 2026. But the \"latest\" entry in S1 might be a specific build or a snapshot. \n\nWait, the \"latest\" directory in S1 has a date of 13-Aug-2026. The RC 1 is on October 15, 2026. So the latest stable version would be PostgreSQL 19, which was released on October 15, 2026. The \"latest\" in S1 might be a different version, perhaps a snapshot or a specific build. \n\nTherefore, the current stable version is PostgreSQL 19, released on October 15, 2026. The official sources (S2 and S3) confirm this. The S1 index might have older versions, but the latest release is the RC 1 from S2. \n\nSo the answer should state that the current stable version is PostgreSQL 19, released on October 15, 2026, as per official sources. The discrepancy in S1's latest date might be due\n\n### Verified Sources & References\n- **[S1] Index of /pub/** \u2014 https://download.postgresql.org/pub/\n- **[S2] PostgreSQL: The world's most advanced open source database** \u2014 https://www.postgresql.org/\n- **[S3] PostgreSQL: Release Notes** \u2014 https://www.postgresql.org/docs/release/19.0/\n- **[S4] Postgres Release Notes - All Versions** \u2014 https://bucardo.org/postgres_all_versions"
+    },
+    {
+      "test_id": "TEST_10",
+      "name": "Multi-Page Crawling and Structured Answer (React + DRF + Postgres)",
+      "status": "PASS",
+      "duration_s": 21.43,
+      "crawlee_executed": true,
+      "bs4_executed": true,
+      "urls_discovered": 4,
+      "pages_retrieved": 4,
+      "sources_count": 4,
+      "domains": [
+        "docs.djangoproject.com",
+        "github.com",
+        "www.geeksforgeeks.org",
+        "www.django-rest-framework.org"
+      ],
+      "source_urls": [
+        "https://github.com/GRMaruf/Django-and-React-Connection",
+        "https://www.django-rest-framework.org/api-guide/authentication/",
+        "https://docs.djangoproject.com/en/6.1/topics/serialization/",
+        "https://www.geeksforgeeks.org/reactjs/integrating-django-with-reactjs-using-django-rest-framework/"
+      ],
+      "evidence_sufficiency": true,
+      "has_conflicts": true,
+      "answer_preview": "Okay, let's tackle this user question. They want to know how a React app can communicate with a Django REST Framework API that uses PostgreSQL. I need to explain the request flow, backend processing, database interaction, and response flow, citing the official sources.\n\nFirst, I'...",
+      "full_answer": "Okay, let's tackle this user question. They want to know how a React app can communicate with a Django REST Framework API that uses PostgreSQL. I need to explain the request flow, backend processing, database interaction, and response flow, citing the official sources.\n\nFirst, I'll start by recalling the official documentation. The user provided several sources, so I should check each one for relevant info. \n\n[S1] is a GitHub repository with a guide on connecting React and Django DRF. The README mentions setting up CORS, which is crucial for communication between frontend and backend. The guide probably explains how to set up the API endpoints and handle CRUD operations. \n\n[S2] talks about authentication in DRF. The user needs to ensure that the React app sends proper authentication headers, like JWT tokens, to the Django backend. The authentication methods in DRF, such as SessionAuthentication or TokenAuthentication, are important here.\n\n[S3] is about serializing Django objects. The documentation mentions JSON and XML serializers, which are used when sending data from the backend to the frontend. The serializers would take the database models and convert them into JSON or XML for the React app to consume.\n\n[S4] is a GeeksforGeeks article that walks through integrating Django with React using DRF. It probably explains the steps like creating a Django model, setting up serializers, and configuring the API endpoints. The article might also mention how to handle database interactions, like using ORM queries to fetch data from PostgreSQL.\n\nNow, the request flow: The React app sends a request (like a POST for creating a new item) to the Django backend's API endpoint. The backend uses DRF's serializers to validate and serialize the incoming data. If authentication is required, the React app includes the necessary headers, such as a JWT token. The backend processes the data, checks if it's valid, and then interacts with PostgreSQL via the ORM to store or retrieve data. The response is sent back to the React app in the appropriate format (JSON, XML), which is then rendered on the frontend.\n\nI need to make sure each part of the flow is covered, citing the sources where applicable. For example, when talking about CORS, cite [S1], and when discussing authentication, cite [S2]. Also, mention the serializers from [S3]. The user might be a developer looking to set up their own API, so providing a clear step-by-step explanation with official references is key.\n\nWait, the user also asked for the actual official sources. So I need to make sure that each part of the answer is backed by the correct citations. Also, check if there are any specific details in the sources that are important. For instance, in [S1], the guide might have specific steps on setting up CORS and API endpoints. In [S4], the article might detail the actual code examples for serializers and views.\n\nI should structure the answer into sections: request flow, backend processing, database interaction, response flow. Each section will have a brief explanation with citations. Make sure to mention the exact methods used, like using DRF's serializers, authentication classes, and PostgreSQL ORM operations.\n\nAlso, note that the user mentioned PostgreSQL, so the database interaction part should explain how Django interacts with PostgreSQL. The ORM handles the database operations, and the serializers manage the data serialization. The backend processes the request, validates the data, and then queries the PostgreSQL database to retrieve or insert data.\n\nI need to avoid any guesses or inventing numbers. For example, if there's a specific version of Django or DRF mentioned in the sources, I should use that. But since the user provided sources without specific versions, I'll stick to the general information from the documents.\n\nFinally, ensure that all citations are correctly placed and that the answer is clear and\n\n### Verified Sources & References\n- **[S1] GitHub - GRMaruf/DRF-6-connect-react-and-perform-crud: A comprehensive guide to connect Django REST Framework (DRF) API services with a React frontend application. \u00b7 GitHub** \u2014 https://github.com/GRMaruf/Django-and-React-Connection\n- **[S2] Authentication - Django REST framework** \u2014 https://www.django-rest-framework.org/api-guide/authentication/\n- **[S3] Serializing Django objects | Django documentation | Django** \u2014 https://docs.djangoproject.com/en/6.1/topics/serialization/\n- **[S4] Integrating Django with Reactjs using Django REST Framework - GeeksforGeeks** \u2014 https://www.geeksforgeeks.org/reactjs/integrating-django-with-reactjs-using-django-rest-framework/"
+    }
+  ]
+}
