@@ -1,6 +1,6 @@
 # ⚡ O.P.S. 2.0 — Over-Engineered Programmed System
 
-> *"Your personal autonomous AI operating system built to do far more than it should."*
+> *"Your personal AI built to do more than it should."*
 
 ![O.P.S. Main Dashboard](assets/screenshots/dashboard_main.png)
 
@@ -9,9 +9,7 @@
 [![Django](https://img.shields.io/badge/Backend-Django%20REST-green?style=for-the-badge&logo=django)](https://www.djangoproject.com/)
 [![Ollama](https://img.shields.io/badge/Local%20Models-Qwen3%20%7C%20Ollama-purple?style=for-the-badge)](https://ollama.com/)
 [![Pinecone](https://img.shields.io/badge/Vector%20DB-Pinecone%20Serverless-black?style=for-the-badge)](https://www.pinecone.io/)
-[![Playwright](https://img.shields.io/badge/Browser%20Automation-Playwright%20Chromium-red?style=for-the-badge)](https://playwright.dev/)
-[![Pywinauto](https://img.shields.io/badge/Desktop%20Automation-Pywinauto%20Win32-blue?style=for-the-badge)](https://pywinauto.readthedocs.io/)
-[![HITL Safety Gate](https://img.shields.io/badge/Safety%20Gate-Zero--Trust%20HITL-emerald?style=for-the-badge)](https://github.com/sn740698-cell/O.P.S)
+[![Playwright](https://img.shields.io/badge/Automation-Playwright%20%2B%20Pywinauto-red?style=for-the-badge)](https://playwright.dev/)
 
 ---
 
@@ -19,88 +17,31 @@
 
 **O.P.S. (Over-Engineered Programmed System)** is a local-first, autonomous personal AI operating system engineered for your workstation. Unlike standard chatbots that only produce text, O.P.S. acts as an intelligent digital co-pilot capable of understanding natural language directives, selecting the optimal execution strategy, performing deep research, reasoning locally, and **autonomously executing tasks across Windows desktop software and web browsers**.
 
-Whether you need complex programming logic, verified live web intelligence, hands-free desktop automation, or temporary document analysis, O.P.S. handles it through a **stateful 13-component LangGraph multi-agent fleet** protected by a mandatory **Global Human-in-the-Loop (HITL) Approval Gate**, rendered in real time through an ultra-responsive, retro-futuristic **Pop-up Cockpit HUD** and full **Ambient OS Dashboard**.
+Whether you need complex programming logic, verified live web intelligence, hands-free desktop automation, or temporary document analysis, O.P.S. handles it through a **stateful 13-component LangGraph multi-agent fleet** and renders everything in real time through an ultra-responsive, retro-futuristic **Pop-up Cockpit HUD**.
 
 ---
 
-## 📸 Comprehensive Live UI & Execution Gallery
+## 📸 User Interface Gallery
 
-All screenshots below represent **real, live task executions** across every mode and engine in the running O.P.S. 2.0 system:
-
-### 1. The Six Core Execution Modes
-
-| **[Mode 01] LLM Reasoning Mode** | **[Mode 02] Web Research Mode** |
+| **Ambient Operating System Dashboard** | **Standalone Draggable Pop-up Cockpit** |
 | :---: | :---: |
-| ![LLM Mode](assets/screenshots/mode_1_llm_reasoning.png) | ![Web Mode](assets/screenshots/mode_2_web_research.png) |
-| *Local Qwen3 1.7B mathematical analysis of Multi-Head Attention complexity* | *Live web research on Django 5.1 & Python 3.13 with clickable citations* |
-
-| **[Mode 03] Hybrid Reasoning Mode** | **[Mode 04] Desktop Automation Mode** |
-| :---: | :---: |
-| ![Hybrid Mode](assets/screenshots/mode_3_hybrid_reasoning.png) | ![Desktop Mode](assets/screenshots/mode_4_desktop_automation.png) |
-| *Dual-branch local reasoning + web intelligence synthesis (PyTorch vs JAX)* | *Native Windows Notepad launch, keyboard actuation, and file persistence* |
-
-| **[Mode 05] Browser Automation Mode** | **[Mode 06] Hybrid Automation Mode** |
-| :---: | :---: |
-| ![Browser Mode](assets/screenshots/mode_5_browser_automation.png) | ![Hybrid Automation](assets/screenshots/mode_6_hybrid_automation.png) |
-| *Playwright Chromium navigation and organic Google search inspection* | *Cross-engine pipeline: browser documentation scraping ➔ desktop Notepad save* |
-
----
-
-### 2. Global Human-in-the-Loop (HITL) Security & Workspace Views
-
-| **Mandatory HITL Execution Approval Modal** | **Standalone Pop-up Cockpit Overlay HUD** |
-| :---: | :---: |
-| ![HITL Approval Modal](assets/screenshots/hitl_approval_modal_live.png) | ![Pop-up Cockpit HUD](assets/screenshots/popup_cockpit_hud.png) |
-| *Zero-trust gate: Action, Target, Plan, Input, & Expected Result with Accept/Deny* | *Tactical floating HUD with 8-axis dynamic resizing and hotkey toggle* |
+| ![Main Dashboard](assets/screenshots/dashboard_main.png) | ![Pop-up Cockpit HUD](assets/screenshots/popup_cockpit_hud.png) |
+| *Full-screen mission control with Tri-Model telemetry & Ops Heart* | *Tactical floating HUD with dynamic resizing and hotkey toggle* |
 
 | **13-Component Agent Topology Canvas** | **Real-Time Agent Inspector Modal** |
 | :---: | :---: |
 | ![Agent Topology](assets/screenshots/agent_orchestration_topology.png) | ![Agent Inspector](assets/screenshots/agent_inspector_modal.png) |
-| *Live HTML5 canvas with neural axons and glint telemetry* | *Deep execution telemetry, state parameters, and active model assignments* |
+| *Live HTML5 canvas with neural axons and glint telemetry* | *Deep execution logs, parameters, and assigned models* |
 
-| **Temporary Document RAG Intelligence** | **Conversation Wipe & Pinecone Clean** |
+| **Temporary Document RAG Intelligence** | **Web Research with Verified Citations** |
 | :---: | :---: |
-| ![Document RAG](assets/screenshots/temporary_document_rag.png) | ![Refresh Wipe](assets/screenshots/refresh_deletion_wipe.png) |
-| *Grounded PDF & Word QA with explicit page references* | *Confirmed ephemeral vector deletion (`vector_count == 0`)* |
+| ![Document RAG](assets/screenshots/temporary_document_rag.png) | ![Web Research](assets/screenshots/web_research_sources.png) |
+| *Grounded PDF & Word QA with explicit page references* | *Multi-source scraping with upstream evidence validation* |
 
----
-
-## 🛡️ Global Human-in-the-Loop (HITL) Approval Gate
-
-O.P.S. 2.0 enforces a strict **zero-trust security model** for all automation actions. Every action performed by an automation agent—whether ordinary (opening a URL, launching Calculator) or high-risk (file creation, deletion, code generation)—**must receive explicit user authorization prior to execution**.
-
-```
-┌────────────────────────────────────────────────────────┐
-│  ⚠️  HUMAN-IN-THE-LOOP // EXECUTION APPROVAL           │
-│                                                        │
-│  ACTION:    Open Google and perform an automated search│
-│  TARGET:    Website: https://www.google.com/           │
-│             Application: Google Chrome                 │
-│                                                        │
-│  PLAN:      1. Open Google Chrome                      │
-│             2. Navigate to https://www.google.com      │
-│             3. Enter search query 'OpenAI Sora'        │
-│             4. Verify results page rendered            │
-│                                                        │
-│  INPUT:     Search query: "OpenAI Sora"                │
-│  EXPECTED:  Search results rendered in active browser  │
-│                                                        │
-│     [ ACCEPT AND EXECUTE ]       [ DENY ] (Focused)    │
-└────────────────────────────────────────────────────────┘
-```
-
-### Security Architecture Highlights
-1. **Three-Layer Defense-in-Depth**:
-   - **LangGraph Routing Divergence**: Conditional edge `route_after_safety_controller` detours directly to `result_formatter_agent` when unapproved, bypassing executor nodes.
-   - **Executor Pre-flight Assertion**: Both `desktop_automation_executor` and `browser_automation_executor` verify `approval_status == "APPROVED"`. Any unapproved invocation immediately aborts.
-   - **Engine Guard**: In `AutomationService.execute_task`, tasks lacking `APPROVAL_APPROVED` are refused with `success: False`.
-2. **SHA-256 Plan Hash Integrity**:
-   - Every approval card generates a cryptographic hash of the query, targets, and operations.
-   - If an agent mutates the plan during execution, the hash becomes invalid, forcing a fresh HITL checkpoint.
-3. **Safe Denial Guarantee**:
-   - Clicking `[ DENY ]` halts execution immediately: zero windows open, zero browser tabs launch, and zero files are created. Returns `"O.P.S. execution cancelled. No automation actions were performed."`
-4. **Verified Against 13 Acceptance Criteria**:
-   - End-to-end test suite (`tests_validation/verify_global_hitl_approval_gate.py`) verifies Google Search, YouTube, Spotify, Instagram, Notepad, VS Code, File Creation, Destructive Deletion, Hybrid Workflows, DENY rejection, ACCEPT resumption, and Plan Mutation (**40 PASS | 0 FAIL**).
+| **Desktop Automation (Pywinauto)** | **Human-in-the-Loop Safety Gate** |
+| :---: | :---: |
+| ![Desktop Automation](assets/screenshots/desktop_automation.png) | ![HITL Safety Approval](assets/screenshots/hitl_safety_approval.png) |
+| *Native Windows application launch & window verification* | *Intercepts destructive actions & confirms session refreshes* |
 
 ---
 
@@ -132,96 +73,97 @@ At the heart of O.P.S. is a centralized, stateful **LangGraph multi-agent archit
 │ GROUP 04: COMPOSITE COORDINATION & DELIVERY                            │
 │   ├── [12] Composite Task Coordinator (Research + Automation Bridge)   │
 │   └── [13] Result Formatter / O.P.S. Persona (JARVIS Output Engine)    │
-│                                                                        │
-│ SECURITY PERIMETER                                                     │
-│   └── [🛡️] Global HITL Approval Gatekeeper (Zero-Trust Action Barrier)  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+### Agent Responsibilities in Detail
 
-## 🔄 Execution Pipeline
-
-```mermaid
-flowchart TD
-    A[User Request in Cockpit / HUD] --> B[Global Intent Router]
-    B -->|Answering Intent| C{Mode Selector}
-    C -->|LLM Mode| D[Local Reasoning Agent Qwen3 1.7B]
-    C -->|Web Mode| E[Web Research Agent + Evidence Validator]
-    C -->|Hybrid Mode| F[Parallel Web Research & Local Reasoning]
-    D --> G[Answer Synthesis Agent]
-    E --> G
-    F --> G
-    G --> Z[Result Formatter / JARVIS Response]
-
-    B -->|Automation Intent| H[Automation Planner]
-    H --> I[Decompose Plan & Compute SHA-256 Plan Hash]
-    I --> J[HITL Safety Controller Gatekeeper]
-    J -->|APPROVAL_REQUIRED| K[Cockpit Modal: ACCEPT or DENY]
-    K -->|DENY Clicked| L[Halt Execution: 0 Tools Actuated]
-    K -->|ACCEPT Clicked| M{Executor Router}
-    M -->|Desktop| N[Desktop Automation Executor Pywinauto]
-    M -->|Browser| O[Browser Automation Executor Playwright]
-    M -->|Hybrid Auto| P[Coordinated Browser + Desktop Pipeline]
-    N --> Q[Automation Verification & Recovery]
-    O --> Q
-    P --> Q
-    Q --> Z
-```
+1. **Global Intent Router (`global_intent_router.py`)**: Uses `Qwen3 0.6B` and regex heuristics to evaluate input in $< 100\text{ ms}$. Classifies directives into `ANSWER` (`LLM`, `WEB`, `HYBRID`, `DOCUMENT`), `AUTOMATION` (`DESKTOP`, `BROWSER`, `HYBRID_AUTO`), `COMPOSITE`, or `CLARIFICATION`.
+2. **Task Understanding and Planning Agent (`task_understanding_planner.py`)**: Decomposes directives into multi-step execution plans, identifies data dependencies, and flags required security checkpoints.
+3. **Local Reasoning Agent (`local_reasoning_agent.py`)**: Harnesses `Qwen3 1.7B` for private, deep logical reasoning, code syntax generation, and grounded document analysis without internet lookups.
+4. **Web Research Agent (`web_research_agent.py`)**: Queries search providers, scrapes live web pages via an asynchronous `httpx` connection pool, and extracts candidate evidence snippets.
+5. **Evidence Validation Agent (`evidence_validation_agent.py`)**: Cross-verifies claims across retrieved domains, discards conflicting statements, and calculates factual confidence scores.
+6. **Answer Synthesis Agent (`answer_synthesis_agent.py`)**: Synthesizes verified external facts with local reasoning context into cohesive, well-formatted answers.
+7. **Automation Planner (`automation_planner_agent.py`)**: Translates high-level tasks into executable UI actions, selectors, mouse clicks, and keystrokes.
+8. **Desktop Automation Executor (`desktop_automation_executor.py`)**: Utilizes `Pywinauto` to launch desktop software, interact with window handles, and manipulate controls on Windows.
+9. **Browser Automation Executor (`browser_automation_executor.py`)**: Utilizes `Playwright` to navigate websites, fill forms, download files, and scrape dynamic DOM trees.
+10. **Automation Verification and Recovery (`verification_recovery_agent.py`)**: Inspects application states post-execution to verify that windows opened, pages loaded, or operations completed successfully.
+11. **Human-in-the-Loop and Safety Controller (`hitl_safety_controller.py`)**: Enforces strict safety policies. Intercepts destructive actions (file deletion, formatting, registry edits) and holds execution until explicit user approval.
+12. **Composite Task Coordinator (`composite_task_coordinator.py`)**: Bridges research intelligence and automation actions (e.g. search online for the latest installer, download it, and launch it locally).
+13. **Result Formatter / O.P.S. Persona (`result_formatter_agent.py`)**: Delivers all responses in an articulate, calm, confident JARVIS-style tone, attaching markdown formatting, verified source links, and the audit section `## 📌 Discussion So Far`.
 
 ---
 
-## 💻 Recently Updated Code Architecture
+## 🔄 How It Works: The Execution Pipeline
 
-### 1. Global HITL Safety Controller (`hitl_safety_controller.py`)
-```python
-# backend/research_system/orchestrator/agents/hitl_safety_controller.py
-if task_type == "AUTOMATION" or any(s.get("executor") in ["desktop", "browser", "system"] for s in steps):
-    details = SafetyPolicy.build_automation_hitl_details(
-        query=user_request,
-        steps=steps,
-        mode=state.get("mode", "AUTOMATION")
-    )
-    # Generate cryptographic plan hash and persist PendingApproval
-    approval = PendingApproval.objects.create(
-        approval_id=f"appr_{int(time.time())}_{uuid.uuid4().hex[:6]}",
-        action_type=f"AUTOMATION_{state.get('mode', 'EXECUTION')}",
-        metadata=details,
-        status="PENDING"
-    )
-    # Emit real-time event & pause LangGraph pipeline
-    event_bus.publish(EventType.APPROVAL_REQUIRED, details)
-    return {
-        "approval_required": True,
-        "approval_status": "WAITING_FOR_APPROVAL",
-        "status": "WAITING_FOR_APPROVAL",
-        "pending_approval_id": approval.approval_id
-    }
+```
+ User Input (from Pop-up Cockpit or Voice)
+               │
+               ▼
+ ┌───────────────────────────┐
+ │ 01. Global Intent Router  │  <-- Classifies intent in <100ms
+ └─────────────┬─────────────┘
+               ▼
+ ┌───────────────────────────┐
+ │ 02. Task Planner & Supv   │  <-- Decomposes mission plan
+ └─────────────┬─────────────┘
+               │
+               ├───────────────────┬───────────────────┬───────────────────┐
+               ▼                   ▼                   ▼                   ▼
+        [ LLM / DOCUMENT ]       [ WEB RESEARCH ]     [ AUTOMATION ]      [ COMPOSITE ]
+               │                   │                   │                   │
+         03. Local Reasoner   04. Web Agent      07. Auto Planner    12. Composite Coord
+               │                   │                   │                   │
+               │              05. Validator       11. Safety Gate    (Loops 04 -> 07)
+               │                   │                   │                   │
+               │              06. Synthesizer     08/09. Executors         │
+               │                   │                   │                   │
+               │                   │              10. Verification         │
+               │                   │                   │                   │
+               └───────────────────┴───────────────────┴───────────────────┘
+                                           │
+                                           ▼
+                            ┌─────────────────────────────┐
+                            │ 13. Result Formatter Agent  │
+                            └──────────────┬──────────────┘
+                                           │
+                                           ▼ Real-Time SSE Token Stream
+                            ┌─────────────────────────────┐
+                            │    O.P.S. Pop-up Cockpit    │
+                            └─────────────────────────────┘
 ```
 
-### 2. Multi-Step Automation Planning (`automation_planner.py`)
-```python
-# backend/automation_system/planner/automation_planner.py
-if mode == MODE_HYBRID or (any(w in q_lower for w in ["notepad", "file"]) and any(w in q_lower for w in ["browser", "chrome", "docs", "url"])):
-    steps = [
-        {"step_id": 1, "title": f"Navigate browser to {target_url}", "executor": "browser", "action": "navigate", "params": {"url": target_url}},
-        {"step_id": 2, "title": "Launch Notepad Application", "executor": "desktop", "action": "launch_app", "params": {"app_name": "notepad", "path": "notepad.exe"}},
-        {"step_id": 3, "title": "Type verified documentation URL into Notepad", "executor": "desktop", "action": "type_text", "params": {"title": "Notepad", "text": "$step_1.current_url"}},
-        {"step_id": 4, "title": f"Save Notepad file as '{out_filename}' on Desktop", "executor": "desktop", "action": "save_file", "params": {"path": out_file_path}}
-    ]
-    return {"status": "READY", "automation_mode": MODE_HYBRID, "steps": steps, "requires_approval": True}
-```
+---
 
-### 3. Pre-flight Executor Enforcement (`desktop_automation_executor.py`)
-```python
-# backend/research_system/orchestrator/agents/desktop_automation_executor.py
-if state.get("approval_status") != "APPROVED":
-    logger.error("Desktop Automation Executor BLOCKED: Pre-execution approval missing!")
-    return {
-        "execution_status": "BLOCKED",
-        "error_details": "Human-in-the-Loop approval required prior to desktop execution."
-    }
-```
+## 🚀 Core Capabilities
+
+### 1. 💡 Answering Engine (3 Adaptive Modes)
+- **LLM Mode**: Uses the local `Qwen3 1.7B` model for instant, completely offline answers to conceptual, mathematical, and programming queries. Zero telemetry leaves your machine.
+- **Web Mode**: Discovers fresh external intelligence via DuckDuckGo and asynchronous web scrapers, cross-verifies facts, and delivers structured answers with clickable references.
+- **Hybrid Mode**: Simultaneously forks execution to local reasoning and live web research, converging at the synthesizer to produce deep, context-rich analysis grounded in current facts.
+
+### 2. 🤖 Dual-Engine Workstation Automation
+- **Desktop Automation (Pywinauto)**: Hands-free control over native Windows software (`Notepad`, `Calculator`, `File Explorer`, system dialogs, custom applications).
+- **Browser Automation (Playwright)**: Headless or headed Chromium automation capable of navigating complex modern web apps, clicking interactive controls, and downloading files.
+- **Hybrid & Composite Workflows**: Seamlessly executes cross-engine tasks, such as finding a release number online, downloading the installer in a browser, and launching it on your desktop.
+
+### 3. 📄 Temporary Document RAG with Pinecone
+- **Supported Documents**: Accepts PDF (`.pdf`) and Microsoft Word (`.docx`, `.doc`) documents up to 25 MB directly through the Cockpit paperclip button.
+- **Local Dense Embeddings**: Generates 768-dimensional vector embeddings locally using `nomic-embed-text` in `~112 ms`.
+- **Serverless Vector Indexing**: Indexes chunks into conversation-isolated namespaces in Pinecone (`ops-temporary-rag`).
+- **Strict Grounding & Honest Refusal**: Answers strictly cite document page and section numbers, and explicitly refuse to extrapolate when information is absent.
+- **Guaranteed Ephemeral Deletion**: In-memory chunk text and Pinecone vectors are permanently wiped upon clicking **Refresh**, confirmed by `describe_index_stats (vector_count == 0)`.
+
+### 4. 🎛️ Dynamic Pop-up Cockpit HUD
+- **Tactical Retro Design**: Monospaced font, glowing status indicators, sound effects, and floating HUD styling.
+- **Draggable Header**: Click and drag the tactical top bar to move the Cockpit anywhere across multiple displays.
+- **Dynamic 8-Axis Resizing**: Fluidly resize the window from 400×520 px to 1600×1800 px with a live HUD dimension badge.
+- **Global Hotkeys**: Quick-access shortcuts (`Ctrl + Alt` to open, `Ctrl + Alt + Space` to close).
+- **Real-Time Token Streaming**: Text typewriter SSE stream delivers words as they are generated.
+
+### 5. 🛡️ Human-in-the-Loop Safety Controller
+- **Security Interception**: Destructive commands (file system modifications, bulk deletions, process termination) are automatically paused by Agent 11.
+- **Approval Queue**: Renders an interactive confirmation dialog requiring explicit user clearance (`CONFIRM` or `DENY`) before physical execution.
 
 ---
 
@@ -233,7 +175,7 @@ if state.get("approval_status") != "APPROVED":
 | **Local Model Fleet** | [Ollama](https://ollama.com/) (`Qwen3 0.6B Q8_0`, `Qwen3 1.7B Q8_0`, `Llama 3.2 1B`, `nomic-embed-text`) |
 | **Vector Database** | [Pinecone Serverless](https://www.pinecone.io/) (AWS `us-east-1`, 768 dimensions, Cosine metric) |
 | **Desktop Automation** | [Pywinauto](https://pywinauto.readthedocs.io/) (Win32 & UI Automation backends) |
-| **Browser Automation** | [Playwright](https://playwright.dev/) (Chromium headless & headed) |
+| **Browser Automation** | [Playwright](https://playwright.dev/) (Chromium) |
 | **Backend Framework** | [Django 5](https://www.djangoproject.com/), Django REST Framework, Server-Sent Events (SSE), SQLite WAL |
 | **Frontend Framework** | [React 18](https://react.dev/), [Vite](https://vitejs.dev/), [Tailwind CSS](https://tailwindcss.com/), Lucide Icons, HTML5 Canvas |
 | **Document Processing** | `pypdf`, `python-docx`, `reportlab` |
@@ -262,12 +204,41 @@ ollama pull hf.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF:Q8_0
 ollama pull nomic-embed-text
 ```
 
-### 3. Automated One-Click Windows Launcher
-Simply double-click or execute from PowerShell/cmd:
-```cmd
-windows.bat
+### 3. Backend Setup
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+playwright install chromium
+python manage.py migrate
 ```
-`windows.bat` automatically verifies prerequisites, confirms Ollama, migrates the database, starts the Django LangGraph backend, launches the Vite frontend, and opens both the **Ambient OS Dashboard** and the **Native Standalone Pop-up Cockpit**.
+
+Configure your environment variables in `backend/.env`:
+```env
+PINECONE_API_KEY=your_pinecone_api_key_here
+PINECONE_INDEX_NAME=ops-temporary-rag
+EMBEDDING_MODEL=nomic-embed-text
+EMBEDDING_DIMENSION=768
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+Start the Django API backend:
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
+
+### 4. Frontend Setup
+In a new terminal:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### 5. Access O.P.S.
+- **Ambient AI OS Dashboard**: Open [http://localhost:3000](http://localhost:3000)
+- **Standalone Pop-up Cockpit HUD**: Open [http://localhost:3000/?mode=cockpit](http://localhost:3000/?mode=cockpit)
 
 ---
 
