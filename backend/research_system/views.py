@@ -69,10 +69,7 @@ def health_check(request):
         },
         "crawling_libraries": [
             "crawlee",
-            "playwright",
-            "beautifulsoup4",
-            "scrapegraphai",
-            "httpx"
+            "beautifulsoup4"
         ],
         "timestamp": time.time()
     })

@@ -2,9 +2,10 @@
 O.P.S. 2.0 — URL Selection Worker
 Execution Worker 2: Intelligently filters and ranks candidate URLs based on:
 1. Source credibility and authority (Official docs, .org, .edu, .gov, primary vendor sites)
-2. Relevance of snippet and title to user directive
-3. Freshness and domain diversity
-4. Selective browser rendering tagging (Playwright ONLY for JS-heavy sites)
+2. Direct entity match against official technology domains (python.org, djangoproject.com, react.dev, nodejs.org, fastapi.tiangolo.com)
+3. Relevance of snippet and title to user directive
+4. Freshness and domain diversity
+5. Selective browser rendering tagging (Playwright ONLY for JS-heavy sites)
 """
 
 import time
@@ -15,7 +16,7 @@ from typing import Dict, Any, List
 from research_system.graph.state import ResearchState
 from research_system.events.event_bus import event_bus
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("OPS.Research.UrlSelection")
 
 # Domains known to require client-side JavaScript execution
 JS_HEAVY_PATTERNS = [
@@ -26,10 +27,23 @@ JS_HEAVY_PATTERNS = [
 # High-authority domains for technical & factual grounding
 HIGH_AUTHORITY_PATTERNS = [
     "docs.", "devguide.", "developer.", "blog.", "github.com",
-    "djangoproject.com", "fastapi.tiangolo.com",
-    "python.org", "langchain.com", "huggingface.co", "wikipedia.org",
+    "djangoproject.com", "fastapi.tiangolo.com", "python.org",
+    "react.dev", "nodejs.org", "postgresql.org",
+    "langchain.com", "huggingface.co", "wikipedia.org",
     "arxiv.org", "pypi.org", "mozilla.org", "microsoft.com", "google.com"
 ]
+
+# Primary official domains mapped to canonical technologies
+PRIMARY_TECH_DOMAINS = {
+    "django": "djangoproject.com",
+    "python": "python.org",
+    "react": "react.dev",
+    "node": "nodejs.org",
+    "nodejs": "nodejs.org",
+    "fastapi": "fastapi.tiangolo.com",
+    "postgres": "postgresql.org",
+    "postgresql": "postgresql.org"
+}
 
 # Low-quality SEO content farms / automated aggregators to deprioritize
 LOW_QUALITY_PATTERNS = [
@@ -47,7 +61,13 @@ def _score_candidate_url(item: Dict[str, Any], query_terms: List[str]) -> float:
 
     score = 10.0
 
-    # 1. Authority bonus
+    # 1. Primary tech domain exact match bonus (+45)
+    for tech, tech_dom in PRIMARY_TECH_DOMAINS.items():
+        if any(tech == q.strip() for q in query_terms) and tech_dom in domain:
+            score += 45.0
+            break
+
+    # 2. Authority bonus
     if item.get("is_authoritative"):
         score += 35.0
     if any(pat in domain for pat in HIGH_AUTHORITY_PATTERNS):
@@ -55,18 +75,18 @@ def _score_candidate_url(item: Dict[str, Any], query_terms: List[str]) -> float:
     if domain.endswith(".org") or domain.endswith(".edu") or domain.endswith(".gov"):
         score += 15.0
 
-    # 2. Penalty for spam / low quality aggregators
+    # 3. Penalty for spam / low quality aggregators
     if any(pat in domain for pat in LOW_QUALITY_PATTERNS):
-        score -= 20.0
+        score -= 25.0
 
-    # 3. Query keyword relevance in title (+8 each) and snippet (+3 each)
+    # 4. Query keyword relevance in title (+8 each) and snippet (+3 each)
     for term in query_terms:
         if term in title:
             score += 8.0
         if term in snippet:
             score += 3.0
 
-    # 4. HTTPS preference
+    # 5. HTTPS preference
     if url.startswith("https://"):
         score += 5.0
 
@@ -107,6 +127,9 @@ def url_selection_worker_node(state: ResearchState) -> Dict[str, Any]:
     for item in search_results:
         u = item.get("url", "").strip()
         if not u or not u.startswith("http"):
+            continue
+        path_only = u.lower().split("?")[0]
+        if any(path_only.endswith(ext) for ext in [".pdf", ".zip", ".tar.gz", ".tgz", ".exe", ".dmg", ".pkg", ".png", ".jpg", ".jpeg", ".gif"]):
             continue
         sc = _score_candidate_url(item, query_terms)
         scored_items.append((sc, item))
