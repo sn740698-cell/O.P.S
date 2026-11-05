@@ -1,0 +1,517 @@
+[
+  {
+    "id": "ROUTE-01",
+    "prompt": "Explain Python classes",
+    "expected": "Task=ANSWER | Engine=ANSWERING | Mode=LLM",
+    "actual": "Task=ANSWER | Engine=None | Mode=LLM",
+    "passed": false,
+    "details": {
+      "response_mode": "LLM",
+      "mode": "LLM",
+      "task_type": "ANSWER",
+      "active_engine": "ANSWERING",
+      "user_intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "user_goal": "Explain and reason locally: Explain Python classes",
+      "answering_engine_required": true,
+      "automation_engine_required": false,
+      "selected_answering_mode": "LLM",
+      "selected_automation_mode": null,
+      "required_agents": [
+        "global_intent_router",
+        "task_understanding_planner",
+        "local_reasoning_agent",
+        "result_formatter_agent"
+      ],
+      "required_tools": [
+        "QwenReasoningEngine"
+      ],
+      "execution_plan": [],
+      "approval_required": false,
+      "approval_reason": "",
+      "clarification_required": false,
+      "needs_clarification": false,
+      "clarification_prompt": null,
+      "confidence": 0.95,
+      "routing_reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "search_query": "",
+      "requires_web_research": false,
+      "requires_llm_reasoning": true,
+      "stages": [
+        "Understanding request",
+        "Classifying intent",
+        "Preparing reasoning context",
+        "Generating answer",
+        "Completing response"
+      ],
+      "latency_ms": 2.17
+    }
+  },
+  {
+    "id": "ROUTE-02",
+    "prompt": "Explain what LangGraph is",
+    "expected": "Task=ANSWER | Engine=ANSWERING | Mode=LLM",
+    "actual": "Task=ANSWER | Engine=None | Mode=LLM",
+    "passed": false,
+    "details": {
+      "response_mode": "LLM",
+      "mode": "LLM",
+      "task_type": "ANSWER",
+      "active_engine": "ANSWERING",
+      "user_intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "user_goal": "Explain and reason locally: Explain what LangGraph is",
+      "answering_engine_required": true,
+      "automation_engine_required": false,
+      "selected_answering_mode": "LLM",
+      "selected_automation_mode": null,
+      "required_agents": [
+        "global_intent_router",
+        "task_understanding_planner",
+        "local_reasoning_agent",
+        "result_formatter_agent"
+      ],
+      "required_tools": [
+        "QwenReasoningEngine"
+      ],
+      "execution_plan": [],
+      "approval_required": false,
+      "approval_reason": "",
+      "clarification_required": false,
+      "needs_clarification": false,
+      "clarification_prompt": null,
+      "confidence": 0.95,
+      "routing_reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "search_query": "",
+      "requires_web_research": false,
+      "requires_llm_reasoning": true,
+      "stages": [
+        "Understanding request",
+        "Classifying intent",
+        "Preparing reasoning context",
+        "Generating answer",
+        "Completing response"
+      ],
+      "latency_ms": 0.05
+    }
+  },
+  {
+    "id": "ROUTE-03",
+    "prompt": "What is today's date?",
+    "expected": "Task=ANSWER | Engine=ANSWERING | Mode=['LLM', 'WEB']",
+    "actual": "Task=ANSWER | Engine=None | Mode=WEB",
+    "passed": false,
+    "details": {
+      "response_mode": "WEB",
+      "mode": "WEB",
+      "task_type": "ANSWER",
+      "active_engine": "ANSWERING",
+      "user_intent": "LIVE_EXTERNAL_FACT_RETRIEVAL",
+      "intent": "LIVE_EXTERNAL_FACT_RETRIEVAL",
+      "user_goal": "Retrieve fresh authoritative web facts and synthesize evidence: What is today's date?",
+      "answering_engine_required": true,
+      "automation_engine_required": false,
+      "selected_answering_mode": "WEB",
+      "selected_automation_mode": null,
+      "required_agents": [
+        "global_intent_router",
+        "task_understanding_planner",
+        "web_research_agent",
+        "evidence_validation_agent",
+        "answer_synthesis_agent",
+        "result_formatter_agent"
+      ],
+      "required_tools": [
+        "DuckDuckGoSearch",
+        "HTTPXCrawler",
+        "BeautifulSoupExtractor"
+      ],
+      "execution_plan": [],
+      "approval_required": false,
+      "approval_reason": "",
+      "clarification_required": false,
+      "needs_clarification": false,
+      "clarification_prompt": null,
+      "confidence": 0.96,
+      "routing_reason": "Query demands current, recent, or externally verifiable live facts.",
+      "reason": "Query demands current, recent, or externally verifiable live facts.",
+      "search_query": "today's date",
+      "requires_web_research": true,
+      "requires_llm_reasoning": false,
+      "stages": [
+        "Understanding request",
+        "Selecting research strategy",
+        "Searching the web",
+        "Retrieving relevant pages",
+        "Extracting information",
+        "Validating evidence",
+        "Generating answer",
+        "Completing response"
+      ],
+      "latency_ms": 0.52
+    }
+  },
+  {
+    "id": "ROUTE-04",
+    "prompt": "Latest stable Python version",
+    "expected": "Task=ANSWER | Engine=ANSWERING | Mode=WEB",
+    "actual": "Task=ANSWER | Engine=None | Mode=LLM",
+    "passed": false,
+    "details": {
+      "response_mode": "LLM",
+      "mode": "LLM",
+      "task_type": "ANSWER",
+      "active_engine": "ANSWERING",
+      "user_intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "user_goal": "Explain and reason locally: Latest stable Python version",
+      "answering_engine_required": true,
+      "automation_engine_required": false,
+      "selected_answering_mode": "LLM",
+      "selected_automation_mode": null,
+      "required_agents": [
+        "global_intent_router",
+        "task_understanding_planner",
+        "local_reasoning_agent",
+        "result_formatter_agent"
+      ],
+      "required_tools": [
+        "QwenReasoningEngine"
+      ],
+      "execution_plan": [],
+      "approval_required": false,
+      "approval_reason": "",
+      "clarification_required": false,
+      "needs_clarification": false,
+      "clarification_prompt": null,
+      "confidence": 0.95,
+      "routing_reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "search_query": "",
+      "requires_web_research": false,
+      "requires_llm_reasoning": true,
+      "stages": [
+        "Understanding request",
+        "Classifying intent",
+        "Preparing reasoning context",
+        "Generating answer",
+        "Completing response"
+      ],
+      "latency_ms": 0.07
+    }
+  },
+  {
+    "id": "ROUTE-05",
+    "prompt": "Latest Django release",
+    "expected": "Task=ANSWER | Engine=ANSWERING | Mode=WEB",
+    "actual": "Task=ANSWER | Engine=None | Mode=LLM",
+    "passed": false,
+    "details": {
+      "response_mode": "LLM",
+      "mode": "LLM",
+      "task_type": "ANSWER",
+      "active_engine": "ANSWERING",
+      "user_intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "user_goal": "Explain and reason locally: Latest Django release",
+      "answering_engine_required": true,
+      "automation_engine_required": false,
+      "selected_answering_mode": "LLM",
+      "selected_automation_mode": null,
+      "required_agents": [
+        "global_intent_router",
+        "task_understanding_planner",
+        "local_reasoning_agent",
+        "result_formatter_agent"
+      ],
+      "required_tools": [
+        "QwenReasoningEngine"
+      ],
+      "execution_plan": [],
+      "approval_required": false,
+      "approval_reason": "",
+      "clarification_required": false,
+      "needs_clarification": false,
+      "clarification_prompt": null,
+      "confidence": 0.95,
+      "routing_reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "search_query": "",
+      "requires_web_research": false,
+      "requires_llm_reasoning": true,
+      "stages": [
+        "Understanding request",
+        "Classifying intent",
+        "Preparing reasoning context",
+        "Generating answer",
+        "Completing response"
+      ],
+      "latency_ms": 0.05
+    }
+  },
+  {
+    "id": "ROUTE-06",
+    "prompt": "Compare Django and FastAPI",
+    "expected": "Task=ANSWER | Engine=ANSWERING | Mode=HYBRID",
+    "actual": "Task=ANSWER | Engine=None | Mode=LLM",
+    "passed": false,
+    "details": {
+      "response_mode": "LLM",
+      "mode": "LLM",
+      "task_type": "ANSWER",
+      "active_engine": "ANSWERING",
+      "user_intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "user_goal": "Explain and reason locally: Compare Django and FastAPI",
+      "answering_engine_required": true,
+      "automation_engine_required": false,
+      "selected_answering_mode": "LLM",
+      "selected_automation_mode": null,
+      "required_agents": [
+        "global_intent_router",
+        "task_understanding_planner",
+        "local_reasoning_agent",
+        "result_formatter_agent"
+      ],
+      "required_tools": [
+        "QwenReasoningEngine"
+      ],
+      "execution_plan": [],
+      "approval_required": false,
+      "approval_reason": "",
+      "clarification_required": false,
+      "needs_clarification": false,
+      "clarification_prompt": null,
+      "confidence": 0.95,
+      "routing_reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "search_query": "",
+      "requires_web_research": false,
+      "requires_llm_reasoning": true,
+      "stages": [
+        "Understanding request",
+        "Classifying intent",
+        "Preparing reasoning context",
+        "Generating answer",
+        "Completing response"
+      ],
+      "latency_ms": 0.05
+    }
+  },
+  {
+    "id": "ROUTE-07",
+    "prompt": "Research and explain LangGraph architecture",
+    "expected": "Task=ANSWER | Engine=ANSWERING | Mode=HYBRID",
+    "actual": "Task=ANSWER | Engine=None | Mode=HYBRID",
+    "passed": false,
+    "details": {
+      "response_mode": "HYBRID",
+      "mode": "HYBRID",
+      "task_type": "ANSWER",
+      "active_engine": "ANSWERING",
+      "user_intent": "CURRENT_INFORMATION_AND_EXPLANATION",
+      "intent": "CURRENT_INFORMATION_AND_EXPLANATION",
+      "user_goal": "Synthesize local reasoning with verified live research: Research and explain LangGraph architecture",
+      "answering_engine_required": true,
+      "automation_engine_required": false,
+      "selected_answering_mode": "HYBRID",
+      "selected_automation_mode": null,
+      "required_agents": [
+        "global_intent_router",
+        "task_understanding_planner",
+        "local_reasoning_agent",
+        "web_research_agent",
+        "evidence_validation_agent",
+        "answer_synthesis_agent",
+        "result_formatter_agent"
+      ],
+      "required_tools": [
+        "DuckDuckGoSearch",
+        "HTTPXCrawler",
+        "QwenReasoningEngine"
+      ],
+      "execution_plan": [],
+      "approval_required": false,
+      "approval_reason": "",
+      "clarification_required": false,
+      "needs_clarification": false,
+      "clarification_prompt": null,
+      "confidence": 0.98,
+      "routing_reason": "User requested conceptual explanation combined with fresh external information.",
+      "reason": "User requested conceptual explanation combined with fresh external information.",
+      "search_query": "and explain LangGraph architecture",
+      "requires_web_research": true,
+      "requires_llm_reasoning": true,
+      "stages": [
+        "Understanding request",
+        "Planning cross-platform actions",
+        "Executing browser operations",
+        "Verifying download state",
+        "Executing desktop application",
+        "Verifying system state",
+        "Completing response"
+      ],
+      "latency_ms": 0.04
+    }
+  },
+  {
+    "id": "ROUTE-08",
+    "prompt": "Open VS Code",
+    "expected": "Task=AUTOMATION | Engine=AUTOMATION | Mode=DESKTOP",
+    "actual": "Task=AUTOMATION | Engine=None | Mode=DESKTOP",
+    "passed": false,
+    "details": {
+      "response_mode": "DESKTOP",
+      "mode": "DESKTOP",
+      "task_type": "AUTOMATION",
+      "active_engine": "AUTOMATION",
+      "user_intent": "DESKTOP_AUTOMATION_EXECUTION",
+      "intent": "DESKTOP_AUTOMATION_EXECUTION",
+      "user_goal": "Execute desktop automation: Open VS Code",
+      "answering_engine_required": false,
+      "automation_engine_required": true,
+      "selected_answering_mode": null,
+      "selected_automation_mode": "DESKTOP",
+      "required_agents": [
+        "global_intent_router",
+        "task_understanding_planner",
+        "automation_planner",
+        "hitl_safety_controller",
+        "desktop_automation_executor",
+        "verification_recovery_agent",
+        "result_formatter_agent"
+      ],
+      "required_tools": [
+        "PywinautoDesktop",
+        "AutomationVerifier"
+      ],
+      "execution_plan": [],
+      "approval_required": false,
+      "approval_reason": "",
+      "clarification_required": false,
+      "needs_clarification": false,
+      "clarification_prompt": null,
+      "confidence": 0.98,
+      "routing_reason": "User directive targets local Windows desktop applications or filesystem.",
+      "reason": "User directive targets local Windows desktop applications or filesystem.",
+      "search_query": "",
+      "requires_web_research": false,
+      "requires_llm_reasoning": false,
+      "stages": [
+        "Understanding request",
+        "Targeting desktop application",
+        "Formulating automation plan",
+        "Evaluating safety policy",
+        "Executing desktop actions",
+        "Verifying window state",
+        "Completing response"
+      ],
+      "latency_ms": 0.01
+    }
+  },
+  {
+    "id": "ROUTE-09",
+    "prompt": "Search YouTube",
+    "expected": "Task=AUTOMATION | Engine=AUTOMATION | Mode=BROWSER",
+    "actual": "Task=AUTOMATION | Engine=None | Mode=BROWSER",
+    "passed": false,
+    "details": {
+      "response_mode": "BROWSER",
+      "mode": "BROWSER",
+      "task_type": "AUTOMATION",
+      "active_engine": "AUTOMATION",
+      "user_intent": "BROWSER_AUTOMATION_EXECUTION",
+      "intent": "BROWSER_AUTOMATION_EXECUTION",
+      "user_goal": "Execute browser automation: Search YouTube",
+      "answering_engine_required": false,
+      "automation_engine_required": true,
+      "selected_answering_mode": null,
+      "selected_automation_mode": "BROWSER",
+      "required_agents": [
+        "global_intent_router",
+        "task_understanding_planner",
+        "automation_planner",
+        "hitl_safety_controller",
+        "browser_automation_executor",
+        "verification_recovery_agent",
+        "result_formatter_agent"
+      ],
+      "required_tools": [
+        "PlaywrightBrowser",
+        "AutomationVerifier"
+      ],
+      "execution_plan": [],
+      "approval_required": false,
+      "approval_reason": "",
+      "clarification_required": false,
+      "needs_clarification": false,
+      "clarification_prompt": null,
+      "confidence": 0.98,
+      "routing_reason": "User directive targets web browser navigation and portal interaction.",
+      "reason": "User directive targets web browser navigation and portal interaction.",
+      "search_query": "",
+      "requires_web_research": false,
+      "requires_llm_reasoning": false,
+      "stages": [
+        "Understanding request",
+        "Launching browser context",
+        "Navigating to web target",
+        "Executing web interactions",
+        "Verifying page state",
+        "Completing response"
+      ],
+      "latency_ms": 0.02
+    }
+  },
+  {
+    "id": "ROUTE-10",
+    "prompt": "Research and install Node.js",
+    "expected": "Task=COMPOSITE | Engine=COMPOSITE | Mode=HYBRID",
+    "actual": "Task=ANSWER | Engine=None | Mode=LLM",
+    "passed": false,
+    "details": {
+      "response_mode": "LLM",
+      "mode": "LLM",
+      "task_type": "ANSWER",
+      "active_engine": "ANSWERING",
+      "user_intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "intent": "LOCAL_REASONING_OR_KNOWLEDGE",
+      "user_goal": "Explain and reason locally: Research and install Node.js",
+      "answering_engine_required": true,
+      "automation_engine_required": false,
+      "selected_answering_mode": "LLM",
+      "selected_automation_mode": null,
+      "required_agents": [
+        "global_intent_router",
+        "task_understanding_planner",
+        "local_reasoning_agent",
+        "result_formatter_agent"
+      ],
+      "required_tools": [
+        "QwenReasoningEngine"
+      ],
+      "execution_plan": [],
+      "approval_required": false,
+      "approval_reason": "",
+      "clarification_required": false,
+      "needs_clarification": false,
+      "clarification_prompt": null,
+      "confidence": 0.95,
+      "routing_reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "reason": "Ordinary knowledge, programming, or conceptual query answered directly by local LLM.",
+      "search_query": "",
+      "requires_web_research": false,
+      "requires_llm_reasoning": true,
+      "stages": [
+        "Understanding request",
+        "Classifying intent",
+        "Preparing reasoning context",
+        "Generating answer",
+        "Completing response"
+      ],
+      "latency_ms": 0.04
+    }
+  }
+]
