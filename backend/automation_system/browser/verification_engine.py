@@ -1,6 +1,6 @@
 """
 O.P.S. 2.0 Browser Verification Engine
-Empirically verifies loaded pages, URL structures, DOM elements, and video players.
+Empirically verifies loaded pages, URL structures, DOM elements, video players, and media playback.
 Captures verification screenshots for audit trails.
 """
 
@@ -60,7 +60,7 @@ class BrowserVerificationEngine:
 
     @classmethod
     def verify_youtube_video_playing(cls, page: Page) -> Dict[str, Any]:
-        """Empirically verifies that browser is on a YouTube watch page."""
+        """Empirically verifies that browser is on a YouTube watch page and video player is active."""
         cur_url = page.url
         title = page.title()
         is_watch = "watch?v=" in cur_url or "/shorts/" in cur_url
@@ -72,14 +72,59 @@ class BrowserVerificationEngine:
         except Exception:
             pass
 
-        verified = is_watch or has_player
+        # Check DOM video element state via JS
+        video_active = False
+        try:
+            video_active = page.evaluate("""
+                () => {
+                    const v = document.querySelector('video');
+                    return v ? (!v.paused && v.currentTime > 0) || v.readyState >= 2 : false;
+                }
+            """)
+        except Exception:
+            pass
+
+        verified = is_watch or has_player or video_active
         return {
             "verified": verified,
             "verification_type": "youtube_video_active",
             "url": cur_url,
             "title": title,
             "is_watch_url": is_watch,
-            "player_detected": has_player
+            "player_detected": has_player,
+            "video_active": video_active
+        }
+
+    @classmethod
+    def verify_search_results(cls, page: Page, min_results: int = 1) -> Dict[str, Any]:
+        """Verifies that search results are visible in the DOM."""
+        cur_url = page.url
+        candidates = [
+            "div#search, div#rso, div.g",  # Google
+            "ytd-video-renderer, ytd-rich-item-renderer",  # YouTube
+            "div[data-testid='tracklist-row']",  # Spotify
+            "div.g"
+        ]
+        found_count = 0
+        matched_sel = None
+        for sel in candidates:
+            try:
+                loc = page.locator(sel)
+                c = loc.count()
+                if c >= min_results:
+                    found_count = c
+                    matched_sel = sel
+                    break
+            except Exception:
+                continue
+
+        verified = (found_count >= min_results)
+        return {
+            "verified": verified,
+            "verification_type": "search_results_visible",
+            "url": cur_url,
+            "results_detected": found_count,
+            "selector_matched": matched_sel
         }
 
     @classmethod

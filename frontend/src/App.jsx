@@ -128,9 +128,14 @@ export default function App() {
       const resp = await fetch(endpoint);
       if (resp.ok) {
         const data = await resp.json();
-        if (data.conversation_id && data.conversation_id !== conversationId) {
-          setConversationId(data.conversation_id);
-          localStorage.setItem('ops_conversation_id', data.conversation_id);
+        if (data.conversation_id) {
+          setConversationId((prev) => {
+            if (prev !== data.conversation_id) {
+              localStorage.setItem('ops_conversation_id', data.conversation_id);
+              return data.conversation_id;
+            }
+            return prev;
+          });
         }
         if (data.messages && data.messages.length > 0) {
           const loadedHistory = data.messages.map((m) => ({
@@ -163,7 +168,7 @@ export default function App() {
     } catch (e) {
       console.warn('Conversation load notice:', e);
     }
-  }, [conversationId]);
+  }, []);
 
   // Connect WebSockets and Initial Conversation
   useEffect(() => {
@@ -315,6 +320,11 @@ export default function App() {
         abortCtrlRef.current = null;
       }
     };
+  }, []);
+
+  // Sync conversation history when conversationId changes
+  useEffect(() => {
+    loadConversation(conversationId);
   }, [conversationId, loadConversation]);
 
   // Desktop Overlay & Human-in-the-Loop Real-Time Gate Listeners

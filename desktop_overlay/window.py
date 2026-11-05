@@ -95,27 +95,27 @@ class FloatingCockpitWindow(QMainWindow):
         self.setMinimumSize(440, 580)
 
         # Translucent background for cyber aesthetic
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
         self.setStyleSheet("""
             QMainWindow#OPSFloatingCockpit {
-                background-color: transparent;
+                background-color: #08080a;
             }
         """)
 
     def _init_web_engine(self):
         """Initializes the embedded Chromium web engine with custom bridge page."""
         self.central_widget = QWidget(self)
-        self.central_widget.setStyleSheet("background: transparent;")
+        self.central_widget.setStyleSheet("background-color: #08080a;")
         self.layout = QVBoxLayout(self.central_widget)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
 
         self.web_view = QWebEngineView(self)
-        self.web_view.setStyleSheet("background: transparent;")
+        self.web_view.setStyleSheet("background-color: #08080a;")
 
         # Set custom page to handle native dragging & resizing bridge calls
         self.custom_page = CockpitWebEnginePage(self, self.web_view)
-        self.custom_page.setBackgroundColor(QColor(0, 0, 0, 0))
+        self.custom_page.setBackgroundColor(QColor(8, 8, 10, 255))
         self.web_view.setPage(self.custom_page)
 
         # Connect title-based IPC bridge (instantaneous, unblocked by Chromium CSP)

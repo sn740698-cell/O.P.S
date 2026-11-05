@@ -1,10 +1,11 @@
 """
 Agent 9: Browser Automation Executor
 Group 3: Automation Engine
-Technology: Playwright (Chromium Headed/Headed Engine via BrowserSessionManager)
+Technology: Playwright (Chromium Headed/Visible Engine via BrowserSessionManager)
 Executes web portal automation, page navigation, search queries, element clicks,
 first-result selections, and media playback.
 Maintains persistent session state across conversation turns.
+Guarantees thread-safe execution via dedicated Playwright worker actor.
 """
 
 import time
@@ -17,6 +18,8 @@ from automation_system.browser.navigation_engine import NavigationEngine
 from automation_system.browser.search_engine import SearchEngine
 from automation_system.browser.interaction_engine import InteractionEngine
 from automation_system.browser.verification_engine import BrowserVerificationEngine
+from automation_system.browser.page_inspector import PageInspector
+from automation_system.browser.auth_manager import AuthenticationManager
 from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
 from automation_system.browser.adapters.instagram_adapter import InstagramAdapter
 from automation_system.browser.adapters.google_adapter import GoogleAdapter
@@ -28,6 +31,142 @@ AGENT_ID = "browser_automation_executor"
 AGENT_NAME = "Browser Automation Executor"
 GROUP_ID = "automation_engine"
 COMPONENT_TYPE = "execution_worker"
+
+
+def _dispatch_single_action(page, action: str, params: Dict[str, Any], raw_query: str) -> Dict[str, Any]:
+    """
+    Executes a single browser action on the real Playwright Page inside the worker thread.
+    """
+    res: Dict[str, Any] = {}
+
+    if action == "navigate":
+        url = params.get("url") or params.get("target_url") or params.get("destination")
+        if not url:
+            q_low = raw_query.lower()
+            if "django" in q_low:
+                url = "https://docs.djangoproject.com/en/stable/"
+            elif "youtube" in q_low:
+                url = "https://www.youtube.com"
+            elif "instagram" in q_low:
+                url = "https://www.instagram.com"
+            elif "python" in q_low:
+                url = "https://www.python.org"
+            elif "spotify" in q_low:
+                url = "https://open.spotify.com"
+            else:
+                url = "https://www.google.com"
+        res = NavigationEngine.navigate(page, url=url)
+        res["verification"] = BrowserVerificationEngine.verify_page_state(page, url_substring=url.split("//")[-1].split("/")[0])
+
+    elif action == "search":
+        q = params.get("query", "")
+        custom_sel = params.get("selector")
+        res = SearchEngine.execute_search(page, query=q, custom_selector=custom_sel)
+
+    elif action == "click":
+        res = InteractionEngine.click(
+            page,
+            selector=params.get("selector"),
+            name=params.get("name"),
+            role=params.get("role")
+        )
+
+    elif action == "click_first_result":
+        res = InteractionEngine.click_first_result(page)
+
+    elif action == "go_back":
+        res = NavigationEngine.go_back(page)
+
+    elif action == "go_forward":
+        res = NavigationEngine.go_forward(page)
+
+    elif action == "reload":
+        res = NavigationEngine.reload(page)
+
+    elif action == "fill_form":
+        res = InteractionEngine.fill_form(
+            page,
+            selector_or_label=params.get("field") or params.get("selector", ""),
+            text=params.get("text", ""),
+            is_secret=params.get("is_secret", False)
+        )
+
+    elif action == "inspect_page":
+        res = PageInspector.inspect(page)
+
+    elif action == "youtube_search_and_play":
+        q = params.get("query", "")
+        res = YouTubeAdapter.execute_full_search_and_play(page, query=q)
+
+    elif action == "youtube_search":
+        q = params.get("query", "")
+        res = YouTubeAdapter.search_song_or_video(page, query=q)
+
+    elif action == "youtube_click_first":
+        res = YouTubeAdapter.click_first_video(page)
+
+    elif action == "youtube_pause":
+        res = YouTubeAdapter.pause_playback(page)
+
+    elif action == "youtube_resume":
+        res = YouTubeAdapter.resume_playback(page)
+
+    elif action == "youtube_stop":
+        res = YouTubeAdapter.stop_playback(page)
+
+    elif action == "youtube_inspect_results":
+        res = YouTubeAdapter.inspect_search_results(page, max_results=params.get("max_results", 5))
+
+    elif action == "spotify_search":
+        q = params.get("query", "")
+        res = SpotifyAdapter.search_song(page, query=q)
+
+    elif action == "spotify_play":
+        q = params.get("query", "")
+        res = SpotifyAdapter.play_top_result(page, query=q)
+
+    elif action == "spotify_toggle_playback":
+        res = SpotifyAdapter.toggle_playback(page)
+
+    elif action == "instagram_reels":
+        res = InstagramAdapter.navigate_reels(page)
+
+    elif action == "instagram_open":
+        res = InstagramAdapter.open_home(page)
+
+    elif action == "instagram_dms":
+        res = InstagramAdapter.navigate_dms(page)
+
+    elif action == "instagram_open_conversation":
+        user = params.get("username") or params.get("contact_name", "")
+        res = InstagramAdapter.open_conversation(page, contact_name=user)
+
+    elif action == "instagram_read_messages":
+        user = params.get("username") or params.get("contact_name", "")
+        res = InstagramAdapter.read_visible_messages(page, max_messages=params.get("max_messages", 5))
+
+    elif action == "google_search":
+        q = params.get("query", "")
+        res = GoogleAdapter.search(page, query=q)
+
+    elif action == "google_click_top":
+        res = GoogleAdapter.click_top_result(page)
+
+    elif action == "google_inspect_results":
+        res = GoogleAdapter.inspect_results(page, max_items=params.get("max_results", 5))
+
+    elif action == "google_extract_content":
+        res = GoogleAdapter.extract_page_content(page)
+
+    else:
+        res = {"success": True, "action": action, "info": f"Completed {action}"}
+
+    # Always check authentication boundaries after action
+    auth_check = AuthenticationManager.inspect_auth_barriers(page)
+    if auth_check.get("auth_required"):
+        res["auth_barrier"] = auth_check
+
+    return res
 
 
 def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]:
@@ -51,9 +190,7 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
     emit_agent_started(state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE, f"Executing {len(browser_steps)} browser operation(s)...")
 
     try:
-        # Retrieve or instantiate persistent session page for this conversation
         session_mgr = BrowserSessionManager()
-        page = session_mgr.get_or_create_page(conv_id)
 
         executed_results: List[Dict[str, Any]] = []
         overall_ok = True
@@ -75,118 +212,11 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
 
             emit_agent_progress(state, AGENT_ID, AGENT_NAME, GROUP_ID, f"Executing browser action: {title}...")
 
-            res: Dict[str, Any] = {}
-
-            if action == "navigate":
-                url = params.get("url") or params.get("target_url") or params.get("destination")
-                if not url:
-                    q_low = raw_query.lower()
-                    if "django" in q_low:
-                        url = "https://docs.djangoproject.com/en/stable/"
-                    elif "youtube" in q_low:
-                        url = "https://www.youtube.com"
-                    elif "instagram" in q_low:
-                        url = "https://www.instagram.com"
-                    elif "python" in q_low:
-                        url = "https://www.python.org"
-                    else:
-                        url = "https://www.google.com"
-                res = NavigationEngine.navigate(page, url=url)
-                res["verification"] = BrowserVerificationEngine.verify_page_state(page, url_substring=url.split("//")[-1].split("/")[0])
-
-            elif action == "search":
-                q = params.get("query", "")
-                custom_sel = params.get("selector")
-                res = SearchEngine.execute_search(page, query=q, custom_selector=custom_sel)
-
-            elif action == "click":
-                res = InteractionEngine.click(
-                    page,
-                    selector=params.get("selector"),
-                    name=params.get("name"),
-                    role=params.get("role")
-                )
-
-            elif action == "click_first_result":
-                res = InteractionEngine.click_first_result(page)
-
-            elif action == "go_back":
-                res = NavigationEngine.go_back(page)
-
-            elif action == "fill_form":
-                res = InteractionEngine.fill_form(
-                    page,
-                    selector_or_label=params.get("field") or params.get("selector", ""),
-                    text=params.get("text", ""),
-                    is_secret=params.get("is_secret", False)
-                )
-
-            elif action == "youtube_search_and_play":
-                q = params.get("query", "")
-                res = YouTubeAdapter.execute_full_search_and_play(page, query=q)
-
-            elif action == "youtube_search":
-                q = params.get("query", "")
-                res = YouTubeAdapter.search_song_or_video(page, query=q)
-
-            elif action == "youtube_click_first":
-                res = YouTubeAdapter.click_first_video(page)
-
-            elif action == "youtube_pause":
-                res = YouTubeAdapter.pause_playback(page)
-
-            elif action == "youtube_resume":
-                res = YouTubeAdapter.resume_playback(page)
-
-            elif action == "youtube_stop":
-                res = YouTubeAdapter.stop_playback(page)
-
-            elif action == "youtube_inspect_results":
-                res = YouTubeAdapter.inspect_search_results(page, max_results=params.get("max_results", 5))
-
-            elif action == "spotify_search":
-                q = params.get("query", "")
-                res = SpotifyAdapter.search_song(page, query=q)
-
-            elif action == "spotify_play":
-                q = params.get("query", "")
-                res = SpotifyAdapter.play_top_result(page, query=q)
-
-            elif action == "spotify_toggle_playback":
-                res = SpotifyAdapter.toggle_playback(page)
-
-            elif action == "instagram_reels":
-                res = InstagramAdapter.navigate_reels(page)
-
-            elif action == "instagram_open":
-                res = InstagramAdapter.open_home(page)
-
-            elif action == "instagram_dms":
-                res = InstagramAdapter.navigate_dms(page)
-
-            elif action == "instagram_open_conversation":
-                user = params.get("username", "")
-                res = InstagramAdapter.open_conversation(page, username=user)
-
-            elif action == "instagram_read_messages":
-                user = params.get("username", "")
-                res = InstagramAdapter.read_visible_messages(page, username=user)
-
-            elif action == "google_search":
-                q = params.get("query", "")
-                res = GoogleAdapter.search(page, query=q)
-
-            elif action == "google_click_top":
-                res = GoogleAdapter.click_top_result(page)
-
-            elif action == "google_inspect_results":
-                res = GoogleAdapter.inspect_results(page, max_results=params.get("max_results", 5))
-
-            elif action == "google_extract_content":
-                res = GoogleAdapter.extract_page_content(page)
-
-            else:
-                res = {"success": True, "action": action, "info": f"Completed {action}"}
+            # Execute securely on the Playwright worker thread
+            res = session_mgr.execute_on_page(
+                conv_id,
+                lambda page: _dispatch_single_action(page, action, params, raw_query)
+            )
 
             res["step_id"] = step.get("step_id")
             res["step_title"] = title

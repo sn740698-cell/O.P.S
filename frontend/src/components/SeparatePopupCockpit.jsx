@@ -164,7 +164,7 @@ export default function SeparatePopupCockpit() {
     } catch (e) {
       console.warn('Cockpit conversation load notice:', e);
     }
-  }, [conversationId]);
+  }, []);
 
   // Query and latch onto active conversation on boot
   useEffect(() => {
@@ -524,7 +524,8 @@ export default function SeparatePopupCockpit() {
             setIsHitlModalOpen(true);
           } else {
             // If no pending approvals exist for this conversation, close any open modal
-            if (isHitlModalOpen && pendingApproval?.conversation_id === conversationId) {
+            // Keep modal open while active approval is being evaluated
+            if (isHitlModalOpen && pendingApproval?.conversation_id === conversationId && (!pendingApproval?.approval_id || dismissedApprovalsRef.current.has(pendingApproval?.approval_id))) {
               setIsHitlModalOpen(false);
               setPendingApproval(null);
             }

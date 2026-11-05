@@ -1,18 +1,30 @@
 """
 O.P.S. 2.0 Browser Automation Executor
-Technology: Playwright (Chromium / Firefox / WebKit)
-Provides structured, resilient web automation:
-- Robust role/label/text-based locators and auto-waits
-- Navigation, form filling, dropdown selection, button clicking
-- File downloads with filesystem verification
-- Screenshot captures for empirical verification
-- Strict credential and privacy protection (never leaks cookies, tokens, or passwords)
+Technology: Playwright (Chromium Headed/Visible Engine via BrowserSessionManager)
+Provides unified execution of web tasks with:
+- Persistent browser contexts and shared tab management across conversation turns
+- Robust accessible locators, auto-waits, and condition-based waiting
+- Full website adapters: Google, YouTube, Spotify, Instagram, and general websites
+- Verification of actual DOM state and observable outcomes
+- Authentication barrier awareness and honest limitation reporting
 """
 
 import os
 import time
 import logging
 from typing import Dict, Any, List, Optional
+from automation_system.browser.browser_manager import BrowserSessionManager
+from automation_system.browser.navigation_engine import NavigationEngine
+from automation_system.browser.interaction_engine import InteractionEngine
+from automation_system.browser.search_engine import SearchEngine
+from automation_system.browser.verification_engine import BrowserVerificationEngine
+from automation_system.browser.page_inspector import PageInspector
+from automation_system.browser.auth_manager import AuthenticationManager
+from automation_system.browser.recovery_manager import RecoveryManager
+from automation_system.browser.adapters.google_adapter import GoogleAdapter
+from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
+from automation_system.browser.adapters.spotify_adapter import SpotifyAdapter
+from automation_system.browser.adapters.instagram_adapter import InstagramAdapter
 from automation_system.verification.verifier import AutomationVerifier
 
 logger = logging.getLogger("OPS.BrowserExecutor")
@@ -20,344 +32,160 @@ logger = logging.getLogger("OPS.BrowserExecutor")
 
 class BrowserExecutor:
     """
-    Executes browser operations via Playwright with auto-waits, accessible locators,
-    file download tracking, and state verification.
+    High-level facade for executing browser automation directives
+    using the persistent O.P.S. Browser Automation Core Library.
     """
 
-    def __init__(self, headless: bool = True):
+    def __init__(self, headless: Optional[bool] = None, conversation_id: str = "default_session"):
+        self.conversation_id = conversation_id or "default_session"
+        self._session_mgr = BrowserSessionManager()
         self.headless = headless
-        self._playwright = None
-        self._browser = None
-        self._context = None
-        self._page = None
 
-    def _ensure_browser(self):
-        """Initializes Playwright browser context if not already active."""
-        if self._page is None or self._page.is_closed():
-            from playwright.sync_api import sync_playwright
-            self._playwright = sync_playwright().start()
-            self._browser = self._playwright.chromium.launch(
-                headless=self.headless,
-                args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
-            )
-            self._context = self._browser.new_context(
-                viewport={"width": 1280, "height": 800},
-                accept_downloads=True,
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-            )
-            self._page = self._context.new_page()
-
-    def navigate(self, url: str, wait_until: str = "load", timeout_ms: int = 25000) -> Dict[str, Any]:
-        """
-        Navigates browser to target URL with reliable load wait.
-        """
-        t0 = time.time()
+    def _execute(self, fn, timeout: float = 45.0) -> Dict[str, Any]:
+        """Runs a callable taking `page` inside the Playwright worker thread."""
         try:
-            self._ensure_browser()
-            response = self._page.goto(url, wait_until=wait_until, timeout=timeout_ms)
-            title = self._page.title()
-            current_url = self._page.url
-            status = response.status if response else 200
-
-            duration = round(time.time() - t0, 2)
-            return {
-                "success": True,
-                "action": "navigate",
-                "requested_url": url,
-                "current_url": current_url,
-                "page_title": title,
-                "status_code": status,
-                "duration_s": duration,
-                "verification": {
-                    "verified": True,
-                    "verification_type": "page_loaded",
-                    "title": title,
-                    "url": current_url
-                }
-            }
+            return self._session_mgr.execute_on_page(self.conversation_id, fn, timeout=timeout)
         except Exception as e:
-            logger.error(f"Navigation to {url} failed: {e}")
-            return {
-                "success": False,
-                "action": "navigate",
-                "requested_url": url,
-                "error": str(e)
-            }
+            logger.error(f"Browser action exception: {e}")
+            return {"success": False, "error": str(e)}
 
-    def click(self, selector: str, name: Optional[str] = None, role: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Clicks element using accessible role, text, or CSS selector with auto-wait.
-        """
-        try:
-            self._ensure_browser()
-            # 1. Accessible Role locator if provided
-            if role and name:
-                locator = self._page.get_by_role(role, name=name)
-            elif name and not selector:
-                locator = self._page.get_by_text(name, exact=False)
-            else:
-                # CSS / XPath / text selector
-                locator = self._page.locator(selector).first
+    # -------------------------------------------------------------------------
+    # Core Navigation & Inspection
+    # -------------------------------------------------------------------------
 
-            locator.wait_for(state="visible", timeout=10000)
-            locator.click(timeout=8000)
+    def navigate(self, url: str) -> Dict[str, Any]:
+        """Navigates to URL and verifies state."""
+        def _nav(page):
+            res = NavigationEngine.navigate(page, url=url)
+            if res.get("success", False):
+                res["verification"] = BrowserVerificationEngine.verify_page_state(page)
+            return res
+        return self._execute(_nav)
 
-            return {
-                "success": True,
-                "action": "click",
-                "target": name or selector,
-                "current_url": self._page.url
-            }
-        except Exception as e:
-            return {"success": False, "action": "click", "target": name or selector, "error": str(e)}
+    def go_back(self) -> Dict[str, Any]:
+        """Navigates back in browser history."""
+        return self._execute(lambda p: NavigationEngine.go_back(p))
 
-    def fill_form(self, selector_or_label: str, text: str, is_secret: bool = False) -> Dict[str, Any]:
-        """
-        Enters text into form field or input using accessible label, placeholder, or selector.
-        Redacts secret values from logs to protect credentials.
-        """
-        try:
-            self._ensure_browser()
-            locator = None
+    def go_forward(self) -> Dict[str, Any]:
+        """Navigates forward in browser history."""
+        return self._execute(lambda p: NavigationEngine.go_forward(p))
 
-            # Try by label
-            try:
-                l_cand = self._page.get_by_label(selector_or_label)
-                if l_cand.count() > 0:
-                    locator = l_cand.first
-            except Exception:
-                pass
+    def reload(self) -> Dict[str, Any]:
+        """Reloads current page."""
+        return self._execute(lambda p: NavigationEngine.reload(p))
 
-            # Try by placeholder
-            if locator is None:
-                try:
-                    p_cand = self._page.get_by_placeholder(selector_or_label)
-                    if p_cand.count() > 0:
-                        locator = p_cand.first
-                except Exception:
-                    pass
+    def inspect_page(self) -> Dict[str, Any]:
+        """Extracts structured summary of active page."""
+        return self._execute(lambda p: PageInspector.inspect(p))
 
-            # Try by name attribute or ID
-            if locator is None and not any(ch in selector_or_label for ch in ["[", "#", ".", ">", ":", " "]):
-                try:
-                    name_cand = self._page.locator(f"[name='{selector_or_label}']")
-                    if name_cand.count() > 0:
-                        locator = name_cand.first
-                except Exception:
-                    pass
-                if locator is None:
-                    try:
-                        id_cand = self._page.locator(f"#{selector_or_label}")
-                        if id_cand.count() > 0:
-                            locator = id_cand.first
-                    except Exception:
-                        pass
+    # -------------------------------------------------------------------------
+    # Element Interaction
+    # -------------------------------------------------------------------------
 
-            # Fallback to direct locator
-            if locator is None:
-                locator = self._page.locator(selector_or_label).first
+    def click(
+        self,
+        selector: Optional[str] = None,
+        name: Optional[str] = None,
+        role: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Clicks element by accessible role, text, or selector."""
+        return self._execute(lambda p: InteractionEngine.click(p, selector=selector, name=name, role=role))
 
-            locator.wait_for(state="visible", timeout=8000)
-            locator.fill(text)
+    def click_first_result(self) -> Dict[str, Any]:
+        """Clicks first organic search result."""
+        return self._execute(lambda p: InteractionEngine.click_first_result(p))
 
-            log_val = "[PROTECTED_SECRET]" if is_secret else (text[:30] + "..." if len(text) > 30 else text)
-            return {
-                "success": True,
-                "action": "fill_form",
-                "field": selector_or_label,
-                "input_preview": log_val
-            }
-        except Exception as e:
-            return {"success": False, "action": "fill_form", "field": selector_or_label, "error": str(e)}
+    def search(self, query: str, selector: Optional[str] = None) -> Dict[str, Any]:
+        """Executes search on active page."""
+        return self._execute(lambda p: SearchEngine.execute_search(p, query=query, custom_selector=selector))
 
-    def select_option(self, selector: str, value: str) -> Dict[str, Any]:
-        """
-        Selects an option from a dropdown element.
-        """
-        try:
-            self._ensure_browser()
-            locator = self._page.locator(selector).first
-            locator.wait_for(state="visible", timeout=8000)
-            res = locator.select_option(value=value)
-            return {"success": True, "action": "select_option", "selected": res}
-        except Exception as e:
-            return {"success": False, "action": "select_option", "selector": selector, "error": str(e)}
-
-    def download_file(self, trigger_selector: Optional[str] = None, direct_url: Optional[str] = None, target_dir: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Tracks, initiates, and verifies a file download event via Playwright or direct HTTP.
-        """
-        t0 = time.time()
-        downloads_folder = target_dir or os.path.expanduser("~/Downloads")
-        os.makedirs(downloads_folder, exist_ok=True)
-
-        try:
-            self._ensure_browser()
-
-            # Case A: Download initiated via click on page
-            if trigger_selector:
-                with self._page.expect_download(timeout=20000) as download_info:
-                    self._page.locator(trigger_selector).first.click()
-                download = download_info.value
-                filename = download.suggested_filename
-                dest_path = os.path.join(downloads_folder, filename)
-                download.save_as(dest_path)
-            
-            # Case B: Download initiated via direct URL
-            elif direct_url:
-                parsed_name = os.path.basename(direct_url.split("?")[0]) or f"download_{int(time.time())}"
-                dest_path = os.path.join(downloads_folder, parsed_name)
-                resp = self._page.request.get(direct_url)
-                if resp.ok:
-                    with open(dest_path, "wb") as f:
-                        f.write(resp.body())
-                    filename = parsed_name
-                else:
-                    return {
-                        "success": False,
-                        "action": "download_file",
-                        "error": f"Failed to download from {direct_url}: HTTP status {resp.status}"
-                    }
-
-            else:
-                return {"success": False, "action": "download_file", "error": "Neither trigger_selector nor direct_url specified."}
-
-            # Verification of downloaded file
-            verif = AutomationVerifier.verify_file_exists(dest_path, min_size=1, timeout=5.0)
-            return {
-                "success": verif.get("verified", False),
-                "action": "download_file",
-                "filename": filename,
-                "file_path": dest_path,
-                "size_bytes": verif.get("size_bytes", 0),
-                "duration_s": round(time.time() - t0, 2),
-                "verification": verif
-            }
-
-        except Exception as e:
-            logger.error(f"Download failed: {e}")
-            return {"success": False, "action": "download_file", "error": str(e)}
+    def fill_form(
+        self,
+        selector_or_label: str,
+        text: str,
+        is_secret: bool = False
+    ) -> Dict[str, Any]:
+        """Enters text into form input with accessible locator fallbacks."""
+        return self._execute(lambda p: InteractionEngine.fill_form(
+            p, selector_or_label=selector_or_label, text=text, is_secret=is_secret
+        ))
 
     def capture_screenshot(self, output_path: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Captures a verification screenshot of the active browser viewport.
-        """
-        try:
-            self._ensure_browser()
+        """Captures verification screenshot."""
+        def _shot(page):
             path = output_path or os.path.join(os.path.expanduser("~"), f"ops_screenshot_{int(time.time())}.png")
-            self._page.screenshot(path=path)
+            page.screenshot(path=path)
             return {
-                "success": True,
+                "success": os.path.exists(path),
                 "action": "capture_screenshot",
                 "screenshot_path": path,
                 "verification": {"verified": os.path.exists(path)}
             }
-        except Exception as e:
-            return {"success": False, "action": "capture_screenshot", "error": str(e)}
+        return self._execute(_shot)
 
-    def go_back(self) -> Dict[str, Any]:
-        """Navigates back to the previous page in history."""
-        try:
-            self._ensure_browser()
-            from automation_system.browser.navigation_engine import NavigationEngine
-            return NavigationEngine.go_back(self._page)
-        except Exception as e:
-            return {"success": False, "action": "go_back", "error": str(e)}
+    # -------------------------------------------------------------------------
+    # Specialized Adapters
+    # -------------------------------------------------------------------------
 
-    def youtube_search(self, query: str) -> Dict[str, Any]:
-        """Navigates to YouTube and performs a search without auto-playing."""
-        try:
-            self._ensure_browser()
-            from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
-            return YouTubeAdapter.search_song_or_video(self._page, query=query)
-        except Exception as e:
-            return {"success": False, "action": "youtube_search", "error": str(e)}
-
-    def youtube_search_and_play(self, query: str) -> Dict[str, Any]:
-        """Searches YouTube and plays the top result."""
-        try:
-            self._ensure_browser()
-            from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
-            return YouTubeAdapter.execute_full_search_and_play(self._page, query=query)
-        except Exception as e:
-            return {"success": False, "action": "youtube_search_and_play", "error": str(e)}
-
-    def youtube_click_first(self) -> Dict[str, Any]:
-        """Clicks the top result on YouTube search page."""
-        try:
-            self._ensure_browser()
-            from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
-            return YouTubeAdapter.click_first_video(self._page)
-        except Exception as e:
-            return {"success": False, "action": "youtube_click_first", "error": str(e)}
-
+    # Google
     def google_search(self, query: str) -> Dict[str, Any]:
-        """Performs Google search and displays results."""
-        try:
-            self._ensure_browser()
-            from automation_system.browser.adapters.google_adapter import GoogleAdapter
-            return GoogleAdapter.search(self._page, query=query)
-        except Exception as e:
-            return {"success": False, "action": "google_search", "error": str(e)}
+        return self._execute(lambda p: GoogleAdapter.search(p, query=query))
 
     def google_click_top(self) -> Dict[str, Any]:
-        """Clicks the top organic search result on Google."""
-        try:
-            self._ensure_browser()
-            from automation_system.browser.adapters.google_adapter import GoogleAdapter
-            return GoogleAdapter.click_top_result(self._page)
-        except Exception as e:
-            return {"success": False, "action": "google_click_top", "error": str(e)}
+        return self._execute(lambda p: GoogleAdapter.click_top_result(p))
+
+    def google_inspect_results(self, max_results: int = 5) -> Dict[str, Any]:
+        return self._execute(lambda p: GoogleAdapter.inspect_results(p, max_items=max_results))
+
+    def google_extract_content(self) -> Dict[str, Any]:
+        return self._execute(lambda p: GoogleAdapter.extract_page_content(p))
+
+    # YouTube
+    def youtube_search(self, query: str) -> Dict[str, Any]:
+        return self._execute(lambda p: YouTubeAdapter.search_song_or_video(p, query=query))
+
+    def youtube_search_and_play(self, query: str) -> Dict[str, Any]:
+        return self._execute(lambda p: YouTubeAdapter.execute_full_search_and_play(p, query=query))
+
+    def youtube_click_first(self) -> Dict[str, Any]:
+        return self._execute(lambda p: YouTubeAdapter.click_first_video(p))
+
+    def youtube_pause(self) -> Dict[str, Any]:
+        return self._execute(lambda p: YouTubeAdapter.pause_playback(p))
+
+    def youtube_resume(self) -> Dict[str, Any]:
+        return self._execute(lambda p: YouTubeAdapter.resume_playback(p))
+
+    def youtube_stop(self) -> Dict[str, Any]:
+        return self._execute(lambda p: YouTubeAdapter.stop_playback(p))
+
+    # Spotify
+    def spotify_search(self, query: str) -> Dict[str, Any]:
+        return self._execute(lambda p: SpotifyAdapter.search_song(p, query=query))
+
+    def spotify_play(self, query: str) -> Dict[str, Any]:
+        return self._execute(lambda p: SpotifyAdapter.play_top_result(p, query=query))
+
+    # Instagram
+    def instagram_open(self) -> Dict[str, Any]:
+        return self._execute(lambda p: InstagramAdapter.open_home(p))
 
     def instagram_reels(self) -> Dict[str, Any]:
-        """Navigates to Instagram Reels feed."""
-        try:
-            self._ensure_browser()
-            from automation_system.browser.adapters.instagram_adapter import InstagramAdapter
-            return InstagramAdapter.navigate_reels(self._page)
-        except Exception as e:
-            return {"success": False, "action": "instagram_reels", "error": str(e)}
+        return self._execute(lambda p: InstagramAdapter.navigate_reels(p))
 
-    def instagram_open(self) -> Dict[str, Any]:
-        """Navigates to Instagram homepage."""
-        try:
-            self._ensure_browser()
-            from automation_system.browser.adapters.instagram_adapter import InstagramAdapter
-            return InstagramAdapter.open_home(self._page)
-        except Exception as e:
-            return {"success": False, "action": "instagram_open", "error": str(e)}
+    def instagram_dms(self) -> Dict[str, Any]:
+        return self._execute(lambda p: InstagramAdapter.navigate_dms(p))
 
-    def search(self, query: str, selector: Optional[str] = None) -> Dict[str, Any]:
-        """Executes search on currently active page."""
-        try:
-            self._ensure_browser()
-            from automation_system.browser.search_engine import SearchEngine
-            return SearchEngine.execute_search(self._page, query=query, custom_selector=selector)
-        except Exception as e:
-            return {"success": False, "action": "search", "error": str(e)}
+    def instagram_open_conversation(self, contact_name: str) -> Dict[str, Any]:
+        return self._execute(lambda p: InstagramAdapter.open_conversation(p, contact_name=contact_name))
 
-    def click_first_result(self) -> Dict[str, Any]:
-        """Clicks the first search result on the active page."""
-        try:
-            self._ensure_browser()
-            from automation_system.browser.interaction_engine import InteractionEngine
-            return InteractionEngine.click_first_result(self._page)
-        except Exception as e:
-            return {"success": False, "action": "click_first_result", "error": str(e)}
+    def instagram_read_messages(self, max_messages: int = 5) -> Dict[str, Any]:
+        return self._execute(lambda p: InstagramAdapter.read_visible_messages(p, max_messages=max_messages))
+
+    # -------------------------------------------------------------------------
+    # Lifecycle
+    # -------------------------------------------------------------------------
 
     def close(self):
-        """Cleans up Playwright resources."""
-        try:
-            if self._context:
-                self._context.close()
-            if self._browser:
-                self._browser.close()
-            if self._playwright:
-                self._playwright.stop()
-        except Exception:
-            pass
-        finally:
-            self._page = None
-            self._context = None
-            self._browser = None
-            self._playwright = None
+        """Closes active session tab."""
+        self._session_mgr.close_session(self.conversation_id)

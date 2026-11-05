@@ -1,81 +1,297 @@
 """
 O.P.S. 2.0 Browser Manager & Session Persistence Engine
-Technology: Playwright
+Technology: Playwright (Chromium Headed/Visible Engine)
 Maintains persistent headed/visible browser sessions across conversation turns,
-manages active tabs, and handles graceful lifecycle cleanup.
+manages active tabs, and guarantees thread-safe execution via a dedicated worker thread.
 """
 
 import os
+import sys
 import time
+import queue
 import logging
 import threading
-from typing import Dict, Optional, Tuple, Any
-from playwright.sync_api import sync_playwright, Playwright, Browser, BrowserContext, Page
+from typing import Dict, Optional, Tuple, Any, Callable, List
+from playwright.sync_api import sync_playwright, Playwright, BrowserContext, Page
 
 logger = logging.getLogger("OPS.BrowserManager")
+
+# Persistent profile path in user home directory to avoid filesystem issues with special path characters
+DEFAULT_USER_DATA_DIR = os.path.join(os.path.expanduser("~"), ".ops", "browser_profile")
+
+
+class PlaywrightWorker:
+    """
+    Dedicated background worker thread running Playwright's sync_api event loop.
+    All Playwright calls are dispatched to and executed sequentially on this thread.
+    This eliminates cross-thread greenlet errors (greenlet.error: Cannot switch to a different thread)
+    when Django handles requests across arbitrary worker threads.
+    """
+
+    def __init__(self, headless: bool = False, user_data_dir: Optional[str] = None):
+        self.headless = headless
+        self.user_data_dir = user_data_dir or DEFAULT_USER_DATA_DIR
+        os.makedirs(self.user_data_dir, exist_ok=True)
+
+        self._queue: queue.Queue = queue.Queue()
+        self._thread = threading.Thread(target=self._run_loop, daemon=True, name="OPS-PlaywrightWorker")
+
+        self.playwright: Optional[Playwright] = None
+        self.context: Optional[BrowserContext] = None
+        # session_id -> Page
+        self.pages: Dict[str, Page] = {}
+        self.last_active: Dict[str, float] = {}
+
+        self._thread.start()
+
+        # Wait for worker initialization
+        ready_q: queue.Queue = queue.Queue()
+        self._queue.put(("INIT", ready_q))
+        status, err = ready_q.get(timeout=30)
+        if status != "OK":
+            raise RuntimeError(f"Playwright worker initialization failed: {err}")
+
+    def _run_loop(self):
+        """Worker thread main loop."""
+        try:
+            self.playwright = sync_playwright().start()
+            self._launch_context()
+        except Exception as e:
+            logger.error(f"Failed to start Playwright worker: {e}", exc_info=True)
+
+        while True:
+            try:
+                item = self._queue.get()
+                if item is None:
+                    break
+
+                cmd, payload = item
+
+                if cmd == "INIT":
+                    ready_q = payload
+                    if self.context:
+                        ready_q.put(("OK", None))
+                    else:
+                        ready_q.put(("ERR", "Could not initialize persistent context."))
+
+                elif cmd == "EXEC":
+                    fn, args, kwargs, reply_q = payload
+                    try:
+                        res = fn(self, *args, **kwargs)
+                        reply_q.put(("OK", res))
+                    except Exception as e:
+                        logger.error(f"Error executing Playwright command: {e}")
+                        reply_q.put(("ERR", e))
+
+                elif cmd == "STOP":
+                    reply_q = payload
+                    self._cleanup()
+                    reply_q.put(("OK", None))
+                    break
+
+            except Exception as loop_err:
+                logger.error(f"Unexpected error in Playwright worker loop: {loop_err}")
+
+    def _launch_context(self):
+        """Launches persistent Chromium browser context."""
+        try:
+            if not self.playwright:
+                self.playwright = sync_playwright().start()
+
+            args = [
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--start-maximized",
+                "--disable-infobars",
+                "--no-default-browser-check"
+            ]
+
+            self.context = self.playwright.chromium.launch_persistent_context(
+                user_data_dir=self.user_data_dir,
+                headless=self.headless,
+                viewport=None,  # Matches window maximized bounds
+                accept_downloads=True,
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                args=args
+            )
+            logger.info(f"Playwright persistent context launched (headless={self.headless}, profile='{self.user_data_dir}')")
+        except Exception as e:
+            logger.error(f"Failed to launch persistent context: {e}", exc_info=True)
+            self.context = None
+
+    def _ensure_context(self):
+        """Ensures context is alive, recreating if closed."""
+        try:
+            if not self.context or not self.context.browser or not self.context.browser.is_connected():
+                logger.warning("Browser context was disconnected. Relaunching...")
+                self._launch_context()
+        except Exception:
+            self._launch_context()
+
+    def _cleanup(self):
+        """Closes all pages, context, and stops Playwright."""
+        try:
+            if self.context:
+                self.context.close()
+        except Exception:
+            pass
+        finally:
+            self.context = None
+            self.pages.clear()
+
+        try:
+            if self.playwright:
+                self.playwright.stop()
+        except Exception:
+            pass
+        finally:
+            self.playwright = None
+
+    def execute(self, fn: Callable, *args, timeout: float = 60.0, **kwargs) -> Any:
+        """Dispatches a function to run on the Playwright worker thread and returns the result."""
+        if not self._thread.is_alive():
+            raise RuntimeError("Playwright worker thread is not running.")
+
+        reply_q: queue.Queue = queue.Queue()
+        self._queue.put(("EXEC", (fn, args, kwargs, reply_q)))
+        status, val = reply_q.get(timeout=timeout)
+        if status == "ERR":
+            raise val
+        return val
+
+    def stop(self):
+        """Stops the worker thread cleanly."""
+        if self._thread.is_alive():
+            reply_q: queue.Queue = queue.Queue()
+            self._queue.put(("STOP", reply_q))
+            try:
+                reply_q.get(timeout=10.0)
+            except Exception:
+                pass
 
 
 class BrowserManager:
     """
-    Manages Playwright process, browser instance, and contexts.
+    Singleton managing the PlaywrightWorker process, browser instance, and persistent contexts.
     Defaults to headed mode (headless=False) so operations are visible on the desktop.
     """
 
+    _instance = None
+    _lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(BrowserManager, cls).__new__(cls)
+                cls._instance._initialized = False
+            return cls._instance
+
     def __init__(self, headless: Optional[bool] = None):
+        if self._initialized:
+            return
+        self._initialized = True
+
         if headless is not None:
             self.headless = headless
         else:
-            # Default to visible/headed unless explicitly overridden by environment variable
             env_val = os.getenv("OPS_BROWSER_HEADLESS", "false").lower()
             self.headless = env_val in ["1", "true", "yes"]
 
-        self._playwright: Optional[Playwright] = None
-        self._browser: Optional[Browser] = None
+        self._worker: Optional[PlaywrightWorker] = None
+        self._worker_lock = threading.Lock()
 
-    def start(self) -> Browser:
-        """Starts Playwright and launches Chromium."""
-        if not self._playwright:
-            self._playwright = sync_playwright().start()
-        if not self._browser or not self._browser.is_connected():
-            self._browser = self._playwright.chromium.launch(
-                headless=self.headless,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                    "--start-maximized"
-                ]
-            )
-            logger.info(f"Launched Chromium (headless={self.headless})")
-        return self._browser
+    def _ensure_worker(self) -> PlaywrightWorker:
+        with self._worker_lock:
+            if not self._worker or not self._worker._thread.is_alive():
+                self._worker = PlaywrightWorker(headless=self.headless)
+            return self._worker
 
-    def new_context_and_page(self) -> Tuple[BrowserContext, Page]:
-        """Creates a fresh context and primary page."""
-        browser = self.start()
-        context = browser.new_context(
-            viewport=None,  # Allows maximized window matching display
-            accept_downloads=True,
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-        )
-        page = context.new_page()
-        return context, page
+    def execute(self, fn: Callable, *args, timeout: float = 60.0, **kwargs) -> Any:
+        """Executes a function on the dedicated Playwright thread."""
+        worker = self._ensure_worker()
+        return worker.execute(fn, *args, timeout=timeout, **kwargs)
 
     def close(self):
-        """Closes browser and Playwright."""
-        try:
-            if self._browser and self._browser.is_connected():
-                self._browser.close()
-        except Exception as e:
-            logger.warning(f"Error closing browser: {e}")
-        finally:
-            self._browser = None
+        """Shuts down worker and browser."""
+        with self._worker_lock:
+            if self._worker:
+                self._worker.stop()
+                self._worker = None
 
-        try:
-            if self._playwright:
-                self._playwright.stop()
-        except Exception as e:
-            logger.warning(f"Error stopping playwright: {e}")
-        finally:
-            self._playwright = None
+
+class PageProxy:
+    """
+    Thread-safe proxy for a Playwright Page.
+    Intercepts method calls and properties, routing them to the dedicated Playwright worker thread.
+    Allows code in any Django or worker thread to treat Page as a normal synchronous object.
+    """
+
+    def __init__(self, browser_manager: BrowserManager, session_id: str):
+        self._bm = browser_manager
+        self._session_id = session_id or "default_session"
+
+    def _get_page(self, w: PlaywrightWorker) -> Page:
+        w._ensure_context()
+        page = w.pages.get(self._session_id)
+        if not page or page.is_closed():
+            # If default context already has an open page, reuse first page for default_session
+            if self._session_id == "default_session" and w.context.pages:
+                page = w.context.pages[0]
+            else:
+                page = w.context.new_page()
+            w.pages[self._session_id] = page
+        w.last_active[self._session_id] = time.time()
+        return page
+
+    @property
+    def url(self) -> str:
+        return self._bm.execute(lambda w: getattr(self._get_page(w), "url", ""))
+
+    def title(self) -> str:
+        return self._bm.execute(lambda w: self._get_page(w).title())
+
+    def is_closed(self) -> bool:
+        return self._bm.execute(lambda w: self._get_page(w).is_closed())
+
+    def goto(self, url: str, **kwargs) -> Any:
+        return self._bm.execute(lambda w: self._get_page(w).goto(url, **kwargs))
+
+    def reload(self, **kwargs) -> Any:
+        return self._bm.execute(lambda w: self._get_page(w).reload(**kwargs))
+
+    def go_back(self, **kwargs) -> Any:
+        return self._bm.execute(lambda w: self._get_page(w).go_back(**kwargs))
+
+    def go_forward(self, **kwargs) -> Any:
+        return self._bm.execute(lambda w: self._get_page(w).go_forward(**kwargs))
+
+    def click(self, selector: str, **kwargs) -> Any:
+        return self._bm.execute(lambda w: self._get_page(w).click(selector, **kwargs))
+
+    def fill(self, selector: str, value: str, **kwargs) -> Any:
+        return self._bm.execute(lambda w: self._get_page(w).fill(selector, value, **kwargs))
+
+    def type(self, selector: str, text: str, **kwargs) -> Any:
+        return self._bm.execute(lambda w: self._get_page(w).type(selector, text, **kwargs))
+
+    def press(self, selector: str, key: str, **kwargs) -> Any:
+        return self._bm.execute(lambda w: self._get_page(w).press(selector, key, **kwargs))
+
+    def evaluate(self, expression: str, arg: Any = None) -> Any:
+        return self._bm.execute(lambda w: self._get_page(w).evaluate(expression, arg))
+
+    def wait_for_selector(self, selector: str, **kwargs) -> Any:
+        return self._bm.execute(lambda w: bool(self._get_page(w).wait_for_selector(selector, **kwargs)))
+
+    def screenshot(self, **kwargs) -> Any:
+        return self._bm.execute(lambda w: self._get_page(w).screenshot(**kwargs))
+
+    def close(self):
+        def _close(w):
+            page = w.pages.pop(self._session_id, None)
+            if page and not page.is_closed():
+                page.close()
+        return self._bm.execute(_close)
 
 
 class BrowserSessionManager:
@@ -83,6 +299,7 @@ class BrowserSessionManager:
     Singleton managing persistent browser contexts and pages per conversation_id.
     Maintains open pages across conversational turns so follow-up commands
     ('open the first result', 'search for another song', 'go back') execute on the live tab.
+    Guarantees thread-safety across all Django request threads.
     """
 
     _instance = None
@@ -99,85 +316,71 @@ class BrowserSessionManager:
         if self._initialized:
             return
         self._initialized = True
-        self._browser_manager: Optional[BrowserManager] = None
-        # conversation_id -> {"context": BrowserContext, "page": Page, "last_active": float}
-        self._sessions: Dict[str, Dict[str, Any]] = {}
-        self._session_lock = threading.Lock()
+        self._browser_manager = BrowserManager()
 
-    def _ensure_browser_manager(self, headless: Optional[bool] = None) -> BrowserManager:
-        if not self._browser_manager:
-            self._browser_manager = BrowserManager(headless=headless)
-        return self._browser_manager
-
-    def get_or_create_page(self, conversation_id: str, headless: Optional[bool] = None) -> Page:
+    def get_or_create_page(self, conversation_id: str, headless: Optional[bool] = None) -> PageProxy:
         """
-        Retrieves active Page for conversation_id or initializes a new one.
-        Ensures page is alive; if closed, recreates it seamlessly.
+        Retrieves thread-safe PageProxy for conversation_id.
+        All calls on PageProxy run on the dedicated worker thread.
         """
         cid = conversation_id or "default_session"
-        with self._session_lock:
-            bm = self._ensure_browser_manager(headless=headless)
+        return PageProxy(self._browser_manager, cid)
 
-            session = self._sessions.get(cid)
-            if session:
-                page: Page = session.get("page")
-                if page and not page.is_closed():
-                    try:
-                        # Test if page is still responsive
-                        _ = page.url
-                        session["last_active"] = time.time()
-                        return page
-                    except Exception:
-                        logger.info(f"Existing page for {cid} was disconnected, recreating.")
-
-            # Create new context and page for this conversation session
-            context, page = bm.new_context_and_page()
-            self._sessions[cid] = {
-                "context": context,
-                "page": page,
-                "last_active": time.time()
-            }
-            logger.info(f"Initialized persistent browser page for session '{cid}'.")
-            return page
-
-    def get_active_page(self, conversation_id: str) -> Optional[Page]:
-        """Returns existing page if open without auto-creating."""
+    def execute_on_page(self, conversation_id: str, fn: Callable[[Page], Any], timeout: float = 60.0) -> Any:
+        """
+        Executes a callable taking the real Playwright Page object directly inside
+        the dedicated worker thread. This allows multi-step adapters (e.g. YouTubeAdapter)
+        to run natively with zero serialization overhead and 100% thread safety.
+        """
         cid = conversation_id or "default_session"
-        with self._session_lock:
-            session = self._sessions.get(cid)
-            if session:
-                page = session.get("page")
-                if page and not page.is_closed():
-                    return page
-            return None
+
+        def _worker_action(w: PlaywrightWorker):
+            w._ensure_context()
+            page = w.pages.get(cid)
+            if not page or page.is_closed():
+                if cid == "default_session" and w.context.pages:
+                    page = w.context.pages[0]
+                else:
+                    page = w.context.new_page()
+                w.pages[cid] = page
+            w.last_active[cid] = time.time()
+            return fn(page)
+
+        return self._browser_manager.execute(_worker_action, timeout=timeout)
+
+    def get_active_page(self, conversation_id: str) -> Optional[PageProxy]:
+        """Returns PageProxy if active page exists and is open."""
+        cid = conversation_id or "default_session"
+
+        def _check(w: PlaywrightWorker) -> bool:
+            page = w.pages.get(cid)
+            return bool(page and not page.is_closed())
+
+        try:
+            if self._browser_manager.execute(_check, timeout=5.0):
+                return PageProxy(self._browser_manager, cid)
+        except Exception:
+            pass
+        return None
 
     def close_session(self, conversation_id: str):
-        """Closes browser context associated with a specific conversation."""
+        """Closes page associated with conversation_id."""
         cid = conversation_id or "default_session"
-        with self._session_lock:
-            session = self._sessions.pop(cid, None)
-            if session:
-                try:
-                    ctx: BrowserContext = session.get("context")
-                    if ctx:
-                        ctx.close()
-                    logger.info(f"Closed browser session '{cid}'.")
-                except Exception as e:
-                    logger.warning(f"Error closing context for '{cid}': {e}")
 
-    def close_all(self):
-        """Closes all sessions and underlying browser."""
-        with self._session_lock:
-            for cid, session in list(self._sessions.items()):
+        def _close(w: PlaywrightWorker):
+            page = w.pages.pop(cid, None)
+            if page and not page.is_closed():
                 try:
-                    ctx = session.get("context")
-                    if ctx:
-                        ctx.close()
+                    page.close()
                 except Exception:
                     pass
-            self._sessions.clear()
+            w.last_active.pop(cid, None)
 
-            if self._browser_manager:
-                self._browser_manager.close()
-                self._browser_manager = None
-            logger.info("Closed all active browser sessions.")
+        try:
+            self._browser_manager.execute(_close, timeout=10.0)
+        except Exception as e:
+            logger.warning(f"Error closing session '{cid}': {e}")
+
+    def close_all(self):
+        """Closes all pages and shuts down underlying browser."""
+        self._browser_manager.close()
