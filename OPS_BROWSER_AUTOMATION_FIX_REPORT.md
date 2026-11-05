@@ -31,6 +31,23 @@ Empirical verification confirms **10 out of 10 tests passed** in the automated t
 
 A dedicated, thread-safe, persistent Core Library was built inside `backend/automation_system/browser/`:
 
+```mermaid
+flowchart TD
+    DjangoThread["Django Worker Thread / LangGraph"] -->|"session_mgr.execute_on_page()"| BrowserManager
+    BrowserManager -->|"Thread-safe Task Queue"| WorkerThread["OPS-PlaywrightWorker (Dedicated Thread)"]
+    subgraph BrowserCore ["O.P.S. Browser Automation Core"]
+        WorkerThread --> PersistentContext["Playwright Persistent Context (~/.ops/browser_profile)"]
+        PersistentContext --> TabManager["Tab Manager (Multi-tab)"]
+        PersistentContext --> NavigationEngine["Navigation Engine"]
+        PersistentContext --> LocatorEngine["Locator Engine (Role/Label/Text/CSS)"]
+        PersistentContext --> InteractionEngine["Interaction Engine (Click/Type/Scroll)"]
+        PersistentContext --> VerificationEngine["Verification Engine (DOM/Video/URL)"]
+        PersistentContext --> AuthManager["Auth Manager (Login Walls / CAPTCHA)"]
+        PersistentContext --> RecoveryManager["Recovery Manager (Bounded Retries)"]
+    end
+    BrowserCore --> TargetWebsites["Google / YouTube / Spotify / Instagram / General Web"]
+```
+
 ### Module Responsibilities:
 1. **`BrowserManager` & `PlaywrightWorker`** (`browser_manager.py`):
    - Single owner of persistent Playwright instance and dedicated visible Chromium browser.
