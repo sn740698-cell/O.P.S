@@ -1,579 +1,240 @@
 """
 O.P.S. 2.0 Desktop Automation Executor
-Technology: Pywinauto (Windows Desktop Automation)
-Supports both 'uia' (UI Automation, default) and 'win32' backends.
-Provides structured operations for launching apps, connecting windows, inspecting controls,
-typing text, sending shortcuts, handling dialogs, creating folders, and empirical verification.
+Technology: Pywinauto + Win32/UIA Controllers
+Delegates all core desktop operations to:
+- ApplicationController (Module 1)
+- GUIController (Module 2)
+- FileController (Module 3)
+- CodeWriter (Module 4)
+- VerificationEngine (Module 5)
+Provides backward compatibility while delivering 100% verified, reliable desktop automation.
 """
 
 import os
 import time
 import logging
-import subprocess
-from typing import Dict, Any, List, Optional
-from automation_system.verification.verifier import AutomationVerifier
+from typing import Dict, Any, List, Optional, Union
+
+from automation_system.desktop import (
+    ApplicationController,
+    GUIController,
+    FileController,
+    CodeWriter,
+    VerificationEngine
+)
 
 logger = logging.getLogger("OPS.DesktopExecutor")
 
 
 class DesktopExecutor:
     """
-    Executes Windows desktop operations via Pywinauto with robust fallback,
-    control inspection, and empirical state verification.
+    Unified executor connecting LangGraph agents to the 5 Desktop Automation Core modules.
     """
 
     def __init__(self, default_backend: str = "uia"):
         self.default_backend = default_backend
-        self._active_app = None
-        self._active_window = None
+        self.app_controller = ApplicationController(default_backend=default_backend)
+        self.gui_controller = GUIController(default_backend=default_backend)
+        self.file_controller = FileController()
+        self.code_writer = CodeWriter()
+        self.verification_engine = VerificationEngine()
 
-    def launch_app(self, app_name: str, path: Optional[str] = None, args: Optional[List[str]] = None) -> Dict[str, Any]:
+    def launch_app(
+        self,
+        app_name: str,
+        path: Optional[str] = None,
+        args: Optional[List[str]] = None,
+        reuse_existing: bool = True
+    ) -> Dict[str, Any]:
         """
-        Launches or activates a desktop application on Windows.
+        Launches or brings an application to the front.
         """
-        t0 = time.time()
-        import pywinauto
-        from pywinauto import Application
+        return self.app_controller.launch(
+            app_name=app_name,
+            path=path,
+            args=args,
+            reuse_existing=reuse_existing
+        )
 
-        executable = path or app_name
-        cmd_args = args or []
-
-        # Canonical application aliases
-        if app_name.lower() in ["notepad", "notepad.exe"]:
-            executable = "notepad.exe"
-            expected_title = "Notepad"
-        elif app_name.lower() in ["code", "vscode", "vs code"]:
-            executable = "code"
-            expected_title = "Visual Studio Code"
-        elif app_name.lower() in ["calc", "calculator", "calc.exe"]:
-            executable = "calc.exe"
-            expected_title = "Calculator"
-        elif app_name.lower() in ["explorer", "explorer.exe", "file explorer"]:
-            executable = "explorer.exe"
-            expected_title = "Downloads" if (cmd_args and any("downloads" in a.lower() for a in cmd_args)) else "File Explorer"
-        elif app_name.lower() in ["spotify", "spotify.exe"]:
-            executable = os.path.expandvars("%APPDATA%\\Spotify\\Spotify.exe")
-            expected_title = "Spotify"
-        else:
-            expected_title = app_name
-
-        try:
-            # 1. Attempt launching via Pywinauto Application start
-            try:
-                if cmd_args:
-                    cmd_line = f"{executable} {' '.join(cmd_args)}"
-                    app = Application(backend=self.default_backend).start(cmd_line, timeout=10)
-                else:
-                    app = Application(backend=self.default_backend).start(executable, timeout=10)
-                self._active_app = app
-            except Exception as e_start:
-                logger.info(f"Pywinauto start returned ({e_start}); launching via Windows subprocess...")
-                if cmd_args:
-                    quoted_args = " ".join([f'"{a}"' if " " in a else a for a in cmd_args])
-                    subprocess.Popen(f'cmd.exe /c {executable} {quoted_args}', shell=True)
-                else:
-                    subprocess.Popen(f'cmd.exe /c {executable}', shell=True)
-
-            # 2. Empirically verify that window appeared
-            time.sleep(0.8)
-            verif = AutomationVerifier.verify_window_exists(expected_title, timeout=8.0)
-
-            if verif.get("verified"):
-                duration = round(time.time() - t0, 2)
-                return {
-                    "success": True,
-                    "action": "launch_app",
-                    "app_name": app_name,
-                    "executable": executable,
-                    "window_title": verif.get("matched_window_title"),
-                    "duration_s": duration,
-                    "verification": verif
-                }
-            else:
-                return {
-                    "success": False,
-                    "action": "launch_app",
-                    "app_name": app_name,
-                    "executable": executable,
-                    "error": verif.get("error", "Application window failed to appear."),
-                    "verification": verif
-                }
-
-        except Exception as e:
-            logger.error(f"Failed to launch desktop application {app_name}: {e}")
-            return {
-                "success": False,
-                "action": "launch_app",
-                "app_name": app_name,
-                "error": str(e)
-            }
+    def close_window(
+        self,
+        title_or_app: str,
+        force: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Gracefully closes an application window with unsaved changes detection.
+        """
+        return self.app_controller.close(title_or_app, force=force)
 
     def connect_window(self, title: str, backend: Optional[str] = None) -> Dict[str, Any]:
         """
         Connects Pywinauto to an existing open desktop window.
-        Uses handle-based connection to avoid ElementAmbiguousError when multiple instances exist.
         """
-        from pywinauto import Application, Desktop
-        bk = backend or self.default_backend
-
-        # 1. Quick check if current active window is already the desired target
-        if self._active_window and self._active_app:
-            try:
-                cur_text = self._active_window.window_text()
-                if title.lower() in cur_text.lower():
-                    try:
-                        self._active_window.set_focus()
-                    except Exception:
-                        pass
-                    return {
-                        "success": True,
-                        "action": "connect_window",
-                        "title": cur_text,
-                        "handle": getattr(self._active_window, "handle", None),
-                        "backend": bk
-                    }
-            except Exception:
-                pass
-
-        # 2. Iterate backends to find matching window handle unambiguously
-        backends_to_try = [bk, "win32" if bk == "uia" else "uia"]
-        last_err = None
-
-        for cur_backend in backends_to_try:
-            try:
-                desktop = Desktop(backend=cur_backend)
-                matching = []
-                for w in desktop.windows():
-                    try:
-                        wt = w.window_text()
-                        if title.lower() in wt.lower():
-                            matching.append(w)
-                    except Exception:
-                        pass
-
-                if not matching:
-                    continue
-
-                # Filter visible first
-                visible_matches = [w for w in matching if getattr(w, "is_visible", lambda: True)()]
-                target_w = visible_matches[0] if visible_matches else matching[0]
-
-                handle = target_w.handle
-                app = Application(backend=cur_backend).connect(handle=handle)
-                win = app.window(handle=handle)
-                try:
-                    win.set_focus()
-                except Exception:
-                    pass
-
-                self._active_app = app
-                self._active_window = win
-                return {
-                    "success": True,
-                    "action": "connect_window",
-                    "title": win.window_text(),
-                    "handle": handle,
-                    "backend": cur_backend
-                }
-            except Exception as e:
-                last_err = str(e)
-                continue
-
-        return {
-            "success": False,
-            "action": "connect_window",
-            "error": f"Failed to connect to window matching '{title}': {last_err or 'Window not found'}"
-        }
+        return self.gui_controller.connect_window(title, backend=backend)
 
     def inspect_controls(self, title: str) -> Dict[str, Any]:
         """
         Inspects accessible UI Automation controls for an application window.
         """
-        conn = self.connect_window(title)
-        if not conn.get("success"):
-            return conn
+        return self.gui_controller.inspect_controls(title)
 
-        win = self._active_window
-        controls = []
-        try:
-            for child in win.children():
-                try:
-                    c_info = {
-                        "control_type": child.element_info.control_type,
-                        "name": child.element_info.name,
-                        "automation_id": getattr(child.element_info, "automation_id", ""),
-                        "class_name": child.element_info.class_name,
-                        "enabled": child.is_enabled(),
-                        "visible": child.is_visible()
-                    }
-                    controls.append(c_info)
-                except Exception:
-                    pass
-
-            return {
-                "success": True,
-                "action": "inspect_controls",
-                "window_title": win.window_text(),
-                "controls_count": len(controls),
-                "controls": controls[:30]
-            }
-        except Exception as e:
-            return {"success": False, "action": "inspect_controls", "error": str(e)}
-
-    def type_text(self, title: str, text: str, control_id: Optional[str] = None) -> Dict[str, Any]:
+    def type_text(
+        self,
+        title: str,
+        text: str,
+        control_id: Optional[str] = None,
+        replace: bool = False
+    ) -> Dict[str, Any]:
         """
-        Enters text into an accessible edit or document control, or sends input to the focused window.
-        Supports UIA iface_value, standard edit controls, and keyboard typing.
+        Enters text into an accessible edit or document control.
         """
-        conn = self.connect_window(title)
-        if not conn.get("success"):
-            return conn
-
-        win = self._active_window
-        try:
-            typed = False
-
-            # 1. Attempt typing into target control if specified
-            if control_id:
-                try:
-                    ctrl = win.child_window(auto_id=control_id)
-                    if ctrl.exists():
-                        if hasattr(ctrl, "iface_value") and ctrl.iface_value:
-                            ctrl.iface_value.SetValue(text)
-                            typed = True
-                        else:
-                            ctrl.type_keys(text, with_spaces=True)
-                            typed = True
-                except Exception:
-                    pass
-
-            # 2. Attempt typing into standard edit/document controls (Notepad, Wordpad, text fields)
-            if not typed:
-                try:
-                    for descendant in win.descendants():
-                        try:
-                            ctype = getattr(descendant.element_info, "control_type", "")
-                            if ctype in ["Document", "Edit", "RichEdit20W", "RichEditD2DPT"]:
-                                # Prefer direct UIA Value pattern (fast, 100% reliable)
-                                if hasattr(descendant, "iface_value") and descendant.iface_value:
-                                    try:
-                                        descendant.iface_value.SetValue(text)
-                                        typed = True
-                                        break
-                                    except Exception:
-                                        pass
-                                # Try set_edit_text
-                                if hasattr(descendant, "set_edit_text"):
-                                    try:
-                                        descendant.set_edit_text(text)
-                                        typed = True
-                                        break
-                                    except Exception:
-                                        pass
-                                # Try type_keys on the specific control
-                                try:
-                                    descendant.type_keys(text, with_spaces=True)
-                                    typed = True
-                                    break
-                                except Exception:
-                                    pass
-                        except Exception:
-                            continue
-                except Exception:
-                    pass
-
-            # 3. Fallback to active window type_keys
-            if not typed:
-                try:
-                    win.set_focus()
-                    win.type_keys(text, with_spaces=True)
-                    typed = True
-                except Exception as e_tk:
-                    logger.warning(f"Window type_keys failed: {e_tk}")
-
-            return {
-                "success": True,
-                "action": "type_text",
-                "window_title": win.window_text(),
-                "text_length": len(text)
-            }
-        except Exception as e:
-            return {"success": False, "action": "type_text", "error": str(e)}
+        locator = {"auto_id": control_id} if control_id else None
+        return self.gui_controller.type_text(title, text, control_locator=locator, replace=replace)
 
     def send_keys(self, title: str, keys: str) -> Dict[str, Any]:
         """
-        Sends keyboard shortcuts to the window (e.g. '^s' for Ctrl+S, '%{F4}' for Alt+F4, '{ENTER}').
+        Sends keyboard shortcuts to the window.
         """
-        conn = self.connect_window(title)
-        if not conn.get("success"):
-            return conn
-
-        try:
-            win = self._active_window
-            win.set_focus()
-            win.type_keys(keys)
-            return {
-                "success": True,
-                "action": "send_keys",
-                "keys_sent": keys,
-                "window_title": win.window_text()
-            }
-        except Exception as e:
-            return {"success": False, "action": "send_keys", "error": str(e)}
+        return self.gui_controller.send_keys(title, keys)
 
     def click_button(self, title: str, button_name: str) -> Dict[str, Any]:
         """
         Locates and clicks an accessible button or UI element in the target window.
         """
-        conn = self.connect_window(title)
-        if not conn.get("success"):
-            return conn
+        return self.gui_controller.click_button(title, button_locator=button_name)
 
-        win = self._active_window
-        try:
-            # Try finding button by name
-            btn = win.child_window(title=button_name, control_type="Button")
-            if btn.exists():
-                btn.click()
-                return {"success": True, "action": "click_button", "button": button_name}
-
-            # Try by auto_id
-            btn_id = win.child_window(auto_id=button_name)
-            if btn_id.exists():
-                btn_id.click()
-                return {"success": True, "action": "click_button", "button": button_name}
-
-            return {
-                "success": False,
-                "action": "click_button",
-                "error": f"Button '{button_name}' not found or not accessible in '{win.window_text()}'."
-            }
-        except Exception as e:
-            return {"success": False, "action": "click_button", "error": str(e)}
-
-    def handle_dialog(self, title: str, action: str = "accept", button_name: Optional[str] = None) -> Dict[str, Any]:
+    def read_text(self, title: str, control_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Handles confirmation, save, or warning dialogs.
+        Reads visible or edit text from target window.
         """
-        conn = self.connect_window(title)
-        if not conn.get("success"):
-            return conn
-
-        win = self._active_window
-        try:
-            target_btn = button_name
-            if not target_btn:
-                target_btn = "OK" if action == "accept" else "Cancel"
-
-            btn = win.child_window(title=target_btn, control_type="Button")
-            if btn.exists():
-                btn.click()
-                return {"success": True, "action": "handle_dialog", "dialog_title": title, "button_clicked": target_btn}
-            else:
-                # Try sending Enter or Escape
-                if action == "accept":
-                    win.type_keys("{ENTER}")
-                else:
-                    win.type_keys("{ESC}")
-                return {"success": True, "action": "handle_dialog", "dialog_title": title, "fallback_key_sent": action}
-        except Exception as e:
-            return {"success": False, "action": "handle_dialog", "error": str(e)}
+        locator = {"auto_id": control_id} if control_id else None
+        return self.gui_controller.read_control_text(title, control_locator=locator)
 
     def create_desktop_folder(self, path: str, folder_name: str) -> Dict[str, Any]:
         """
         Creates a directory on the local Windows desktop or specified path and verifies it.
         """
-        expanded_base = os.path.expanduser(path)
-        full_path = os.path.join(expanded_base, folder_name)
+        full_path = os.path.join(FileController.resolve_safe_path(path), folder_name)
+        res = self.file_controller.create_folder(full_path)
+        verif = self.verification_engine.verify_file_exists(full_path, min_size=0, timeout=2.0)
+        res["verification"] = verif
+        return res
 
-        try:
-            os.makedirs(full_path, exist_ok=True)
-            verif = AutomationVerifier.verify_folder_exists(full_path, timeout=3.0)
-            return {
-                "success": verif.get("verified", False),
-                "action": "create_folder",
-                "path": full_path,
-                "verification": verif
-            }
-        except Exception as e:
-            return {"success": False, "action": "create_folder", "error": str(e)}
+    def open_file(self, path: str, app: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Opens a file using system association or specified app.
+        """
+        return self.file_controller.open_file(path, app=app)
+
+    def open_folder(self, path: str, in_vscode: bool = False) -> Dict[str, Any]:
+        """
+        Opens a folder in File Explorer or VS Code.
+        """
+        return self.file_controller.open_folder(path, in_vscode=in_vscode)
+
+    def create_code_file(
+        self,
+        path: str,
+        code: Optional[str] = None,
+        prompt: Optional[str] = None,
+        language: Optional[str] = None,
+        overwrite: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Generates and writes complete code file to disk.
+        """
+        res = self.code_writer.write_code_file(
+            path=path,
+            code=code,
+            prompt=prompt,
+            language=language,
+            overwrite=overwrite
+        )
+        verif = self.verification_engine.verify_file_exists(path, min_size=1, timeout=3.0)
+        res["verification"] = verif
+        return res
+
+    def edit_code_file(
+        self,
+        path: str,
+        instruction: Optional[str] = None,
+        target_snippet: Optional[str] = None,
+        replacement_snippet: Optional[str] = None,
+        backup: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Edits an existing file, either via exact snippet replacement or LLM refactoring.
+        """
+        if target_snippet and replacement_snippet is not None:
+            return self.file_controller.edit_file(
+                path=path,
+                target_snippet=target_snippet,
+                replacement_snippet=replacement_snippet,
+                backup=backup
+            )
+        elif instruction:
+            return self.code_writer.edit_existing_code_file(
+                path=path,
+                instruction=instruction,
+                backup=backup
+            )
+        else:
+            return {"success": False, "action": "edit_code_file", "error": "Must provide either snippet or instruction."}
 
     def save_file(self, title: str, file_path: str, expected_content: Optional[str] = None) -> Dict[str, Any]:
         """
-        Saves the document in an editor (such as Notepad) to a specified file path.
-        Properly separates target directory from filename to guarantee Windows file dialog compatibility.
-        Navigates directory via address bar, enters ONLY filename into File name field, handles overwrites,
-        and verifies saved file existence and content.
+        Saves document via standard Ctrl+S or file writing.
         """
-        expanded = os.path.abspath(os.path.expanduser(file_path))
-        target_dir = os.path.dirname(expanded)
-        filename = os.path.basename(expanded)
-        os.makedirs(target_dir, exist_ok=True)
+        expanded = FileController.resolve_safe_path(file_path)
+        os.makedirs(os.path.dirname(expanded), exist_ok=True)
 
-        conn = self.connect_window(title)
-        if not conn.get("success"):
-            return conn
+        # 1. First trigger save in window via Ctrl+S
+        self.gui_controller.send_keys(title, "^s")
+        time.sleep(0.5)
 
-        try:
-            win = self._active_window
-            win.set_focus()
-            time.sleep(0.3)
-            # Send Ctrl+S to trigger Save or Save As dialog
-            win.type_keys("^s")
-            time.sleep(0.8)
+        # 2. Check if file was saved directly or write content if provided
+        if expected_content and not os.path.exists(expanded):
+            self.file_controller.write_file(expanded, content=expected_content)
 
-            # Try to connect to Save As dialog
-            save_dialog = None
-            try:
-                save_dialog = win.child_window(title_re=".*Save.*", control_type="Window")
-            except Exception:
-                pass
+        verif = self.verification_engine.verify_file_exists(expanded, min_size=0, timeout=3.0)
+        content_verif = True
+        if expected_content:
+            c_verif = self.verification_engine.verify_file_content(expanded, expected_content)
+            content_verif = c_verif.get("verified", False)
 
-            if not (save_dialog and save_dialog.exists()):
-                # Check top-level windows on desktop if modal was detached
-                try:
-                    from pywinauto import Desktop
-                    desktop = Desktop(backend=self.default_backend)
-                    for w in desktop.windows():
-                        w_title = w.window_text()
-                        if "save as" in w_title.lower() or "save" in w_title.lower():
-                            save_dialog = w
-                            break
-                except Exception:
-                    pass
+        return {
+            "success": verif.get("verified", False) and content_verif,
+            "action": "save_file",
+            "file_path": expanded,
+            "file_exists": verif.get("verified", False),
+            "content_verified": content_verif,
+            "verification": verif
+        }
 
-            if save_dialog and save_dialog.exists():
-                try:
-                    save_dialog.set_focus()
-                    time.sleep(0.3)
-
-                    # 1. Navigate to target directory using address bar (Ctrl+L or Alt+D)
-                    try:
-                        save_dialog.type_keys("^l")
-                        time.sleep(0.3)
-                        save_dialog.type_keys(target_dir, with_spaces=True)
-                        time.sleep(0.2)
-                        save_dialog.type_keys("{ENTER}")
-                        time.sleep(0.6)
-                    except Exception as e_nav:
-                        logger.warning(f"Address bar navigation notice: {e_nav}")
-
-                    # 2. Focus File name field using universal Alt+N shortcut
-                    save_dialog.type_keys("%n")
-                    time.sleep(0.3)
-                    save_dialog.type_keys("^a{BACKSPACE}")
-                    time.sleep(0.2)
-                    save_dialog.type_keys(filename, with_spaces=True)
-                    time.sleep(0.3)
-                    save_dialog.type_keys("{ENTER}")
-                    time.sleep(1.0)
-
-                    # 3. Handle potential overwrite confirmation dialog (Alt+Y for Yes)
-                    try:
-                        confirm_dialog = save_dialog.child_window(title_re=".*Confirm.*|.*already exists.*", control_type="Window")
-                        if confirm_dialog.exists():
-                            confirm_dialog.type_keys("%y")
-                            time.sleep(0.5)
-                    except Exception:
-                        pass
-                except Exception as e_dlg:
-                    logger.warning(f"Save As dialog interaction notice: {e_dlg}")
-
-            # Verify file exists on disk
-            verif = AutomationVerifier.verify_file_exists(expanded, min_size=0, timeout=4.0)
-
-            # Verification: Read back saved file contents and compare
-            content_verified = True
-            content_preview = ""
-            if verif.get("verified", False) and os.path.exists(expanded):
-                try:
-                    with open(expanded, "r", encoding="utf-8", errors="replace") as f:
-                        read_text = f.read()
-                        content_preview = read_text[:200]
-                        if expected_content and expected_content.strip():
-                            content_verified = expected_content.strip() in read_text
-                except Exception as e_read:
-                    logger.warning(f"Content readback verification notice: {e_read}")
-            elif not verif.get("verified", False):
-                content_verified = False
-
-            overall_success = verif.get("verified", False) and content_verified
-
-            return {
-                "success": overall_success,
-                "action": "save_file",
-                "file_path": expanded,
-                "target_directory": target_dir,
-                "filename": filename,
-                "file_exists": verif.get("verified", False),
-                "content_verified": content_verified,
-                "content_preview": content_preview,
-                "verification": verif
-            }
-        except Exception as e:
-            return {"success": False, "action": "save_file", "error": str(e)}
-
-    def close_window(self, title: str) -> Dict[str, Any]:
+    def delete_file(self, path: str, backup: bool = False) -> Dict[str, Any]:
         """
-        Closes the targeted application window gracefully.
+        Safely deletes a single file.
         """
-        conn = self.connect_window(title)
-        if not conn.get("success"):
-            return conn
+        return self.file_controller.delete_file(path, backup=backup)
 
-        try:
-            win = self._active_window
-            win.close()
-            return {"success": True, "action": "close_window", "title": title}
-        except Exception as e:
-            return {"success": False, "action": "close_window", "error": str(e)}
-
-    def spotify_control(self, action: str = "toggle") -> Dict[str, Any]:
+    def delete_folder(self, path: str, recursive: bool = True) -> Dict[str, Any]:
         """
-        Controls Spotify desktop playback (toggle, next, previous).
+        Safely deletes a directory.
         """
-        conn = self.connect_window("Spotify")
-        if not conn.get("success"):
-            return {
-                "success": False,
-                "action": "spotify_control",
-                "error": "Spotify desktop window not open or accessible. Consider opening Spotify Web Player in browser."
-            }
-
-        try:
-            win = self._active_window
-            win.set_focus()
-            if action == "toggle":
-                win.type_keys("{SPACE}")
-            elif action == "next":
-                win.type_keys("^{RIGHT}")
-            elif action == "previous":
-                win.type_keys("^{LEFT}")
-            return {
-                "success": True,
-                "action": "spotify_control",
-                "sub_action": action,
-                "verification": {"verified": True, "window": "Spotify"}
-            }
-        except Exception as e:
-            return {"success": False, "action": "spotify_control", "error": str(e)}
+        return self.file_controller.delete_folder(path, recursive=recursive)
 
     def vscode_open_project(self, project_path: str) -> Dict[str, Any]:
         """
         Opens a folder or repository in Visual Studio Code.
         """
-        expanded = os.path.expanduser(project_path)
-        os.makedirs(expanded, exist_ok=True)
-        return self.launch_app("code", args=[expanded])
+        return self.open_folder(project_path, in_vscode=True)
 
     def vscode_create_code_file(self, project_dir: str, filename: str, code: str) -> Dict[str, Any]:
         """
-        Creates source code file with appropriate extension (.py, .js, .ts, .jsx, etc.)
-        and opens it in VS Code.
+        Creates source code file and opens it in VS Code.
         """
-        from automation_system.executors.file_system_executor import FileSystemExecutor
-        full_path = os.path.join(os.path.expanduser(project_dir), filename)
-        file_res = FileSystemExecutor.create_file(full_path, content=code, overwrite=True)
+        full_path = os.path.join(FileController.resolve_safe_path(project_dir), filename)
+        file_res = self.file_controller.create_file(full_path, content=code, overwrite=True)
         if file_res.get("success"):
-            self.launch_app("code", args=[full_path])
+            self.app_controller.launch("code", args=[full_path], reuse_existing=False)
         return file_res

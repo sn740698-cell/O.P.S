@@ -119,6 +119,17 @@ class AutomationPlanner:
         if len(words) <= 2 and q_lower in ["open it", "run it", "click it", "delete it", "download it", "open app", "create it"]:
             return True, "Which specific application, website, or document would you like me to open?"
 
+        # Ambiguous file requests (e.g. "Open my Python file", "delete the file")
+        if re.search(r"\b(open|read|edit|delete)\s+(?:my|the|this|that|a)?\s*(?:python|js|javascript|html|code|text)?\s*file\b", q_lower):
+            has_explicit_target = bool(re.search(r"[\w\-]+\.(?:py|js|ts|html|css|txt|json|md|pdf|docx)", query, re.I)) or bool(re.search(r"[a-zA-Z]:[\\/]", query))
+            if not has_explicit_target:
+                if "python" in q_lower:
+                    return True, "Which Python file would you like to open? Please provide the file name or complete path."
+                elif "delete" in q_lower:
+                    return True, "Which specific file would you like me to delete? Please specify the exact file path."
+                else:
+                    return True, "Which specific file would you like me to access? Please provide the exact file name or path."
+
         if "open file" in q_lower and not any(ext in q_lower for ext in [".txt", ".py", ".pdf", ".json", ".docx", ".md"]) and len(words) < 5:
             return True, "Which specific file would you like to open, and from what directory?"
 
@@ -133,6 +144,200 @@ class AutomationPlanner:
         Instantly generates reliable, verified plans for standard high-frequency tasks.
         """
         q_lower = query.lower()
+
+        # Desktop: Close Application
+        if any(w in q_lower for w in ["close notepad", "close calculator", "close vs code", "close vscode", "close application", "close app"]):
+            target_app = "Notepad" if "notepad" in q_lower else ("Calculator" if ("calc" in q_lower or "calculator" in q_lower) else ("Visual Studio Code" if ("code" in q_lower or "vscode" in q_lower) else "Application"))
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Gracefully close {target_app}",
+                    "executor": "desktop",
+                    "action": "close_app",
+                    "params": {"app_name": target_app, "title": target_app},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "process_closed", "target": target_app}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": f"Close {target_app} application workflow.",
+                "steps": steps,
+                "target_apps": [target_app],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # Desktop: GUI Button Interaction
+        if any(w in q_lower for w in ["click button", "click the button", "press button"]):
+            m_btn = re.search(r'(?:click|press)(?:\s+the)?\s+button\s+["\']?([^"\',]+)["\']?(?:\s+in\s+["\']?([^"\',]+)["\']?)?', query, re.IGNORECASE)
+            btn_name = m_btn.group(1).strip() if m_btn else "OK"
+            win_title = m_btn.group(2).strip() if (m_btn and m_btn.group(2)) else ("Calculator" if "calc" in q_lower else "Application")
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Click button '{btn_name}' in window '{win_title}'",
+                    "executor": "desktop",
+                    "action": "click_button",
+                    "params": {"title": win_title, "button_name": btn_name},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "action_completed"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": f"GUI button interaction for '{btn_name}'.",
+                "steps": steps,
+                "target_apps": [win_title],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # Desktop: Keyboard Shortcut
+        if any(w in q_lower for w in ["keyboard shortcut", "send shortcut", "press shortcut", "send keys", "press keys", "press ctrl", "press alt"]):
+            m_keys = re.search(r'(?:shortcut|keys?)\s+["\']?([^"\',]+)["\']?(?:\s+in\s+["\']?([^"\',]+)["\']?)?', query, re.IGNORECASE)
+            raw_keys = m_keys.group(1).strip() if m_keys else "^s"
+            win_title = m_keys.group(2).strip() if (m_keys and m_keys.group(2)) else ("Notepad" if "notepad" in q_lower else "")
+            
+            # Map common shortcut descriptions to pywinauto format
+            keys_to_send = raw_keys
+            if "ctrl+s" in raw_keys.lower(): keys_to_send = "^s"
+            elif "ctrl+o" in raw_keys.lower(): keys_to_send = "^o"
+            elif "ctrl+a" in raw_keys.lower(): keys_to_send = "^a"
+            elif "alt+f4" in raw_keys.lower(): keys_to_send = "%{F4}"
+            elif "enter" in raw_keys.lower(): keys_to_send = "{ENTER}"
+
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Send keyboard shortcut '{raw_keys}' to '{win_title}'",
+                    "executor": "desktop",
+                    "action": "send_keys",
+                    "params": {"title": win_title, "keys": keys_to_send},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "action_completed"}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": f"Send keyboard shortcut '{raw_keys}'.",
+                "steps": steps,
+                "target_apps": [win_title or "Desktop"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # Desktop: Code File Generation (Python, JavaScript, HTML, CSS)
+        if any(w in q_lower for w in ["create a python file", "create python file", "create a javascript file", "create javascript file", "create an html file", "create html file", "write a python program", "write a python script"]):
+            lang = "python"
+            if "javascript" in q_lower or "js" in q_lower:
+                lang = "javascript"
+            elif "html" in q_lower:
+                lang = "html"
+
+            ext = ".py" if lang == "python" else (".js" if lang == "javascript" else ".html")
+            
+            # Path extraction
+            m_path = re.search(r"""([a-zA-Z]:\\[^\s"']+\.""" + ext[1:] + r"""|[a-zA-Z0-9_\-\.]+\.""" + ext[1:] + r""")""", query, re.IGNORECASE)
+            if m_path:
+                cand = m_path.group(1).strip()
+                target_file = cand if os.path.sep in cand else os.path.join(os.path.expanduser("~/Desktop"), cand)
+            else:
+                default_name = f"sample_{lang}{ext}"
+                target_file = os.path.join(os.path.expanduser("~/Desktop"), default_name)
+
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Generate and create {lang.upper()} source file at '{target_file}'",
+                    "executor": "desktop",
+                    "action": "create_code_file",
+                    "params": {"path": target_file, "language": lang, "prompt": query, "overwrite": True},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "file_exists", "target": target_file}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": f"Generate {lang.upper()} code and write file.",
+                "steps": steps,
+                "target_apps": ["Code Engine", "File System"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # Desktop: Edit Existing Code File
+        if any(w in q_lower for w in ["edit file", "modify file", "edit the file", "modify the file", "edit python file", "modify python file"]):
+            m_path = re.search(r"""([a-zA-Z]:\\[^\s"']+\.[a-zA-Z0-9]+|[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)""", query, re.IGNORECASE)
+            target_file = m_path.group(1).strip() if m_path else os.path.join(os.path.expanduser("~/Desktop"), "calculator.py")
+            if os.path.sep not in target_file and "/" not in target_file:
+                target_file = os.path.join(os.path.expanduser("~/Desktop"), target_file)
+
+            steps = [
+                {
+                    "step_id": 1,
+                    "title": f"Edit source file '{target_file}' with instruction",
+                    "executor": "desktop",
+                    "action": "edit_code_file",
+                    "params": {"path": target_file, "instruction": query, "backup": True},
+                    "depends_on": [],
+                    "risk_level": RISK_LOW,
+                    "status": "PENDING",
+                    "verification": {"type": "file_exists", "target": target_file}
+                }
+            ]
+            return {
+                "status": "READY",
+                "automation_mode": MODE_DESKTOP,
+                "mode_reason": f"Edit source file '{target_file}'.",
+                "steps": steps,
+                "target_apps": ["Code Engine", "File System"],
+                "risk_level": RISK_LOW,
+                "requires_approval": False
+            }
+
+        # Desktop: Open Exact File Path (e.g. text file, PDF, etc.)
+        if any(q_lower.startswith(w) for w in ["open file ", "open the file ", "open "]) and not any(w in q_lower for w in ["browser", "chrome", "youtube", "google", "website"]):
+            m_path = re.search(r"""(?:open\s+(?:file\s+)?)(?:["']?([a-zA-Z]:\\[^\s"']+|~[^\s"']+|\b[a-zA-Z0-9_\-\.]+\.(?:txt|pdf|py|js|html|docx|json|md)\b)["']?)""", query, re.IGNORECASE)
+            if m_path:
+                cand = m_path.group(2).strip()
+                full_path = os.path.abspath(os.path.expanduser(cand))
+                # Check if opened in vs code
+                in_code = "in vs code" in q_lower or "in vscode" in q_lower
+                steps = [
+                    {
+                        "step_id": 1,
+                        "title": f"Open file '{full_path}'" + (" in VS Code" if in_code else " with default system application"),
+                        "executor": "desktop",
+                        "action": "open_file",
+                        "params": {"path": full_path, "app": "code" if in_code else None},
+                        "depends_on": [],
+                        "risk_level": RISK_LOW,
+                        "status": "PENDING",
+                        "verification": {"type": "file_exists", "target": full_path}
+                    }
+                ]
+                return {
+                    "status": "READY",
+                    "automation_mode": MODE_DESKTOP,
+                    "mode_reason": f"Open file '{os.path.basename(full_path)}'.",
+                    "steps": steps,
+                    "target_apps": ["Default Application" if not in_code else "Visual Studio Code"],
+                    "risk_level": RISK_LOW,
+                    "requires_approval": False
+                }
 
         # 1. Desktop: Open Calculator
         if any(w in q_lower for w in ["calculator", "calc", "calc.exe"]) and any(w in q_lower for w in ["open", "launch", "start", "run"]):
