@@ -257,6 +257,12 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
 
         return {
             "current_agent": AGENT_ID,
+            "selected_superior_agent": "BrowserSuperiorAgent",
+            "selected_specialist_agents": [
+                "B1_LifecycleAgent", "B2_TabAgent", "B3_NavigationAgent",
+                "B4_InteractionAgent", "B5_FormAgent", "B6_TransferAgent",
+                "B7_VerificationAgent", "B8_RecoveryAgent"
+            ],
             "automation_results": prev_results,
             "verification_results": verif_results
         }

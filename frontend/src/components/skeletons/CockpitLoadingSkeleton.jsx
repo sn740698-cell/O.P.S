@@ -529,23 +529,33 @@ export default function CockpitLoadingSkeleton({
           AUTOMATION ACTIVITY & STATE VERIFICATION PREVIEW
           ========================================================================= */}
       {isAutomationActive && automationTelemetry && (
-        <div className="p-2 rounded bg-zinc-950/90 border border-cyan-900/50 font-mono text-[10px] space-y-1">
-          <div className="flex items-center justify-between text-cyan-400 font-bold">
+        <div className="p-2.5 rounded bg-zinc-950/90 border border-cyan-900/60 font-mono text-[10px] space-y-2 shadow-lg">
+          <div className="flex items-center justify-between text-cyan-400 font-bold border-b border-zinc-800/80 pb-1.5">
             <span className="flex items-center gap-1.5">
-              <Monitor className="w-3 h-3 text-cyan-400" />
-              <span>LIVE AUTOMATION PIPELINE</span>
+              <Monitor className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="tracking-wider uppercase">
+                {automationTelemetry.superiorAgent || 'MULTI-AGENT AUTOMATION PIPELINE'}
+              </span>
             </span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950/80 border border-cyan-700 text-cyan-300 font-mono flex items-center gap-1">
-              <ShieldCheck className="w-2.5 h-2.5" />
+            <span className="text-[9px] px-2 py-0.5 rounded bg-cyan-950/90 border border-cyan-700/80 text-cyan-300 font-mono font-bold flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3 text-cyan-400" />
               <span>{automationTelemetry.verificationStatus || 'Verifying'}</span>
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-zinc-400 text-[10px] pt-0.5">
-            <div>
-              Target App: <span className="text-zinc-100 font-bold">{automationTelemetry.targetApp || 'System'}</span>
+
+          {/* Specialist Agent & Subtask Telemetry */}
+          <div className="grid grid-cols-2 gap-2 text-zinc-400 text-[10px]">
+            <div className="bg-zinc-900/60 px-2 py-1 rounded border border-zinc-800/60">
+              <span className="text-zinc-500 block text-[9px] uppercase tracking-wider">Active Specialist</span>
+              <span className="text-cyan-300 font-bold truncate block">
+                {automationTelemetry.specialistAgent || automationTelemetry.targetApp || 'Specialist Worker'}
+              </span>
             </div>
-            <div>
-              Action: <span className="text-zinc-100 font-bold">{automationTelemetry.action || 'Executing'}</span>
+            <div className="bg-zinc-900/60 px-2 py-1 rounded border border-zinc-800/60">
+              <span className="text-zinc-500 block text-[9px] uppercase tracking-wider">Directive Action</span>
+              <span className="text-zinc-200 font-semibold truncate block">
+                {automationTelemetry.action || 'Executing operation'}
+              </span>
             </div>
           </div>
         </div>

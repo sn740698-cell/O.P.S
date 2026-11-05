@@ -31,8 +31,7 @@ def composite_task_coordinator_node(state: CentralGraphState) -> Dict[str, Any]:
     emit_agent_started(state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE, f"Coordinating cross-engine workflow for: '{query[:60]}'...")
 
     try:
-        # Example composite task: "Find the latest Node.js LTS version, download it and install it"
-        # 1. Structure the dependent subtasks
+        # Structure the dependent subtasks
         subtasks = [
             {"phase": "RESEARCH", "target": "Query official repository / portal for verified version & download link"},
             {"phase": "VALIDATION", "target": "Validate cryptographic hash or official domain origin"},
@@ -52,6 +51,12 @@ def composite_task_coordinator_node(state: CentralGraphState) -> Dict[str, Any]:
 
         return {
             "current_agent": AGENT_ID,
+            "selected_superior_agent": "HybridAutomationCoordinator",
+            "selected_specialist_agents": [
+                "BrowserSuperiorAgent",
+                "DesktopSuperiorAgent"
+            ],
+            "subtasks": subtasks,
             "task_dependencies": {
                 "cross_engine": True,
                 "phases": subtasks

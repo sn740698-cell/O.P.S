@@ -23,7 +23,7 @@ class RecoveryManager:
     def classify_error(cls, error: Exception) -> str:
         """Classifies error into canonical category."""
         msg = str(error).lower()
-        if isinstance(error, PlaywrightTimeoutError) or "timeout" in msg:
+        if isinstance(error, PlaywrightTimeoutError) or "timeout" in msg or "timed out" in msg:
             return "TIMEOUT"
         if "target closed" in msg or "browser has been closed" in msg or "disconnected" in msg:
             return "TARGET_CLOSED"

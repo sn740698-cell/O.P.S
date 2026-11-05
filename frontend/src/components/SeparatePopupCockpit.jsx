@@ -309,6 +309,22 @@ export default function SeparatePopupCockpit() {
               return;
             }
 
+            // Multi-Agent Superior & Specialist Automation Events
+            if (parsed.event_type && (parsed.event_type.startsWith('agent.') || parsed.event_type.startsWith('coordinator.'))) {
+              setAutomationTelemetry((prev) => ({
+                ...prev,
+                superiorAgent: parsed.superior_agent || prev?.superiorAgent || (parsed.coordinator ? 'Hybrid Coordinator' : 'Superior Agent'),
+                specialistAgent: parsed.specialist_agent || prev?.specialistAgent || parsed.component_name,
+                action: parsed.safe_task_summary || parsed.action || 'Executing specialist directive',
+                verificationStatus: parsed.execution_status === 'COMPLETED' ? 'Verified ✅' : (parsed.execution_status || 'In Progress'),
+                coordinator: parsed.coordinator || prev?.coordinator
+              }));
+              if (parsed.specialist_agent) setActiveAgent(parsed.specialist_agent);
+              if (parsed.safe_task_summary) setCurrentThought(parsed.safe_task_summary);
+              if (parsed.current_stage) setCurrentStage(parsed.current_stage);
+              return;
+            }
+
             // Automation Telemetry Events
             if (parsed.event_type === 'AUTOMATION_PLAN_READY') {
               setAutomationTelemetry({

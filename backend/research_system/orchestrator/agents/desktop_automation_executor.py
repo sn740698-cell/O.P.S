@@ -194,6 +194,12 @@ def desktop_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
 
         return {
             "current_agent": AGENT_ID,
+            "selected_superior_agent": "DesktopSuperiorAgent",
+            "selected_specialist_agents": [
+                "D1_AppAgent", "D2_WindowAgent", "D3_GUIAgent",
+                "D4_FileAgent", "D5_InputAgent", "D6_CodeAgent",
+                "D7_VerificationAgent", "D8_RecoveryAgent"
+            ],
             "automation_results": prev_results
         }
 

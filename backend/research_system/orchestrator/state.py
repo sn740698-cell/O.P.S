@@ -32,6 +32,14 @@ class CentralGraphState(TypedDict, total=False):
     agent_status: Dict[str, str]  # agent_id -> 'IDLE' | 'ACTIVE' | 'COMPLETED' | 'SKIPPED' | 'WAITING_FOR_APPROVAL' | 'FAILED'
     task_dependencies: Dict[str, Any]
 
+    # Multi-Agent Automation Extensions
+    subtasks: List[Dict[str, Any]]
+    dependencies: Dict[str, List[str]]
+    task_ownership: Dict[str, str]
+    selected_superior_agent: Optional[str]
+    selected_specialist_agents: List[str]
+    agent_events: List[Dict[str, Any]]
+
     # Engine Outcomes
     local_reasoning_output: str
     research_results: Dict[str, Any]
