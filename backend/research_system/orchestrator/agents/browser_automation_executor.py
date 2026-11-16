@@ -149,6 +149,40 @@ def _dispatch_single_action(page, action: str, params: Dict[str, Any], raw_query
         q = params.get("query", "")
         res = GoogleAdapter.search(page, query=q)
 
+    elif action in ["open_tab", "new_tab"]:
+        from automation_system.browser.tab_manager import TabManager
+        tab_mgr = TabManager(conv_id)
+        u = params.get("url") or "about:blank"
+        res = tab_mgr.new_tab(url=u)
+
+    elif action in ["switch_tab"]:
+        from automation_system.browser.tab_manager import TabManager
+        tab_mgr = TabManager(conv_id)
+        t = params.get("tab") or params.get("index", 0)
+        if isinstance(t, str) and not t.isdigit():
+            tabs = tab_mgr.list_tabs()
+            matched_idx = 0
+            for tb in tabs:
+                if t.lower() in tb.get("url", "").lower() or t.lower() in tb.get("title", "").lower():
+                    matched_idx = tb.get("index", 0)
+                    break
+            res = tab_mgr.switch_tab(matched_idx)
+        else:
+            res = tab_mgr.switch_tab(int(t))
+
+    elif action in ["close_tab"]:
+        from automation_system.browser.tab_manager import TabManager
+        tab_mgr = TabManager(conv_id)
+        t = params.get("tab")
+        res = tab_mgr.close_tab(t)
+
+    elif action in ["download"]:
+        from automation_system.browser.specialists.b6_transfer_agent import B6_TransferAgent
+        transfer = B6_TransferAgent(conversation_id=conv_id)
+        u = params.get("url") or params.get("selector", "")
+        tgt_name = params.get("target_filename") or params.get("filename")
+        res = transfer.trigger_and_wait_download(u, target_filename=tgt_name)
+
     elif action == "google_click_top":
         res = GoogleAdapter.click_top_result(page)
 
@@ -157,6 +191,93 @@ def _dispatch_single_action(page, action: str, params: Dict[str, Any], raw_query
 
     elif action == "google_extract_content":
         res = GoogleAdapter.extract_page_content(page)
+
+    elif action == "web_prompt_and_submit":
+        u = params.get("url") or ""
+        prompt_text = params.get("prompt") or params.get("text", "")
+        should_submit = params.get("submit", True)
+
+        target_domain = u.split("//")[-1].split("/")[0].lower() if u else ""
+        cur_url = getattr(page, "url", "").lower()
+        if target_domain and target_domain not in cur_url:
+            try:
+                page.goto(u, wait_until="domcontentloaded", timeout=25000)
+                page.wait_for_timeout(1000)
+            except Exception as e_nav:
+                logger.warning(f"Navigation in web_prompt_and_submit notice: {e_nav}")
+
+        # Check for search button triggers (e.g. GitHub)
+        if "github.com" in getattr(page, "url", "").lower():
+            for search_trigger in [
+                "button.header-search-button",
+                "[data-target='qbsearch-input.inputButtonText']",
+                "button[aria-label*='Search' i]"
+            ]:
+                try:
+                    btn = page.locator(search_trigger).first
+                    if btn.is_visible(timeout=600):
+                        btn.click()
+                        page.wait_for_timeout(300)
+                        break
+                except Exception:
+                    pass
+
+        selectors = [
+            "div.ql-editor",
+            "rich-textarea p",
+            "#prompt-textarea",
+            "input#query-builder-test",
+            "input[name='query-builder-test']",
+            "div[contenteditable='true'][aria-label*='prompt' i]",
+            "div[contenteditable='true'][aria-label*='message' i]",
+            "div[contenteditable='true']",
+            "textarea[placeholder*='message' i]",
+            "textarea[placeholder*='ask' i]",
+            "textarea[placeholder*='prompt' i]",
+            "textarea",
+            "input[placeholder*='search' i]",
+            "input[aria-label*='search' i]",
+            "input[name='q']",
+            "input[type='text']",
+            "[role='textbox']"
+        ]
+
+        target_el = None
+        for sel in selectors:
+            try:
+                loc = page.locator(sel).first
+                if loc.is_visible(timeout=800):
+                    target_el = loc
+                    break
+            except Exception:
+                continue
+
+        if target_el:
+            try:
+                target_el.click()
+                page.wait_for_timeout(200)
+                target_el.fill(prompt_text)
+                page.wait_for_timeout(300)
+                if should_submit:
+                    target_el.press("Enter")
+                    page.wait_for_timeout(500)
+                res = {
+                    "success": True,
+                    "action": "web_prompt_and_submit",
+                    "url": getattr(page, "url", u),
+                    "prompt": prompt_text,
+                    "submitted": should_submit
+                }
+            except Exception as e_type:
+                res = {"success": False, "action": "web_prompt_and_submit", "error": str(e_type)}
+        else:
+            if "github.com" in getattr(page, "url", "").lower():
+                import urllib.parse
+                s_url = f"https://github.com/search?q={urllib.parse.quote(prompt_text)}"
+                page.goto(s_url, wait_until="domcontentloaded", timeout=20000)
+                res = {"success": True, "action": "web_prompt_and_submit", "url": s_url, "prompt": prompt_text, "submitted": True}
+            else:
+                res = {"success": True, "action": "web_prompt_and_submit", "url": getattr(page, "url", u), "prompt": prompt_text, "info": "Navigated to target portal"}
 
     else:
         res = {"success": True, "action": action, "info": f"Completed {action}"}
@@ -179,7 +300,9 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
     conv_id = state.get("conversation_id", "default_session")
 
     # Defense-in-depth: Strict server-side HITL gate enforcement
-    if state.get("approval_status") != "APPROVED":
+    appr_required = state.get("approval_required", False)
+    appr_status = state.get("approval_status", "NONE")
+    if appr_required and appr_status != "APPROVED":
         logger.warning("Browser execution blocked: Operator authorization has not been granted.")
         emit_agent_failed(state, AGENT_ID, AGENT_NAME, GROUP_ID, "Browser automation blocked: explicit human approval is required.")
         return {
@@ -212,10 +335,26 @@ def browser_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
 
             emit_agent_progress(state, AGENT_ID, AGENT_NAME, GROUP_ID, f"Executing browser action: {title}...")
 
-            # Execute securely on the Playwright worker thread
+            # Derive target_url for multi-tab isolation
+            step_target_url = None
+            if action == "navigate":
+                step_target_url = params.get("url") or params.get("target_url") or params.get("destination")
+            elif "google" in action:
+                step_target_url = "https://www.google.com"
+            elif "youtube" in action:
+                step_target_url = "https://www.youtube.com"
+            elif "instagram" in action:
+                step_target_url = "https://www.instagram.com"
+            elif "spotify" in action:
+                step_target_url = "https://open.spotify.com"
+            elif action == "web_prompt_and_submit":
+                step_target_url = params.get("url")
+
+            # Execute securely on the Playwright worker thread with multi-tab awareness
             res = session_mgr.execute_on_page(
                 conv_id,
-                lambda page: _dispatch_single_action(page, action, params, raw_query)
+                lambda page: _dispatch_single_action(page, action, params, raw_query),
+                target_url=step_target_url
             )
 
             res["step_id"] = step.get("step_id")

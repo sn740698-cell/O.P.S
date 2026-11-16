@@ -387,8 +387,8 @@ class FloatingCockpitWindow(QMainWindow):
             win32gui.SetWindowPos(
                 hwnd,
                 win32con.HWND_TOPMOST,
-                self.x(), self.y(), self.width(), self.height(),
-                win32con.SWP_SHOWWINDOW | win32con.SWP_NOACTIVATE
+                0, 0, 0, 0,
+                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW | win32con.SWP_NOACTIVATE
             )
         except Exception as e:
             logger.warning(f"Failed to enforce Win32 topmost: {e}")

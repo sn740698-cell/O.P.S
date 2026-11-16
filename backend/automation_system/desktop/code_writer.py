@@ -149,6 +149,7 @@ class CodeWriter:
         write_res = FileController.create_file(target_path, content=final_code, overwrite=overwrite)
         write_res["language"] = lang
         write_res["syntax_valid"] = is_valid
+        write_res["ast_valid"] = is_valid
         if err:
             write_res["syntax_warning"] = err
         return write_res

@@ -75,3 +75,21 @@ class D4_FileAgent:
         res = self.controller.delete_folder(path, recursive=recursive)
         res["agent_id"] = self.agent_id
         return res
+
+    def rename_file(self, old_path: str, new_path: str) -> Dict[str, Any]:
+        """Renames a file from old_path to new_path."""
+        res = self.controller.rename_file(old_path, new_path)
+        res["agent_id"] = self.agent_id
+        return res
+
+    def copy_file(self, src_path: str, dst_path: str) -> Dict[str, Any]:
+        """Copies a file from src_path to dst_path."""
+        res = self.controller.copy_file(src_path, dst_path)
+        res["agent_id"] = self.agent_id
+        return res
+
+    def move_file(self, src_path: str, dst_path: str) -> Dict[str, Any]:
+        """Moves a file from src_path to dst_path."""
+        res = self.controller.move_file(src_path, dst_path)
+        res["agent_id"] = self.agent_id
+        return res

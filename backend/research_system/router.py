@@ -280,6 +280,63 @@ def classify_request_mode(
             )
 
     # =========================================================================
+    # 0.5 Imperative Directives: Open Target [and type/search/text Payload]
+    # Strict priority gate: prevents questions inside the prompt payload from hijacking
+    # to Answering Engine (e.g. 'Open Gemini and type: "What is the latest AI update?"').
+    # =========================================================================
+    m_open_cmd = re.search(
+        r'^(?:please\s+)?(?:can\s+you\s+)?(?:open|launch|start|goto|go to)\s+(?P<target>[a-zA-Z0-9_\-\.\s]+?)(?:\s+(?:and|then)\s+(?P<action>type|text|prompt|write|send|search)\s*(?::\s*|\s+)(?P<payload>.*))?$',
+        q,
+        flags=re.IGNORECASE
+    )
+    if m_open_cmd:
+        raw_target = m_open_cmd.group('target').strip().lower()
+        cleaned_target = re.sub(r'\s+(?:in|on|from)\s+(?:the\s+)?(?:browser|desktop|web|app).*$', '', raw_target, flags=re.IGNORECASE).strip()
+        cleaned_target = re.sub(r'\s+(?:browser|desktop\s+app|app|website|portal)$', '', cleaned_target, flags=re.IGNORECASE).strip()
+
+        # If it is a pronoun like 'open it', let ambiguity resolver handle it
+        if cleaned_target not in ['it', 'this', 'that', 'app', 'file', '']:
+            is_desktop_hint = any(w in q_lower for w in ['from the desktop', 'from desktop', 'on the desktop', 'on desktop', 'desktop app'])
+            is_browser_hint = any(w in q_lower for w in ['in browser', 'in the browser', 'on browser', 'on the browser', 'web browser', 'website', 'portal', 'online'])
+
+            desktop_names = {
+                'notepad', 'notepad.exe', 'vs code', 'vscode', 'code', 'visual studio code',
+                'calculator', 'calc', 'calc.exe', 'file explorer', 'explorer', 'explorer.exe',
+                'terminal', 'powershell', 'cmd', 'cmd.exe', 'word', 'excel', 'powerpoint',
+                'paint', 'mspaint', 'vlc', 'qbittorrent', 'virtualbox', 'proton vpn', 'revo uninstaller',
+                'nvidia', 'nvidia app', 'tor', 'tor browser'
+            }
+
+            if is_desktop_hint or (cleaned_target in desktop_names and not is_browser_hint):
+                return _build_router_result(
+                    task_type=TASK_AUTOMATION,
+                    active_engine=ENGINE_AUTOMATION,
+                    mode=MODE_DESKTOP_AUTO,
+                    intent='DESKTOP_AUTOMATION_EXECUTION',
+                    goal=f'Execute desktop automation: {q}',
+                    requires_web=False,
+                    requires_llm=False,
+                    reason=f'Imperative desktop automation directive for "{cleaned_target}".',
+                    search_query='',
+                    confidence=0.99,
+                    t_start=t_start
+                )
+            else:
+                return _build_router_result(
+                    task_type=TASK_AUTOMATION,
+                    active_engine=ENGINE_AUTOMATION,
+                    mode=MODE_BROWSER_AUTO,
+                    intent='BROWSER_AUTOMATION_EXECUTION',
+                    goal=f'Execute browser automation: {q}',
+                    requires_web=False,
+                    requires_llm=False,
+                    reason=f'Imperative browser automation directive targeting "{cleaned_target}".',
+                    search_query='',
+                    confidence=0.99,
+                    t_start=t_start
+                )
+
+    # =========================================================================
     # 1. Ambiguity / Clarification Detection (Section 3.A #4)
     # =========================================================================
     vague_directives = [
@@ -368,6 +425,35 @@ def classify_request_mode(
         )
 
     # =========================================================================
+    # 2.5 Explicit "Search Web" Directive -> Direct Switch to Web Mode (Answering Engine)
+    # Whenever the prompt contains "search web", "search the web", "search on web",
+    # or instructs to search web and get answers, directly route to the Answering Engine in WEB mode.
+    # =========================================================================
+    has_search_web_directive = (
+        bool(re.search(r"\bsearch\s+(?:the\s+|on\s+(?:the\s+)?)?web\b", q_lower)) or
+        "search web" in q_lower or
+        "search the web" in q_lower or
+        "search on web" in q_lower or
+        "search on the web" in q_lower or
+        "web search" in q_lower
+    )
+
+    if has_search_web_directive and not has_desktop_cross:
+        return _build_router_result(
+            task_type=TASK_ANSWER,
+            active_engine=ENGINE_ANSWERING,
+            mode=MODE_WEB,
+            intent="EXPLICIT_WEB_SEARCH_DIRECTIVE",
+            goal=f"Search the web and provide answers: {q}",
+            requires_web=True,
+            requires_llm=False,
+            reason="Directive contains explicit 'search web' keyword; directly switched to Web Mode in Answering Engine.",
+            search_query=_extract_search_query(q),
+            confidence=0.99,
+            t_start=t_start
+        )
+
+    # =========================================================================
     # 3. Syntactic & Semantic Check: Asking "How to" vs Asking to Execute
     # "Explain how to install Python" -> ANSWER (LLM)
     # "Install Python on my computer" -> AUTOMATION (Desktop)
@@ -387,16 +473,20 @@ def classify_request_mode(
             "calculator", "calc", "calc.exe",
             "notepad", "notepad.exe",
             "file explorer", "explorer", "explorer.exe",
-            "vs code", "vscode", "code",
-            "paint", "mspaint", "cmd", "powershell"
+            "vs code", "vscode", "code", "visual studio code",
+            "paint", "mspaint", "cmd", "powershell", "terminal",
+            "instagram", "nvidia", "nvidia app", "tor", "tor browser",
+            "antigravity", "vlc", "qbittorrent"
         ]
-        has_desktop_app = any(app in q_lower for app in desktop_apps)
+        has_desktop_app = any(bool(re.search(rf"\b{re.escape(app)}\b", q_lower)) for app in desktop_apps)
 
         is_desktop_automation = False
         approval_gate = False
         approval_reason = ""
 
-        if has_desktop_app and any(q_lower.startswith(w) for w in ["open ", "launch ", "start ", "close ", "type ", "write ", "switch to ", "focus "]):
+        if any(w in q_lower for w in ["from the desktop", "from desktop", "on the desktop", "on desktop", "desktop app", "from my desktop"]):
+            is_desktop_automation = True
+        elif has_desktop_app and any(q_lower.startswith(w) for w in ["open ", "launch ", "start ", "close ", "type ", "write ", "switch to ", "focus "]):
             is_desktop_automation = True
         elif has_desktop_app and ("navigate to" in q_lower or "go to" in q_lower or "ctrl+n" in q_lower or "create a new document" in q_lower):
             is_desktop_automation = True
@@ -433,14 +523,23 @@ def classify_request_mode(
                 approval_reason=approval_reason
             )
 
-        # B. Browser Automation Signals (YouTube, Google search, Instagram, websites, web forms)
+        # B. Browser Automation Signals (Universal Web Services & Portals)
+        has_web_domain = bool(re.search(r"\b[a-zA-Z0-9_\-]+\.(?:ai|com|org|io|dev|app|net|co|in|tech|me|so|to|xyz|edu|gov|gg|cc|sh|cloud)\b", q_lower))
+        has_url = any(u in q_lower for u in ["http://", "https://", "www."])
+
         browser_destinations = [
-            "youtube", "google", "instagram", "reels", "wikipedia",
-            "github.com", "reddit", "twitter", "x.com", "linkedin", "amazon", "netflix",
-            "chrome", "google chrome", "browser", "web browser"
+            "youtube", "google", "wikipedia", "github", "github.com", "gitlab",
+            "reddit", "twitter", "x.com", "linkedin", "amazon", "netflix",
+            "chrome", "google chrome", "web browser", "geohacker", "lovable",
+            "emergent ai", "emergent mind", "emergent", "perplexity", "chatgpt", "gemini", "google gemini",
+            "claude", "hugging face", "huggingface", "v0", "bolt", "bolt.new",
+            "cursor", "replit", "figma", "canva", "notion", "linear", "vercel",
+            "supabase", "firebase", "discord", "whatsapp", "telegram", "spotify",
+            "coursera", "udemy", "leetcode", "kaggle", "colab", "medium", "substack",
+            "stackoverflow", "stack overflow"
         ]
-        has_browser_site = any(site in q_lower for site in browser_destinations)
-        has_browser_explicit = any(w in q_lower for w in ["in browser", "in my browser", "in the browser", "web browser", "open website", "navigate to", "fill out form", "take me to", "go back"]) or bool(re.search(r"\bopen\s+(?:the\s+)?(?:\w+\s+)?website\b", q_lower))
+        has_browser_site = any(bool(re.search(rf"\b{re.escape(site)}\b", q_lower)) for site in browser_destinations)
+        has_browser_explicit = any(w in q_lower for w in ["in browser", "in my browser", "in the browser", "web browser", "open website", "navigate to", "fill out form", "take me to", "go back", "web service", "web portal", "online"]) or bool(re.search(r"\bopen\s+(?:the\s+)?(?:\w+\s+)?website\b", q_lower))
         has_browser_search = (
             bool(re.search(r"^\bsearch\s+(?:google|youtube|instagram)\s+for\b", q_lower)) or
             bool(re.search(r"\bsearch\s+in\s+(?:google|youtube|instagram)\b", q_lower)) or
@@ -453,18 +552,25 @@ def classify_request_mode(
         is_browser_automation = False
         if has_browser_search:
             is_browser_automation = True
+        elif has_web_domain or has_url:
+            is_browser_automation = True
         elif "take me to" in q_lower and any(w in q_lower for w in ["reels", "instagram", "youtube", "google", "website", "page"]):
             is_browser_automation = True
         elif has_browser_site and any(q_lower.startswith(w) for w in ["open ", "launch ", "go to ", "navigate to ", "visit ", "take me to "]):
             is_browser_automation = True
         elif has_browser_explicit and any(q_lower.startswith(w) for w in ["open ", "navigate to ", "go to ", "visit ", "search ", "take me to ", "go back"]):
             is_browser_automation = True
-        elif any(q_lower.startswith(w) for w in ["navigate to https://", "navigate to http://"]):
+        elif any(q_lower.startswith(w) for w in ["navigate to https://", "navigate to http://", "navigate to www.", "open https://", "open http://"]):
             is_browser_automation = True
         elif "youtube" in q_lower and any(w in q_lower for w in ["search", "play", "first result", "open"]):
             is_browser_automation = True
         elif "instagram" in q_lower and any(w in q_lower for w in ["reels", "open", "go to", "show"]):
             is_browser_automation = True
+        elif any(q_lower.startswith(w) for w in ["open ", "launch ", "visit ", "navigate to ", "go to "]):
+            # If opening any non-desktop entity (not file, not desktop app), route to browser automation!
+            if not has_desktop_app and not any(ext in q_lower for ext in [".py", ".txt", ".docx", ".pdf", ".json", ".md", ".csv", ".exe"]):
+                if not any(q_lower.startswith(w) for w in ["open file", "open folder", "open directory"]):
+                    is_browser_automation = True
 
         if is_browser_automation:
             return _build_router_result(
@@ -603,14 +709,23 @@ def classify_request_mode(
 
 def _extract_search_query(raw_query: str) -> str:
     """Extracts a clean, targeted search query string from user prompt."""
+    clean = raw_query.strip()
+    clean = re.sub(r"^(?:please\s+|can\s+you\s+|could\s+you\s+)?", "", clean, flags=re.IGNORECASE)
+    # Strip phrases like "search web and get some answers", "search web and tell me", "search web", etc.
     clean = re.sub(
-        r"^(?:please\s+)?(?:can\s+you\s+)?(?:find|search\s+for|look\s+up|research|tell\s+me\s+about|what\s+is|what\s+are)\s+",
+        r"\b(?:please\s+)?(?:search\s+(?:the\s+|on\s+(?:the\s+)?)?web|web\s+search)\s*(?:and\s+(?:get|tell\s+me|show\s+me|give\s+me)\s+(?:me\s+)?(?:some\s+)?answers?)?\s*(?:for|about|on|regarding)?\s*",
         "",
-        raw_query,
+        clean,
+        flags=re.IGNORECASE
+    )
+    clean = re.sub(
+        r"^(?:and\s+)?(?:tell\s+me\s+(?:about\s+)?|find|search\s+for|look\s+up|research|what\s+is|what\s+are)\s*",
+        "",
+        clean,
         flags=re.IGNORECASE
     )
     clean = re.sub(r"\b(?:on\s+the\s+web|online|google|bing)\b", "", clean, flags=re.IGNORECASE)
-    clean = clean.strip(" ?.!\"'")
+    clean = clean.strip(" ?.!\"',;:")
     return clean or raw_query.strip()
 
 

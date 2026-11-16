@@ -18,13 +18,16 @@ from typing import Dict, Any, List, Optional
 from research_system.events.event_bus import event_bus
 from automation_system.browser.specialists.b1_lifecycle_agent import B1_LifecycleAgent
 from automation_system.browser.specialists.b2_tab_agent import B2_TabAgent
-from automation_system.browser.specialists.b3_navigation_agent import B3_NavigationAgent
-from automation_system.browser.specialists.b4_interaction_agent import B4_InteractionAgent
-from automation_system.browser.specialists.b5_form_agent import B5_FormAgent
-from automation_system.browser.specialists.b6_transfer_agent import B6_TransferAgent
+from automation_system.browser.specialists.b3_resolution_agent import B3_ResolutionAgent
+from automation_system.browser.specialists.b4_navigation_agent import B4_NavigationAgent
+from automation_system.browser.specialists.b5_interaction_agent import B5_InteractionAgent
+from automation_system.browser.specialists.b6_form_agent import B6_FormAgent
 from automation_system.browser.specialists.b7_verification_agent import B7_VerificationAgent
 from automation_system.browser.specialists.b8_recovery_agent import B8_RecoveryAgent
+from automation_system.browser.specialists.b3_navigation_agent import B3_NavigationAgent
+from automation_system.browser.specialists.b6_transfer_agent import B6_TransferAgent
 from automation_system.browser.adapters.youtube_adapter import YouTubeAdapter
+from automation_system.browser.adapters.google_adapter import GoogleAdapter
 
 logger = logging.getLogger("OPS.Browser.SuperiorAgent")
 
@@ -44,12 +47,16 @@ class BrowserSuperiorAgent:
         # Initialize the 8 Specialist Agents
         self.b1_lifecycle = B1_LifecycleAgent(self.conversation_id)
         self.b2_tab = B2_TabAgent(self.conversation_id)
-        self.b3_nav = B3_NavigationAgent(self.conversation_id)
-        self.b4_interact = B4_InteractionAgent(self.conversation_id)
-        self.b5_form = B5_FormAgent(self.conversation_id)
-        self.b6_transfer = B6_TransferAgent(self.conversation_id)
+        self.b3_resolution = B3_ResolutionAgent(self.conversation_id)
+        self.b4_nav = B4_NavigationAgent(self.conversation_id)
+        self.b5_interact = B5_InteractionAgent(self.conversation_id)
+        self.b6_form = B6_FormAgent(self.conversation_id)
         self.b7_verify = B7_VerificationAgent(self.conversation_id)
         self.b8_recovery = B8_RecoveryAgent(self.conversation_id)
+
+        # Legacy aliases
+        self.b3_nav = self.b4_nav
+        self.b6_transfer = self.b6_form
 
     def _emit_event(self, specialist_name: str, event_type: str, status: str, summary: str, extra: Optional[Dict] = None):
         """Emits structured real-time telemetry to O.P.S. EventBus for Cockpit Agent Preview."""
@@ -153,13 +160,34 @@ class BrowserSuperiorAgent:
         """Dispatches an individual planned step to the targeted specialist agent."""
         action = step.get("action", "").lower()
         target = step.get("target") or step.get("url") or step.get("selector") or ""
-        value = step.get("value") or step.get("text") or ""
+        value = step.get("value") or step.get("text") or step.get("params", {}).get("query") or ""
 
         logger.info(f"BrowserSuperiorAgent executing step {step_idx}/{total_steps}: {action} -> {target}")
 
-        if action in ["navigate", "open_url", "goto"]:
-            self._emit_event("B3_NavigationAgent", "agent.handoff", "RUNNING", f"Navigating to {target}")
-            return self.b3_nav.navigate(target)
+        if action in ["resolve_website", "resolve"]:
+            self._emit_event("B3_ResolutionAgent", "agent.handoff", "RUNNING", f"Resolving website: {target}")
+            return self.b3_resolution.resolve_website(target)
+
+        elif action in ["navigate", "open_url", "goto"]:
+            self._emit_event("B3_ResolutionAgent", "agent.handoff", "RUNNING", f"Resolving target: {target}")
+            res_info = self.b3_resolution.resolve_website(target)
+            if res_info.get("clarification_needed"):
+                return {"success": False, "action": "navigate", "clarification_needed": True, "error": res_info.get("error")}
+            final_url = res_info.get("url") or target
+            self._emit_event("B4_NavigationAgent", "agent.handoff", "RUNNING", f"Navigating to {final_url}")
+            return self.b4_nav.navigate(final_url)
+
+        elif action in ["go_back", "back"]:
+            self._emit_event("B4_NavigationAgent", "agent.handoff", "RUNNING", "Navigating back in history")
+            return self.b4_nav.go_back()
+
+        elif action in ["go_forward", "forward"]:
+            self._emit_event("B4_NavigationAgent", "agent.handoff", "RUNNING", "Navigating forward in history")
+            return self.b4_nav.go_forward()
+
+        elif action in ["refresh", "reload"]:
+            self._emit_event("B4_NavigationAgent", "agent.handoff", "RUNNING", "Refreshing active page")
+            return self.b4_nav.refresh()
 
         elif action in ["click", "click_element"]:
             self._emit_event("B4_InteractionAgent", "agent.handoff", "RUNNING", f"Clicking element: {target}")
@@ -177,10 +205,34 @@ class BrowserSuperiorAgent:
             self._emit_event("B6_TransferAgent", "agent.handoff", "RUNNING", f"Triggering download via {target}")
             return self.b6_transfer.trigger_and_wait_download(target, target_filename=value or None)
 
+        elif action in ["open_tab", "new_tab"]:
+            tab_url = target or value or "about:blank"
+            self._emit_event("B2_TabAgent", "agent.handoff", "RUNNING", f"Opening new tab: {tab_url}")
+            return self.b2_tab.new_tab(url=tab_url)
+
         elif action in ["switch_tab"]:
-            idx = int(value or 0)
-            self._emit_event("B2_TabAgent", "agent.handoff", "RUNNING", f"Switching to tab {idx}")
-            return self.b2_tab.switch_tab(idx)
+            tab_target = target or value or step.get("params", {}).get("tab") or 0
+            self._emit_event("B2_TabAgent", "agent.handoff", "RUNNING", f"Switching to tab: {tab_target}")
+            return self.b2_tab.switch_tab(tab_target)
+
+        elif action in ["close_tab"]:
+            tab_target = target or value or step.get("params", {}).get("tab")
+            self._emit_event("B2_TabAgent", "agent.handoff", "RUNNING", f"Closing tab: {tab_target or 'current'}")
+            return self.b2_tab.close_tab(tab_target)
+
+        elif action in ["google_search", "search"]:
+            q = value or target or step.get("params", {}).get("query", "")
+            self._emit_event("B3_NavigationAgent", "agent.handoff", "RUNNING", f"Searching Google for: '{q}'")
+            def _search_task(page):
+                return GoogleAdapter.search(page, q)
+            return self.b1_lifecycle.manager.execute_on_page(self.conversation_id, _search_task, timeout=25.0)
+
+        elif action in ["youtube_search"]:
+            q = value or target or step.get("params", {}).get("query", "")
+            self._emit_event("B4_InteractionAgent", "agent.handoff", "RUNNING", f"Searching YouTube for: '{q}'")
+            def _yt_task(page):
+                return YouTubeAdapter.search_and_play(page, query=q)
+            return self.b1_lifecycle.manager.execute_on_page(self.conversation_id, _yt_task, timeout=35.0)
 
         elif action in ["verify", "assert"]:
             self._emit_event("B7_VerificationAgent", "agent.handoff", "RUNNING", f"Verifying page state: {target}")

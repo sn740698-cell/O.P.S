@@ -65,6 +65,14 @@ class ReasoningPlanValidator:
             contract.answering_engine = "WEB"
             corrections.append("Promoted LLM to WEB mode: Query requires verified fresh external facts.")
 
+        # Invariant 3B: Explicit "Search Web" Keyword Directives ("search web", "search the web")
+        has_search_web_kw = bool(re.search(r"\bsearch\s+(?:the\s+|on\s+(?:the\s+)?)?web\b", q_low)) or "search web" in q_low
+        if has_search_web_kw and contract.task_type != "COMPOSITE":
+            contract.task_type = "RESEARCH"
+            contract.answering_engine = "WEB"
+            contract.automation_engine = "NONE"
+            corrections.append("Directly switched to WEB Mode in Answering Engine: User specified explicit 'search web' keyword instruction.")
+
         # Invariant 4: Comparison & Recommendations ("Compare X and Y and recommend")
         if any(w in q_low for w in ["compare", "versus", "vs.", "difference between"]) and any(w in q_low for w in ["recommend", "which one", "suggest", "for o.p.s"]):
             if contract.task_type in ["ANSWER", "RESEARCH", "REASONING"] and contract.answering_engine != "HYBRID":

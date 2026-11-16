@@ -120,13 +120,16 @@ class TemporaryRagService:
     # --------------------------------------------------------------------------
     def extract_document(self, file_content: bytes, filename: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
-        Extracts structured text from PDF, DOCX, or DOC documents.
+        Extracts structured text from PDF, DOCX, DOC, or text/markdown documents.
         Returns a tuple of (sections_list, metadata).
         Each section contains: text, page_num, section_name.
         """
+        if isinstance(file_content, str) and isinstance(filename, (bytes, bytearray)):
+            file_content, filename = filename, file_content
         ext = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
-        if ext not in ["pdf", "docx", "doc"]:
-            raise ValueError(f"Unsupported file format '.{ext}'. Supported formats: .pdf, .docx, .doc")
+        supported_text_exts = ["txt", "md", "csv", "json", "py", "js", "ts", "html", "xml", "log", "tsv"]
+        if ext not in ["pdf", "docx", "doc"] + supported_text_exts:
+            raise ValueError(f"Unsupported file format '.{ext}'. Supported formats: .pdf, .docx, .doc, .txt, .md, .csv, .json")
 
         if len(file_content) > MAX_FILE_SIZE_BYTES:
             raise ValueError(f"File size exceeds maximum allowable limit of {MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB.")
@@ -137,11 +140,42 @@ class TemporaryRagService:
             return self._extract_docx(file_content, filename)
         elif ext == "doc":
             return self._extract_doc(file_content, filename)
+        elif ext in supported_text_exts:
+            return self._extract_text_file(file_content, filename)
+
+    def _extract_text_file(self, file_content: bytes, filename: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """Extracts readable text from plain text formats (.txt, .md, .csv, .json, .py, etc.)."""
+        text = ""
+        for encoding in ["utf-8", "utf-8-sig", "latin-1", "cp1252"]:
+            try:
+                text = file_content.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            text = file_content.decode("utf-8", errors="replace")
+
+        text = text.strip()
+        if not text:
+            raise ValueError(f"The uploaded document '{filename}' is empty.")
+
+        sections = [{
+            "text": text,
+            "page": 1,
+            "section": "Document Content"
+        }]
+        metadata = {
+            "filename": filename,
+            "file_type": filename.lower().rsplit(".", 1)[-1] if "." in filename else "txt",
+            "page_count": 1,
+            "total_characters": len(text)
+        }
+        return sections, metadata
 
     def _extract_pdf(self, file_content: bytes, filename: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """Extracts text from PDF with page preservation and scanned document detection."""
         try:
-            reader = pypdf.PdfReader(io.BytesIO(file_content))
+            reader = pypdf.PdfReader(io.BytesIO(file_content), strict=False)
             num_pages = len(reader.pages)
             if num_pages == 0:
                 raise ValueError("The uploaded PDF is empty (0 pages).")
@@ -336,6 +370,8 @@ class TemporaryRagService:
         5. Upsert vectors to session-specific Pinecone namespace (NO full text stored in Pinecone)
         6. Store chunk text strictly in ephemeral in-memory cache
         """
+        if isinstance(file_content, str) and isinstance(filename, (bytes, bytearray)):
+            file_content, filename = filename, file_content
         t0 = time.time()
         self._touch_session(conversation_id)
 

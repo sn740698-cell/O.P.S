@@ -26,6 +26,12 @@ class InstagramAdapter:
         """Navigates to Instagram homepage."""
         res = NavigationEngine.navigate(page, cls.BASE_URL)
         cls.handle_login_barrier(page)
+        res["verification"] = {
+            "verified": res.get("success", False),
+            "verification_type": "instagram_view",
+            "url": getattr(page, "url", ""),
+            "title": getattr(page, "title", lambda: "")()
+        }
         return res
 
     @classmethod

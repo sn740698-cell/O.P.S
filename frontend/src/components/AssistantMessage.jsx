@@ -2,6 +2,19 @@ import React, { useState } from 'react';
 import { Bot, Copy, Check, Volume2, Globe, ExternalLink, Sparkles } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
 
+export function resolveTurnCategory(turn) {
+  const text = turn?.text || turn?.content || '';
+  if (text.includes('DESKTOP AUTOMATION') || text.includes('[DESKTOP]')) return 'DESKTOP';
+  if (text.includes('BROWSER AUTOMATION') || text.includes('[BROWSER]')) return 'BROWSER';
+  if (text.includes('HYBRID AUTOMATION') || text.includes('[HYBRID AUTO]')) return 'HYBRID AUTO';
+  if (text.includes('COMPOSITE EXECUTION') || text.includes('[COMPOSITE]')) return 'COMPOSITE';
+  if (text.includes('WEB MODE RESPONSE') || text.includes('[WEB]')) return 'WEB';
+  if (text.includes('LLM MODE RESPONSE') || text.includes('[LLM]')) return 'LLM';
+  if (text.includes('DOCUMENT MODE') || text.includes('DOCUMENT PASSAGE') || text.includes('[DOC]')) return 'DOCUMENT';
+  if (text.includes('CLARIFICATION')) return 'CLARIFICATION';
+  return turn?.category || 'LLM';
+}
+
 export default function AssistantMessage({
   turn,
   idx,
@@ -9,6 +22,7 @@ export default function AssistantMessage({
 }) {
   const [copied, setCopied] = useState(false);
   const messageText = turn?.text || turn?.content || '';
+  const displayCategory = resolveTurnCategory(turn);
 
   const handleCopy = () => {
     if (!messageText) return;
@@ -29,25 +43,25 @@ export default function AssistantMessage({
             <Bot className="w-3.5 h-3.5 text-sky-400" />
             <span>O.P.S. // JARVIS</span>
           </span>
-          {turn?.category && (
+          {displayCategory && (
             <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${
-              turn.category.toUpperCase().includes('LLM')
+              displayCategory.toUpperCase().includes('LLM')
                 ? 'bg-blue-950/80 text-blue-300 border-blue-700'
-                : turn.category.toUpperCase().includes('WEB')
+                : displayCategory.toUpperCase().includes('WEB')
                 ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
-                : turn.category.toUpperCase().includes('DOC')
+                : displayCategory.toUpperCase().includes('DOC')
                 ? 'bg-amber-950/80 text-amber-300 border-amber-700'
-                : turn.category.toUpperCase().includes('DESKTOP')
+                : displayCategory.toUpperCase().includes('DESKTOP')
                 ? 'bg-cyan-950/80 text-cyan-300 border-cyan-700'
-                : turn.category.toUpperCase().includes('BROWSER')
+                : displayCategory.toUpperCase().includes('BROWSER')
                 ? 'bg-indigo-950/80 text-indigo-300 border-indigo-700'
-                : turn.category.toUpperCase().includes('COMPOSITE')
+                : displayCategory.toUpperCase().includes('COMPOSITE')
                 ? 'bg-rose-950/80 text-rose-300 border-rose-700 shadow-sm'
-                : turn.category.toUpperCase().includes('HYBRID')
+                : displayCategory.toUpperCase().includes('HYBRID')
                 ? 'bg-purple-950/80 text-purple-300 border-purple-700'
                 : 'bg-zinc-900 border-zinc-800 text-zinc-400'
             }`}>
-              [{turn.category}]
+              [{displayCategory}]
             </span>
           )}
         </div>

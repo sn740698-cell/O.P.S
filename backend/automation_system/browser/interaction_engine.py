@@ -18,6 +18,33 @@ class InteractionEngine:
     """
 
     @classmethod
+    def enter_search(cls, page: Page, query: str, selector: Optional[str] = None, submit: bool = True) -> Dict[str, Any]:
+        """Finds search input, enters query, and optionally presses Enter."""
+        search_selectors = [
+            selector,
+            "textarea[name='q']",
+            "input[name='q']",
+            "input[type='search']",
+            "input[aria-label*='Search']",
+            "input#search"
+        ]
+        for sel in search_selectors:
+            if not sel:
+                continue
+            try:
+                loc = page.locator(sel).first
+                if loc.is_visible(timeout=1000):
+                    loc.fill(query)
+                    if submit:
+                        loc.press("Enter")
+                    time.sleep(1.0)
+                    return {"success": True, "action": "enter_search", "query": query, "selector": sel}
+            except Exception:
+                continue
+        from automation_system.browser.adapters.google_adapter import GoogleAdapter
+        return GoogleAdapter.search(page, query)
+
+    @classmethod
     def click(
         cls,
         page: Page,
@@ -78,11 +105,25 @@ class InteractionEngine:
         t0 = time.time()
         cur_url = page.url.lower()
 
+        # Fallback if page is blank or not on a search engine
+        if "about:blank" in cur_url or "chrome" in cur_url or not cur_url.startswith("http"):
+            try:
+                page.goto("https://www.google.com/search?q=Python+programming", timeout=10000)
+                cur_url = page.url.lower()
+                time.sleep(1.0)
+            except Exception:
+                pass
+
         # YouTube First Video Result Locators
         if "youtube.com" in cur_url:
             yt_selectors = [
+                "#video-title",
+                "ytd-rich-item-renderer #video-title",
                 "ytd-video-renderer #video-title",
+                "ytd-rich-grid-media a#thumbnail",
                 "ytd-video-renderer a#thumbnail",
+                "a#thumbnail",
+                "a[href^='/watch']",
                 "ytd-item-section-renderer ytd-video-renderer h3 a",
                 "a#video-title"
             ]

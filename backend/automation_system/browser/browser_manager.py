@@ -326,23 +326,79 @@ class BrowserSessionManager:
         cid = conversation_id or "default_session"
         return PageProxy(self._browser_manager, cid)
 
-    def execute_on_page(self, conversation_id: str, fn: Callable[[Page], Any], timeout: float = 60.0) -> Any:
+    def execute_on_page(
+        self,
+        conversation_id: str,
+        fn: Callable[[Page], Any],
+        timeout: float = 60.0,
+        target_url: Optional[str] = None
+    ) -> Any:
         """
         Executes a callable taking the real Playwright Page object directly inside
-        the dedicated worker thread. This allows multi-step adapters (e.g. YouTubeAdapter)
-        to run natively with zero serialization overhead and 100% thread safety.
+        the dedicated worker thread. Multi-tab aware: opens separate tabs for different
+        domains (e.g. Google and GitHub each get their own tab without closing previous tabs),
+        and switches focus to existing tabs when re-visiting the same site.
         """
         cid = conversation_id or "default_session"
 
         def _worker_action(w: PlaywrightWorker):
+            import urllib.parse
             w._ensure_context()
-            page = w.pages.get(cid)
-            if not page or page.is_closed():
-                if cid == "default_session" and w.context.pages:
-                    page = w.context.pages[0]
+            pages = [p for p in w.context.pages if not p.is_closed()]
+
+            # Determine target domain if URL provided
+            target_domain = ""
+            if target_url:
+                clean_target = target_url if target_url.startswith("http") else f"https://{target_url}"
+                try:
+                    parsed = urllib.parse.urlparse(clean_target)
+                    target_domain = (parsed.netloc or "").lower().replace("www.", "")
+                except Exception:
+                    pass
+
+            page = None
+
+            # 1. If target domain is known, check if any open tab already matches
+            if target_domain and pages:
+                for p in pages:
+                    try:
+                        p_netloc = urllib.parse.urlparse(p.url).netloc.lower().replace("www.", "")
+                        if target_domain in p_netloc or p_netloc in target_domain:
+                            page = p
+                            break
+                    except Exception:
+                        pass
+
+            # 2. If no tab matched target domain
+            if not page:
+                curr_page = w.pages.get(cid)
+                if curr_page and not curr_page.is_closed():
+                    # If current tab is blank, reuse it for this navigation
+                    if curr_page.url in ["about:blank", ""]:
+                        page = curr_page
+                    elif target_domain:
+                        # Current tab is on a different domain -> OPEN IN A NEW TAB
+                        page = w.context.new_page()
+                    else:
+                        page = curr_page
+                elif pages:
+                    # Reuse first page if blank, else create new page if target_domain requested
+                    first_p = pages[0]
+                    if first_p.url in ["about:blank", ""]:
+                        page = first_p
+                    elif target_domain:
+                        page = w.context.new_page()
+                    else:
+                        page = pages[-1]
                 else:
                     page = w.context.new_page()
-                w.pages[cid] = page
+
+            # Bring active page to front and register for session
+            try:
+                page.bring_to_front()
+            except Exception:
+                pass
+            w.pages[cid] = page
             w.last_active[cid] = time.time()
             return fn(page)
 

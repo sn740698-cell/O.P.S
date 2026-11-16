@@ -35,10 +35,24 @@ class B2_TabAgent:
             logger.error(f"new_tab failed: {e}")
             return {"success": False, "agent_id": self.agent_id, "error": str(e)}
 
-    def switch_tab(self, tab_index: int) -> Dict[str, Any]:
-        """Switches active tab to index."""
+    def switch_tab(self, tab_target: Any) -> Dict[str, Any]:
+        """Switches active tab to index (int) or matching title/url (str)."""
         try:
-            res = self.tab_mgr.switch_tab(tab_index)
+            if isinstance(tab_target, str) and not tab_target.isdigit():
+                # Resolve by title or url
+                tabs_res = self.list_tabs()
+                if tabs_res.get("success"):
+                    t_low = tab_target.lower()
+                    for t in tabs_res.get("tabs", []):
+                        if t_low in t.get("url", "").lower() or t_low in t.get("title", "").lower():
+                            res = self.tab_mgr.switch_tab(t.get("index", 0))
+                            res["agent_id"] = self.agent_id
+                            res["matched_target"] = tab_target
+                            return res
+                return {"success": False, "agent_id": self.agent_id, "error": f"Tab matching '{tab_target}' not found."}
+
+            idx = int(tab_target)
+            res = self.tab_mgr.switch_tab(idx)
             res["agent_id"] = self.agent_id
             return res
         except Exception as e:
@@ -48,6 +62,17 @@ class B2_TabAgent:
         """Closes the current active tab."""
         try:
             res = self.tab_mgr.close_current_tab()
+            res["agent_id"] = self.agent_id
+            return res
+        except Exception as e:
+            return {"success": False, "agent_id": self.agent_id, "error": str(e)}
+
+    def close_tab(self, target: Any = None) -> Dict[str, Any]:
+        """Closes a specific tab matching index (int) or title/url (str). If None, closes current."""
+        try:
+            if target is None:
+                return self.close_current_tab()
+            res = self.tab_mgr.close_tab(target)
             res["agent_id"] = self.agent_id
             return res
         except Exception as e:

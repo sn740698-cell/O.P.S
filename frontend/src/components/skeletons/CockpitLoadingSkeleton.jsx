@@ -81,6 +81,114 @@ export const DEFAULT_PIPELINE_STAGES = {
   CLARIFICATION: ['Understanding request', 'Detecting ambiguity', 'Formulating clarification question', 'Completing response']
 };
 
+export function inferInitialModeAndEngine(query = '') {
+  if (!query || typeof query !== 'string') {
+    return { mode: 'LLM', engine: 'ANSWERING', reason: 'Local intelligence reasoning' };
+  }
+  const q = query.toLowerCase().trim();
+
+  // Desktop directive intent
+  if (
+    q.includes('from the desktop') ||
+    q.includes('on the desktop') ||
+    q.includes('from desktop') ||
+    q.includes('on desktop') ||
+    q.includes('desktop app') ||
+    q.includes('open notepad') ||
+    q.includes('open vs code') ||
+    q.includes('open vscode') ||
+    q.includes('open visual studio code') ||
+    q.includes('open nvidia') ||
+    q.includes('open tor browser from the desktop') ||
+    q.includes('open calculator') ||
+    q.includes('open task manager') ||
+    q.includes('open cmd') ||
+    q.includes('open terminal') ||
+    q.includes('open powershell') ||
+    q.includes('open file explorer') ||
+    q.includes('open explorer') ||
+    q.includes('type text into')
+  ) {
+    return {
+      mode: 'DESKTOP',
+      engine: 'AUTOMATION',
+      reason: 'User directive targets Windows desktop application execution and window control.'
+    };
+  }
+
+  // Browser directive intent
+  if (
+    q.includes('in the browser') ||
+    q.includes('in browser') ||
+    q.includes('open google') ||
+    q.includes('search google') ||
+    q.includes('on youtube') ||
+    q.includes('open youtube') ||
+    q.includes('play on youtube') ||
+    q.includes('open instagram') ||
+    q.includes('open github') ||
+    q.includes('open gemini') ||
+    q.includes('open chatgpt') ||
+    q.includes('open claude') ||
+    q.includes('open geohacker') ||
+    q.includes('open lovable') ||
+    q.includes('open emergent') ||
+    q.includes('open website') ||
+    q.includes('navigate to') ||
+    q.startsWith('browse ')
+  ) {
+    return {
+      mode: 'BROWSER',
+      engine: 'AUTOMATION',
+      reason: 'User directive targets web browser navigation and portal interaction.'
+    };
+  }
+
+  // General automation / multi-application
+  if (q.includes('open ') && (q.includes(' and type') || q.includes(' and search'))) {
+    return {
+      mode: 'BROWSER',
+      engine: 'AUTOMATION',
+      reason: 'User directive targets web portal automation.'
+    };
+  }
+
+  // Web research
+  if (
+    q.includes('search') ||
+    q.includes('find') ||
+    q.includes('latest') ||
+    q.includes('news') ||
+    q.includes('today') ||
+    q.includes('price') ||
+    q.includes('weather') ||
+    q.includes('release') ||
+    q.includes('who is') ||
+    q.includes('what is the latest')
+  ) {
+    return {
+      mode: 'WEB',
+      engine: 'ANSWERING',
+      reason: 'User query requires live web search and current factual retrieval.'
+    };
+  }
+
+  // Hybrid comparison
+  if (q.includes('compare') || q.includes(' vs ') || q.includes('difference between')) {
+    return {
+      mode: 'HYBRID',
+      engine: 'ANSWERING',
+      reason: 'User query requires synthesised local reasoning with external web evidence.'
+    };
+  }
+
+  return {
+    mode: 'LLM',
+    engine: 'ANSWERING',
+    reason: 'User query handled via local neural intelligence and synthesis.'
+  };
+}
+
 /**
  * CockpitLoadingSkeleton — Master Live Mode Preview & Response Loader
  * Dual Engine Architecture:
@@ -97,7 +205,7 @@ export default function CockpitLoadingSkeleton({
   onStopExecution,
   variationOverride,
   compact = false,
-  activeMode = 'LLM',
+  activeMode = '',
   modeReason = '',
   stages = [],
   currentStage = '',
@@ -108,14 +216,27 @@ export default function CockpitLoadingSkeleton({
     return variationOverride || detectSkeletonVariation(query);
   }, [variationOverride, query]);
 
-  const normalizedMode = (activeMode || 'LLM').toUpperCase();
-  const normalizedEngine = (activeEngine || (
-    ['DESKTOP', 'BROWSER', 'HYBRID AUTO', 'HYBRID_AUTO'].includes(normalizedMode)
-      ? 'AUTOMATION'
-      : normalizedMode === 'COMPOSITE'
-      ? 'COMPOSITE'
-      : 'ANSWERING'
-  )).toUpperCase();
+  const inferred = useMemo(() => inferInitialModeAndEngine(query), [query]);
+
+  const normalizedMode = useMemo(() => {
+    if (activeMode && activeMode !== 'IDLE' && activeMode !== 'DETECTING') {
+      return activeMode.toUpperCase();
+    }
+    return inferred.mode;
+  }, [activeMode, inferred.mode]);
+
+  const normalizedEngine = useMemo(() => {
+    if (activeEngine && activeEngine !== 'STANDBY' && activeEngine !== 'ROUTING') {
+      return activeEngine.toUpperCase();
+    }
+    if (['DESKTOP', 'BROWSER', 'HYBRID AUTO', 'HYBRID_AUTO'].includes(normalizedMode)) {
+      return 'AUTOMATION';
+    }
+    if (normalizedMode === 'COMPOSITE') {
+      return 'COMPOSITE';
+    }
+    return inferred.engine;
+  }, [activeEngine, normalizedMode, inferred.engine]);
 
   const isAnsweringActive = normalizedEngine === 'ANSWERING' || normalizedEngine === 'COMPOSITE';
   const isAutomationActive = normalizedEngine === 'AUTOMATION' || normalizedEngine === 'COMPOSITE';
@@ -377,9 +498,9 @@ export default function CockpitLoadingSkeleton({
             {normalizedMode}
           </span>
         </span>
-        {modeReason && (
+        {(modeReason || inferred.reason) && (
           <span className="text-zinc-400 truncate border-l border-zinc-800 pl-2">
-            {modeReason}
+            {modeReason || inferred.reason}
           </span>
         )}
       </div>

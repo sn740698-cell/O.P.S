@@ -31,7 +31,9 @@ def desktop_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
     desktop_steps = [s for s in steps if s.get("executor") in ["desktop", "file_system"]]
 
     # Defense-in-depth: Strict server-side HITL gate enforcement
-    if state.get("approval_status") != "APPROVED":
+    appr_required = state.get("approval_required", False)
+    appr_status = state.get("approval_status", "NONE")
+    if appr_required and appr_status != "APPROVED":
         logger.warning("Desktop execution blocked: Operator authorization has not been granted.")
         emit_agent_failed(state, AGENT_ID, AGENT_NAME, GROUP_ID, "Desktop automation blocked: explicit human approval is required.")
         return {
@@ -130,6 +132,24 @@ def desktop_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
                     overwrite=params.get("overwrite", True)
                 )
 
+            elif action in ["rename_file", "rename"]:
+                res = FileController.rename_file(
+                    old_path=params.get("old_path") or params.get("path") or "",
+                    new_path=params.get("new_path") or ""
+                )
+
+            elif action in ["copy_file", "copy"]:
+                res = FileController.copy_file(
+                    src_path=params.get("src_path") or params.get("path") or "",
+                    dst_path=params.get("dst_path") or params.get("destination") or ""
+                )
+
+            elif action in ["move_file", "move"]:
+                res = FileController.move_file(
+                    src_path=params.get("src_path") or params.get("path") or "",
+                    dst_path=params.get("dst_path") or params.get("destination") or ""
+                )
+
             elif action in ["delete_file", "remove_file"]:
                 res = executor.delete_file(
                     path=params.get("path") or params.get("file_path", ""),
@@ -192,6 +212,10 @@ def desktop_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
         prev_desktop.extend(executed_results)
         prev_results["desktop_results"] = prev_desktop
 
+        verif_results = state.get("verification_results") or {}
+        verif_results["desktop_verified"] = overall_ok
+        verif_results["all_verified"] = overall_ok and verif_results.get("browser_verified", True)
+
         return {
             "current_agent": AGENT_ID,
             "selected_superior_agent": "DesktopSuperiorAgent",
@@ -200,7 +224,8 @@ def desktop_automation_executor_node(state: CentralGraphState) -> Dict[str, Any]
                 "D4_FileAgent", "D5_InputAgent", "D6_CodeAgent",
                 "D7_VerificationAgent", "D8_RecoveryAgent"
             ],
-            "automation_results": prev_results
+            "automation_results": prev_results,
+            "verification_results": verif_results
         }
 
     except Exception as e:

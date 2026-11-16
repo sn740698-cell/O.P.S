@@ -29,10 +29,12 @@ class D7_VerificationAgent:
         res["success"] = res.get("verified", False)
         return res
 
-    def verify_file(self, file_path: str, check_non_empty: bool = True, timeout: float = 4.0) -> Dict[str, Any]:
-        """Empirically verifies file exists on disk with non-zero size."""
+    def verify_file(self, file_path: str, check_non_empty: bool = True, timeout: float = 4.0, expected_snippet: Optional[str] = None) -> Dict[str, Any]:
+        """Empirically verifies file exists on disk with non-zero size, and optionally snippet."""
         min_size = 1 if check_non_empty else 0
         res = self.verifier.verify_file_exists(file_path, min_size=min_size, timeout=timeout)
+        if res.get("verified") and expected_snippet:
+            return self.verify_file_content(file_path, expected_snippet, max_wait=timeout)
         res["agent_id"] = self.agent_id
         res["success"] = res.get("verified", False)
         return res

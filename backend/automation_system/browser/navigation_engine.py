@@ -31,41 +31,39 @@ class NavigationEngine:
         t0 = time.time()
         target_url = url if url.startswith("http") else f"https://{url}"
 
-        try:
-            response: Optional[Response] = page.goto(
-                target_url,
-                wait_until=wait_until,
-                timeout=timeout_ms
-            )
-
-            # Auto-dismiss common consent / cookie dialogs if present
-            cls._dismiss_overlays(page)
-
-            title = page.title()
-            cur_url = page.url
-            status = response.status if response else 200
-
-            duration = round(time.time() - t0, 2)
-            logger.info(f"Navigated to {cur_url} ('{title}') in {duration}s")
-
-            return {
-                "success": True,
-                "action": "navigate",
-                "requested_url": target_url,
-                "current_url": cur_url,
-                "page_title": title,
-                "status_code": status,
-                "duration_s": duration
-            }
-        except Exception as e:
-            logger.error(f"Navigation to {target_url} failed: {e}")
-            return {
-                "success": False,
-                "action": "navigate",
-                "requested_url": target_url,
-                "current_url": getattr(page, "url", ""),
-                "error": str(e)
-            }
+        for attempt in range(2):
+            try:
+                response = page.goto(
+                    target_url,
+                    wait_until=wait_until,
+                    timeout=timeout_ms
+                )
+                cls._dismiss_overlays(page)
+                title = page.title()
+                cur_url = page.url
+                status = response.status if response else 200
+                duration = round(time.time() - t0, 2)
+                return {
+                    "success": True,
+                    "action": "navigate",
+                    "requested_url": target_url,
+                    "current_url": cur_url,
+                    "page_title": title,
+                    "status_code": status,
+                    "duration_s": duration
+                }
+            except Exception as e:
+                if attempt == 0 and any(w in str(e).lower() for w in ["interrupted", "aborted", "chromewebdata"]):
+                    time.sleep(1.0)
+                    continue
+                logger.error(f"Navigation to {target_url} failed: {e}")
+                return {
+                    "success": False,
+                    "action": "navigate",
+                    "requested_url": target_url,
+                    "current_url": getattr(page, "url", ""),
+                    "error": str(e)
+                }
 
     @classmethod
     def go_back(cls, page: Page, timeout_ms: int = 15000) -> Dict[str, Any]:

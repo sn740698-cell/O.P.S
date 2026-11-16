@@ -11,6 +11,7 @@ CRITICAL DISAMBIGUATION RULES:
 1. "Explain how to..." / "What is..." / "How do I..." -> task_type: "ANSWER", answering_engine: "LLM", automation_engine: "NONE". NEVER plan automation or file modifications for explanation queries.
 2. "Create a..." / "Write a file..." / "Open application..." -> task_type: "AUTOMATION" or "DEVELOPMENT", automation_engine: "DESKTOP", answering_engine: "NONE".
 3. "What is the latest stable version..." / "Recent release of..." -> task_type: "RESEARCH", answering_engine: "WEB".
+3b. "search web..." / "search the web and get some answers..." -> task_type: "RESEARCH", answering_engine: "WEB", automation_engine: "NONE". Directly switch to WEB mode in Answering Engine.
 4. "Compare X and Y and recommend..." -> task_type: "REASONING", answering_engine: "HYBRID".
 5. "Open website in Chrome..." -> task_type: "AUTOMATION", automation_engine: "BROWSER".
 6. "Download file and open on computer..." -> task_type: "AUTOMATION", automation_engine: "HYBRID".

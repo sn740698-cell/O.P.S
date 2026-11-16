@@ -170,3 +170,6 @@ class YouTubeAdapter:
             }
         except Exception as e:
             return {"success": False, "action": "youtube_inspect_results", "error": str(e)}
+
+    # Canonical alias for superior agent
+    search_and_play = execute_full_search_and_play

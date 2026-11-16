@@ -53,8 +53,18 @@ def task_understanding_planner_node(state: CentralGraphState) -> Dict[str, Any]:
         clarify_q = contract.get("clarification_question")
         approval_req = contract.get("approval_required", False)
 
-        # Normalize answering and automation modes for state
-        if task_type == "CLARIFICATION" or clarify_req:
+        # Guard: Preserve Global Intent Router decision when it deterministically classified automation
+        router_task_type = state.get("task_type")
+        router_auto_mode = state.get("automation_mode")
+        if router_task_type == "AUTOMATION":
+            task_type = "AUTOMATION"
+            ans_mode = None
+            auto_mode = router_auto_mode or (auto_engine if auto_engine in ["DESKTOP", "BROWSER", "HYBRID"] else "DESKTOP")
+        elif router_task_type == "COMPOSITE":
+            task_type = "COMPOSITE"
+            ans_mode = "WEB"
+            auto_mode = "HYBRID"
+        elif task_type == "CLARIFICATION" or clarify_req or router_task_type == "CLARIFICATION":
             task_type = "CLARIFICATION"
             ans_mode = None
             auto_mode = None

@@ -41,10 +41,10 @@ class BrowserExecutor:
         self._session_mgr = BrowserSessionManager()
         self.headless = headless
 
-    def _execute(self, fn, timeout: float = 45.0) -> Dict[str, Any]:
-        """Runs a callable taking `page` inside the Playwright worker thread."""
+    def _execute(self, fn, timeout: float = 45.0, target_url: Optional[str] = None) -> Dict[str, Any]:
+        """Runs a callable taking `page` inside the Playwright worker thread with multi-tab awareness."""
         try:
-            return self._session_mgr.execute_on_page(self.conversation_id, fn, timeout=timeout)
+            return self._session_mgr.execute_on_page(self.conversation_id, fn, timeout=timeout, target_url=target_url)
         except Exception as e:
             logger.error(f"Browser action exception: {e}")
             return {"success": False, "error": str(e)}
@@ -60,7 +60,7 @@ class BrowserExecutor:
             if res.get("success", False):
                 res["verification"] = BrowserVerificationEngine.verify_page_state(page)
             return res
-        return self._execute(_nav)
+        return self._execute(_nav, target_url=url)
 
     def go_back(self) -> Dict[str, Any]:
         """Navigates back in browser history."""
@@ -129,7 +129,7 @@ class BrowserExecutor:
 
     # Google
     def google_search(self, query: str) -> Dict[str, Any]:
-        return self._execute(lambda p: GoogleAdapter.search(p, query=query))
+        return self._execute(lambda p: GoogleAdapter.search(p, query=query), target_url="https://www.google.com")
 
     def google_click_top(self) -> Dict[str, Any]:
         return self._execute(lambda p: GoogleAdapter.click_top_result(p))
@@ -142,19 +142,19 @@ class BrowserExecutor:
 
     # YouTube
     def youtube_search(self, query: str) -> Dict[str, Any]:
-        return self._execute(lambda p: YouTubeAdapter.search_song_or_video(p, query=query))
+        return self._execute(lambda p: YouTubeAdapter.search_song_or_video(p, query=query), target_url="https://www.youtube.com")
 
     def youtube_search_and_play(self, query: str) -> Dict[str, Any]:
-        return self._execute(lambda p: YouTubeAdapter.execute_full_search_and_play(p, query=query))
+        return self._execute(lambda p: YouTubeAdapter.execute_full_search_and_play(p, query=query), target_url="https://www.youtube.com")
 
     def youtube_click_first(self) -> Dict[str, Any]:
-        return self._execute(lambda p: YouTubeAdapter.click_first_video(p))
+        return self._execute(lambda p: YouTubeAdapter.click_first_video(p), target_url="https://www.youtube.com")
 
     def youtube_pause(self) -> Dict[str, Any]:
-        return self._execute(lambda p: YouTubeAdapter.pause_playback(p))
+        return self._execute(lambda p: YouTubeAdapter.pause_playback(p), target_url="https://www.youtube.com")
 
     def youtube_resume(self) -> Dict[str, Any]:
-        return self._execute(lambda p: YouTubeAdapter.resume_playback(p))
+        return self._execute(lambda p: YouTubeAdapter.resume_playback(p), target_url="https://www.youtube.com")
 
     def youtube_stop(self) -> Dict[str, Any]:
         return self._execute(lambda p: YouTubeAdapter.stop_playback(p))
@@ -168,7 +168,7 @@ class BrowserExecutor:
 
     # Instagram
     def instagram_open(self) -> Dict[str, Any]:
-        return self._execute(lambda p: InstagramAdapter.open_home(p))
+        return self._execute(lambda p: InstagramAdapter.open_home(p), target_url="https://www.instagram.com")
 
     def instagram_reels(self) -> Dict[str, Any]:
         return self._execute(lambda p: InstagramAdapter.navigate_reels(p))
@@ -181,6 +181,103 @@ class BrowserExecutor:
 
     def instagram_read_messages(self, max_messages: int = 5) -> Dict[str, Any]:
         return self._execute(lambda p: InstagramAdapter.read_visible_messages(p, max_messages=max_messages))
+
+    # -------------------------------------------------------------------------
+    # Web Prompter & Form Submitter (ChatGPT, Claude, GitHub, etc.)
+    # -------------------------------------------------------------------------
+    def web_prompt_and_submit(self, url: str, prompt: str, submit: bool = True) -> Dict[str, Any]:
+        """
+        Navigates or switches to a web service (e.g. ChatGPT, Claude, GitHub),
+        locates the main prompt/search input, types the text, and optionally submits.
+        """
+        def _prompt(page):
+            current_url = page.url.lower() if page.url else ""
+            target_domain = url.split("//")[-1].split("/")[0].lower()
+            if target_domain not in current_url:
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                page.wait_for_timeout(1500)
+
+            # Check if GitHub or general site has a search activation button first
+            if "github.com" in current_url:
+                try:
+                    for search_trigger in [
+                        "button.header-search-button",
+                        "[data-target='qbsearch-input.inputButtonText']",
+                        "button[aria-label*='Search' i]"
+                    ]:
+                        btn = page.locator(search_trigger).first
+                        if btn.is_visible(timeout=800):
+                            btn.click()
+                            page.wait_for_timeout(400)
+                            break
+                except Exception:
+                    pass
+
+            selectors = [
+                "#prompt-textarea",
+                "input#query-builder-test",
+                "input[name='query-builder-test']",
+                "div[contenteditable='true'][aria-label*='prompt' i]",
+                "div[contenteditable='true'][aria-label*='message' i]",
+                "div[contenteditable='true']",
+                "textarea[placeholder*='message' i]",
+                "textarea[placeholder*='ask' i]",
+                "textarea[placeholder*='prompt' i]",
+                "textarea",
+                "input[placeholder*='search' i]",
+                "input[aria-label*='search' i]",
+                "input[name='q']",
+                "input[type='text']",
+                "[role='textbox']"
+            ]
+
+            target_el = None
+            for sel in selectors:
+                try:
+                    locator = page.locator(sel).first
+                    if locator.is_visible(timeout=1000):
+                        target_el = locator
+                        break
+                except Exception:
+                    continue
+
+            if not target_el and any("github.com" in u for u in [url.lower(), page.url.lower()]):
+                # Direct search URL fallback for GitHub
+                import urllib.parse
+                search_url = f"https://github.com/search?q={urllib.parse.quote(prompt)}"
+                page.goto(search_url, wait_until="domcontentloaded", timeout=20000)
+                return {
+                    "success": True,
+                    "action": "web_prompt_and_submit",
+                    "url": search_url,
+                    "prompt": prompt,
+                    "submitted": True
+                }
+
+            if not target_el:
+                return {
+                    "success": False,
+                    "action": "web_prompt_and_submit",
+                    "error": f"Prompt or search input field could not be found on {url}."
+                }
+
+            target_el.click()
+            page.wait_for_timeout(200)
+            target_el.fill(prompt)
+            page.wait_for_timeout(300)
+            if submit:
+                target_el.press("Enter")
+                page.wait_for_timeout(800)
+
+            return {
+                "success": True,
+                "action": "web_prompt_and_submit",
+                "url": url,
+                "prompt": prompt,
+                "submitted": submit
+            }
+
+        return self._execute(_prompt, target_url=url)
 
     # -------------------------------------------------------------------------
     # Lifecycle

@@ -35,9 +35,38 @@ class B6_TransferAgent:
         target_filename: Optional[str] = None,
         timeout_ms: int = 30000
     ) -> Dict[str, Any]:
-        """Clicks an element and awaits file download completion."""
+        """Clicks an element or fetches a direct URL and awaits file download completion."""
         t0 = time.time()
         try:
+            # Check if trigger_selector is a direct download URL
+            if trigger_selector.startswith(("http://", "https://")):
+                import urllib.request
+                from urllib.parse import urlparse
+                parsed = urlparse(trigger_selector)
+                suggested = os.path.basename(parsed.path) or "downloaded_file.pdf"
+                dest_name = target_filename or suggested
+                dest_path = os.path.join(self.download_dir, dest_name)
+
+                # Fetch file with headers
+                req = urllib.request.Request(
+                    trigger_selector,
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                )
+                with urllib.request.urlopen(req, timeout=timeout_ms / 1000.0) as resp, open(dest_path, "wb") as out_f:
+                    out_f.write(resp.read())
+
+                size_bytes = os.path.getsize(dest_path) if os.path.exists(dest_path) else 0
+                return {
+                    "success": os.path.exists(dest_path) and size_bytes > 0,
+                    "action": "download",
+                    "file_path": dest_path,
+                    "file_name": dest_name,
+                    "size_bytes": size_bytes,
+                    "exists": os.path.exists(dest_path) and size_bytes > 0,
+                    "duration_s": round(time.time() - t0, 2),
+                    "agent_id": self.agent_id
+                }
+
             def _download_task(page):
                 loc = page.locator(trigger_selector).first
                 with page.expect_download(timeout=timeout_ms) as download_info:

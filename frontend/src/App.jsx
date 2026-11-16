@@ -328,41 +328,41 @@ export default function App() {
   }, [conversationId, loadConversation]);
 
   // Desktop Overlay & Human-in-the-Loop Real-Time Gate Listeners
-  useEffect(() => {
-    // 1. Periodically check for backend PENDING Human-in-the-Loop approvals (every 3s)
-    const checkPendingApprovals = async () => {
-      // Guard: Do not poll without a valid conversation ID
-      if (!conversationId || conversationId === 'undefined' || conversationId === 'null') {
-        return;
-      }
-      try {
-        const resp = await fetch(`/api/chat/approvals/pending/?conversation_id=${encodeURIComponent(conversationId)}`);
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.approvals && data.approvals.length > 0) {
-            const topAppr = data.approvals[0];
-            // If already dismissed by user in this session, do not re-surface
-            if (dismissedApprovalsRef.current.has(topAppr.approval_id)) {
-              return;
-            }
-            setPendingApproval((prev) => {
-              if (prev?.approval_id === topAppr.approval_id) return prev;
-              return topAppr;
-            });
-            setIsHitlModalOpen(true);
-          } else {
-            if (isHitlModalOpen && pendingApproval?.conversation_id === conversationId) {
-              setIsHitlModalOpen(false);
-              setPendingApproval(null);
-            }
+  const checkPendingApprovals = useCallback(async () => {
+    // Guard: Do not poll without a valid conversation ID
+    if (!conversationId || conversationId === 'undefined' || conversationId === 'null') {
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/chat/approvals/pending/?conversation_id=${encodeURIComponent(conversationId)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.approvals && data.approvals.length > 0) {
+          const topAppr = data.approvals[0];
+          // If already dismissed by user in this session, do not re-surface
+          if (dismissedApprovalsRef.current.has(topAppr.approval_id)) {
+            return;
+          }
+          setPendingApproval((prev) => {
+            if (prev?.approval_id === topAppr.approval_id) return prev;
+            return topAppr;
+          });
+          setIsHitlModalOpen(true);
+        } else {
+          if (isHitlModalOpen && pendingApproval?.conversation_id === conversationId) {
+            setIsHitlModalOpen(false);
+            setPendingApproval(null);
           }
         }
-      } catch (err) {
-        // silent background check
       }
-    };
+    } catch (err) {
+      // silent background check
+    }
+  }, [conversationId, isHitlModalOpen, pendingApproval]);
 
-    const approvalInterval = setInterval(checkPendingApprovals, 3000);
+  useEffect(() => {
+    checkPendingApprovals();
+    const approvalInterval = setInterval(checkPendingApprovals, 2500);
 
     // 2. Custom Window Event: Quick Action (Ctrl + Alt + Space)
     const handleQuickAction = () => {
@@ -389,7 +389,334 @@ export default function App() {
       window.removeEventListener('ops:quick-action', handleQuickAction);
       window.removeEventListener('ops:hitl-approval', handleDesktopHitl);
     };
-  }, [conversationId]);
+  }, [conversationId, checkPendingApprovals]);
+
+  // Persistent Real-Time LangGraph SSE Stream for active conversation
+  useEffect(() => {
+    if (!conversationId) return;
+
+    let sseSource = null;
+    let reconnectTimer = null;
+    let isMounted = true;
+
+    const connectSse = () => {
+      if (!isMounted) return;
+      try {
+        if (sseRef.current) {
+          try { sseRef.current.close(); } catch (_) {}
+          sseRef.current = null;
+        }
+
+        sseSource = new EventSource(`/api/chat/conversations/${conversationId}/events/`);
+        sseRef.current = sseSource;
+
+        sseSource.onmessage = (e) => {
+          try {
+            const evt = JSON.parse(e.data);
+            if (evt.event_type === 'STREAM_CONNECTED' || evt.event_type === 'STREAM_CLOSED') return;
+
+            // Universal Real-Time Telemetry & Pipeline State Synchronizer
+            if (evt.current_stage) setCurrentStage(evt.current_stage);
+            if (evt.stages && Array.isArray(evt.stages) && evt.stages.length > 0) setActiveStages(evt.stages);
+            if (evt.safe_task_summary) setCurrentThought(evt.safe_task_summary);
+            if (evt.safe_output_summary && !evt.safe_task_summary) setCurrentThought(evt.safe_output_summary);
+            if (evt.component_name) setActiveAgent(evt.component_name);
+            if (evt.response_mode) setActiveMode(evt.response_mode);
+            if (evt.mode_reason || evt.reason) setModeReason(evt.mode_reason || evt.reason);
+
+            // Directive started (dispatched from Popup Cockpit or Browser)
+            if (evt.event_type === 'REQUEST_STARTED') {
+              setIsLoading(true);
+              setStreamingChunk('');
+              setBriefingText('');
+              const promptText = evt.query || evt.directive || (evt.safe_task_summary ? evt.safe_task_summary.replace(/^Analyzing directive:\s*['"]?/, '').replace(/['"]?\.\.\.$/, '') : '');
+              if (promptText) {
+                setCurrentTaskPrompt(promptText);
+                setConversationHistory((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (!last || last.role !== 'user' || (last.text !== promptText && last.content !== promptText)) {
+                    return [...prev, { role: 'user', text: promptText, content: promptText }];
+                  }
+                  return prev;
+                });
+              }
+              if (evt.response_mode) setActiveMode(evt.response_mode);
+              if (evt.safe_task_summary) setCurrentThought(evt.safe_task_summary);
+              return;
+            }
+
+            if (evt.event_type === 'text_chunk' && evt.chunk) {
+              setIsLoading(true);
+              setStreamingChunk((prev) => prev + evt.chunk);
+              return;
+            }
+
+            if (evt.event_type === 'MODE_SELECTED' || evt.event_type === 'MODE_CHANGED') {
+              const m = evt.response_mode || evt.new_mode;
+              if (m) setActiveMode(m);
+              if (evt.mode_reason || evt.reason) setModeReason(evt.mode_reason || evt.reason);
+              if (evt.stages) setActiveStages(evt.stages);
+              if (evt.current_stage) setCurrentStage(evt.current_stage);
+              if (evt.safe_task_summary) setCurrentThought(evt.safe_task_summary);
+              return;
+            }
+
+            if (evt.event_type === 'PLAN_CREATED') {
+              const steps = evt.metadata?.plan?.steps || evt.plan || [];
+              if (steps.length > 0) setPlanSteps(steps);
+            }
+
+            if (evt.event_type === 'SEARCH_COMPLETED') {
+              setResearchTelemetry((prev) => ({
+                ...prev,
+                sourcesCount: evt.sources_discovered || prev.sourcesCount
+              }));
+              if (evt.current_stage) setCurrentStage(evt.current_stage);
+              return;
+            }
+
+            if (evt.event_type === 'PAGE_RETRIEVED') {
+              setResearchTelemetry((prev) => ({
+                ...prev,
+                pagesCount: evt.pages_retrieved || prev.pagesCount,
+                domains: evt.domains || prev.domains
+              }));
+              if (evt.current_stage) setCurrentStage(evt.current_stage);
+              return;
+            }
+
+            if (evt.event_type === 'EVIDENCE_VALIDATED') {
+              setResearchTelemetry((prev) => ({
+                ...prev,
+                evidenceStatus: evt.evidence_status || 'Validated'
+              }));
+              if (evt.current_stage) setCurrentStage(evt.current_stage);
+              return;
+            }
+
+            if (evt.event_type === 'NODE_THOUGHT') {
+              if (evt.safe_output_summary) {
+                setCurrentThought((prev) => {
+                  const chunk = evt.safe_output_summary;
+                  return (prev && prev.length < 240) ? (prev + ' ' + chunk) : chunk;
+                });
+              }
+              return;
+            }
+
+            if (evt.event_type === 'APPROVAL_REQUIRED') {
+              const apprObj = {
+                approval_id: evt.approval_id,
+                action_type: evt.action_type || 'AUTOMATION_ACTION',
+                description: evt.approval_reason || evt.safe_task_summary || 'Human authorization required for action.',
+                conversation_id: evt.conversation_id || conversationId,
+                metadata: {
+                  action_summary: evt.approval_reason || evt.safe_task_summary,
+                  target: evt.target || evt.target_application || evt.target_url || evt.target_file_path || 'System Target',
+                  target_application: evt.target_application,
+                  target_url: evt.target_url,
+                  target_file_path: evt.target_file_path,
+                  execution_plan: evt.execution_plan,
+                  input_content: evt.input_content,
+                  expected_result: evt.expected_result,
+                  risk_level: evt.risk_level || 'HIGH',
+                  is_destructive: evt.is_destructive
+                }
+              };
+              setPendingApproval(apprObj);
+              setIsHitlModalOpen(true);
+              setIsLoading(false);
+              setStreamingChunk('');
+              return;
+            }
+
+            if (evt.event_type === 'response_completed') {
+              const finalVal = evt.final_answer || evt.content;
+              const finalMode = evt.response_mode || evt.mode || 'LLM';
+              setActiveMode(finalMode);
+              if (finalVal) {
+                setBriefingText(finalVal);
+                setConversationHistory((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (last && (last.role === 'assistant' || last.role === 'bot') && (last.text === finalVal || last.content === finalVal)) {
+                    return prev;
+                  }
+                  return [
+                    ...prev,
+                    {
+                      role: 'assistant',
+                      text: finalVal,
+                      content: finalVal,
+                      category: finalMode,
+                      citations: evt.citations || [],
+                      summary: evt.conversation_summary
+                    }
+                  ];
+                });
+              }
+              setIsLoading(false);
+              setStreamingChunk('');
+              setActiveAgent('Result Formatter');
+              setCurrentThought('');
+              setCurrentStage('Completed');
+              loadConversation(conversationId);
+              return;
+            }
+
+            if (evt.event_type === 'response_cancelled') {
+              setIsLoading(false);
+              setStreamingChunk('');
+              setBriefingText("*[⏹ Generation stopped by user]*");
+              loadConversation(conversationId);
+              return;
+            }
+
+            if (evt.event_type === 'response_failed') {
+              setIsLoading(false);
+              setStreamingChunk('');
+              setBriefingText(`⚠️ Error: ${evt.error_details || 'Execution failed.'}`);
+              loadConversation(conversationId);
+              return;
+            }
+
+            setLiveEvents((prev) => [...prev.slice(-300), evt]);
+            if (evt.component_name) setActiveAgent(evt.component_name);
+            if (evt.safe_task_summary) setCurrentThought(evt.safe_task_summary);
+          } catch (err) {
+            console.warn('SSE parse warning:', err);
+          }
+        };
+
+        sseSource.onerror = () => {
+          if (sseSource) {
+            try { sseSource.close(); } catch (_) {}
+          }
+          if (isMounted) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connectSse, 3000);
+          }
+        };
+      } catch (e) {
+        console.warn('SSE connection warning:', e);
+      }
+    };
+
+    connectSse();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(reconnectTimer);
+      if (sseSource) {
+        try { sseSource.close(); } catch (_) {}
+      }
+      sseRef.current = null;
+    };
+  }, [conversationId, loadConversation]);
+
+  // Real-Time Cross-Window Synchronization with Desktop Popup Cockpit
+  useEffect(() => {
+    let bc = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('ops_cockpit_channel');
+        bc.onmessage = (event) => {
+          const data = event.data;
+          if (!data) return;
+
+          if (data.type === 'QUERY_STARTED') {
+            setIsLoading(true);
+            setStreamingChunk('');
+            setBriefingText('');
+            if (data.query) {
+              setCurrentTaskPrompt(data.query);
+              setConversationHistory((prev) => {
+                const last = prev[prev.length - 1];
+                if (!last || last.role !== 'user' || (last.text !== data.query && last.content !== data.query)) {
+                  return [...prev, { role: 'user', text: data.query, content: data.query }];
+                }
+                return prev;
+              });
+            }
+            if (data.conversationId && data.conversationId !== conversationId) {
+              setConversationId(data.conversationId);
+              localStorage.setItem('ops_conversation_id', data.conversationId);
+            }
+          } else if (data.type === 'TOKEN_CHUNK') {
+            setIsLoading(true);
+            setStreamingChunk((prev) => prev + data.chunk);
+          } else if (data.type === 'QUERY_COMPLETED') {
+            setIsLoading(false);
+            setStreamingChunk('');
+            if (data.finalAnswer) {
+              setBriefingText(data.finalAnswer);
+            }
+            if (data.mode) setActiveMode(data.mode);
+            loadConversation(data.conversationId || conversationId);
+          } else if (data.type === 'SESSION_RESET') {
+            if (data.newConversationId) {
+              setConversationId(data.newConversationId);
+              localStorage.setItem('ops_conversation_id', data.newConversationId);
+            }
+            setConversationHistory([]);
+            setLiveEvents([]);
+            setBriefingText('');
+            setPlanSteps([]);
+            setCurrentTaskPrompt('');
+            setStreamingChunk('');
+            loadConversation(data.newConversationId || conversationId);
+          }
+        };
+      }
+    } catch (_) {}
+
+    const handleStorageChange = (e) => {
+      if ((e.key === 'ops_conversation_id' || e.key === 'ops_cockpit_conversation_id') && e.newValue && e.newValue !== conversationId) {
+        setConversationId(e.newValue);
+        loadConversation(e.newValue);
+      }
+      if (e.key === 'ops_active_query' && e.newValue) {
+        setCurrentTaskPrompt(e.newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [conversationId, loadConversation]);
+
+  // Periodic active conversation sync (every 3 seconds)
+  useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      if (isLoading) return;
+      try {
+        const resp = await fetch('/api/chat/conversations/active/');
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.conversation_id && data.conversation_id !== conversationId) {
+            setConversationId(data.conversation_id);
+            localStorage.setItem('ops_conversation_id', data.conversation_id);
+          }
+          if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+            const lastUser = [...data.messages].reverse().find((m) => m.role === 'user');
+            if (lastUser && lastUser.content && (!currentTaskPrompt || currentTaskPrompt === '')) {
+              setCurrentTaskPrompt(lastUser.content);
+            }
+            const lastBot = [...data.messages].reverse().find((m) => m.role === 'assistant');
+            if (lastBot && lastBot.content && (!briefingText || briefingText === '')) {
+              setBriefingText(lastBot.content);
+            }
+            if (conversationHistory.length !== data.messages.length) {
+              loadConversation(data.conversation_id || conversationId);
+            }
+          }
+        }
+      } catch (_) {}
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [conversationId, isLoading, currentTaskPrompt, briefingText, conversationHistory.length, loadConversation]);
 
   // Continuous Conversation Command Dispatcher
   const handleDispatchCommand = async (prompt, inputType = 'text') => {
@@ -541,10 +868,36 @@ export default function App() {
       }
 
       const data = await resp.json();
+      if (data.status === 'waiting_for_approval' || data.approval_id) {
+        const apprObj = {
+          approval_id: data.approval_id,
+          action_type: data.action_type || (['DESKTOP', 'BROWSER', 'HYBRID AUTO'].includes(data.response_mode || data.mode) ? 'AUTOMATION_ACTION' : 'SYSTEM_ACTION'),
+          description: data.approval_reason || data.description || 'Human authorization required for action.',
+          conversation_id: data.conversation_id || conversationId,
+          metadata: {
+            action_summary: data.approval_reason || data.description || 'Authorize system execution',
+            target: data.target || data.target_application || data.target_url || data.target_file_path || 'System Target',
+            target_application: data.target_application,
+            target_url: data.target_url,
+            target_file_path: data.target_file_path,
+            execution_plan: data.execution_plan || data.plan,
+            input_content: data.input_content,
+            expected_result: data.expected_result,
+            risk_level: data.risk_level || 'HIGH',
+            is_destructive: data.is_destructive
+          }
+        };
+        setPendingApproval(apprObj);
+        setIsHitlModalOpen(true);
+        setIsLoading(false);
+        checkPendingApprovals();
+      }
       const botAnswer = data.content || data.final_answer || data.response || (data.error ? `⚠️ ${data.error}` : "Directive acknowledged.");
+      const respCategory = data.response_mode || data.mode || (['DESKTOP', 'BROWSER', 'HYBRID AUTO'].includes(activeMode) ? activeMode : 'WEB_RESEARCH');
       setBriefingText(botAnswer);
       setStreamingChunk('');
-      setActiveCategory(data.mode || 'WEB_RESEARCH');
+      setActiveCategory(respCategory);
+      if (data.response_mode) setActiveMode(data.response_mode);
       if (data.plan) setPlanSteps(data.plan);
 
       // Add bot turn to conversation history
@@ -553,7 +906,7 @@ export default function App() {
         {
           role: 'bot',
           text: botAnswer,
-          category: data.mode || 'WEB_RESEARCH',
+          category: respCategory,
           plan: data.plan,
           citations: data.citations,
           summary: data.conversation_summary
@@ -832,8 +1185,16 @@ export default function App() {
       {/* Reusable Human-in-the-Loop (HITL) Approval Modal */}
       <HumanApprovalModal
         isOpen={isHitlModalOpen}
-        title={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Automation Action Authorization" : "Human Approval Required"}
+        actionType={pendingApproval?.action_type}
+        title={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "HUMAN-IN-THE-LOOP // EXECUTION APPROVAL" : "Human Approval Required"}
         subtitle={pendingApproval?.description || (pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Authorize system automation task execution?" : "Delete Current Conversation?")}
+        actionSummary={pendingApproval?.metadata?.action_summary || pendingApproval?.description}
+        target={pendingApproval?.metadata?.target || pendingApproval?.target || pendingApproval?.metadata?.target_application || pendingApproval?.target_application || pendingApproval?.metadata?.target_file_path || pendingApproval?.metadata?.target_url}
+        executionPlan={pendingApproval?.metadata?.execution_plan || pendingApproval?.execution_plan || pendingApproval?.metadata?.steps || pendingApproval?.plan}
+        inputContent={pendingApproval?.metadata?.input_content || pendingApproval?.input_content}
+        expectedResult={pendingApproval?.metadata?.expected_result || pendingApproval?.expected_result}
+        isDestructive={pendingApproval?.metadata?.is_destructive || pendingApproval?.is_destructive}
+        riskLevel={pendingApproval?.metadata?.risk_level || pendingApproval?.risk_level}
         denyLabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "REJECT ACTION" : "DENY"}
         denySublabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Cancel this automation step." : "Keep my conversation."}
         acceptLabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "AUTHORIZE" : "ACCEPT"}
@@ -904,15 +1265,15 @@ export default function App() {
 
                 {/* Central JARVIS-Style Command & Voice Core */}
                 <OpsCommandCore
-                  onDispatchCommand={handleDispatchCommand}
+                  activeTaskPrompt={currentTaskPrompt}
                   isLoading={isLoading}
                   activeAgent={activeAgent}
                   currentThought={currentThought}
-                  onToggleVoice={handleToggleVoice}
-                  isListening={isListening}
                   onEmergencyHalt={handleEmergencyHalt}
                   sessionId={sessionId}
                   onRefreshSession={handleRequestRefreshApproval}
+                  activeEngine={activeMode && ['DESKTOP', 'BROWSER', 'HYBRID AUTO'].includes(activeMode) ? 'AUTOMATION' : (activeMode === 'COMPOSITE' ? 'COMPOSITE' : 'ANSWERING')}
+                  activeMode={activeMode}
                 />
               </div>
 

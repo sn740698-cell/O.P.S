@@ -164,36 +164,43 @@ def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
 
             desktop_res = auto_res.get("desktop_results", [])
             browser_res = auto_res.get("browser_results", [])
-            all_exec_steps = desktop_res + browser_res
+            raw_step_res = auto_res.get("step_results") or state.get("step_results") or []
+            executed_steps = desktop_res + browser_res if (desktop_res or browser_res) else raw_step_res
 
-            has_failures = any(not r.get("success", False) for r in all_exec_steps)
-            has_steps = len(all_exec_steps) > 0
+            has_executed = len(executed_steps) > 0
+            has_failures = any(r.get("status") == "FAILED" or r.get("success") is False for r in executed_steps)
+            all_succeeded = has_executed and not has_failures and all(bool(r.get("success", False)) for r in executed_steps) and len(executed_steps) >= len(steps)
 
-            # Empirical verification check
-            all_verified = (has_steps and not has_failures and verif_res.get("all_verified", True))
-            if not has_steps and len(steps) > 0:
-                all_verified = False
+            # Empirical verification check: strictly require genuine execution of all steps
+            all_verified = bool(all_succeeded and verif_res.get("all_verified", True))
 
-            icon = "✅" if all_verified else ("⚠️" if has_steps else "❌")
-            status_word = "COMPLETED" if all_verified else ("PARTIAL" if has_steps else "FAILED")
+            if all_verified:
+                icon = "✅"
+                status_word = "COMPLETED"
+                verif_summary = "All operations and empirical state verifications succeeded."
+            elif has_executed and any(r.get("success", False) for r in executed_steps):
+                icon = "⚠️"
+                status_word = "PARTIAL"
+                verif_summary = "One or more actions encountered an issue during execution or verification."
+            else:
+                icon = "❌"
+                status_word = "FAILED"
+                verif_summary = "No automation actions were executed."
 
             step_lines = []
             for s in steps:
                 s_id = s.get("step_id")
-                matching_res = next((r for r in all_exec_steps if r.get("step_id") == s_id), None)
+                matching_res = next((r for r in executed_steps if r.get("step_id") == s_id), None)
                 if matching_res:
-                    s_ok = matching_res.get("success", False)
+                    s_ok = bool(matching_res.get("success", False))
                     s_icon = "✅" if s_ok else "❌"
                     s_info = matching_res.get("video_title") or matching_res.get("window_title") or matching_res.get("current_url") or ""
                     extra = f" (*{s_info}*)" if s_info else ""
                     step_lines.append(f"- {s_icon} **Step {s_id}**: {s.get('title')} `[{mode}]`{extra}")
                 else:
-                    step_lines.append(f"- ✅ **Step {s_id}**: {s.get('title')} `[{mode}]`")
+                    step_lines.append(f"- ❌ **Step {s_id}**: {s.get('title')} `[{mode}]` (Not executed)")
 
             steps_formatted = "\n".join(step_lines) if step_lines else "- Automated actions logged."
-            verif_summary = "All operations and empirical state verifications succeeded." if all_verified else (
-                "One or more actions encountered an issue during execution or verification." if has_steps else "No automation actions were executed."
-            )
 
             final_text = (
                 f"## {icon} {mode} AUTOMATION EXECUTION {status_word}\n\n"

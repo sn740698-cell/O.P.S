@@ -39,6 +39,8 @@ class D6_CodeAgent:
                 overwrite=overwrite
             )
             res["agent_id"] = self.agent_id
+            if "ast_valid" not in res:
+                res["ast_valid"] = res.get("syntax_valid", False)
             return res
         except Exception as e:
             logger.error(f"D6_CodeAgent generation failed: {e}")

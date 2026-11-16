@@ -112,3 +112,49 @@ class TabManager:
             }
 
         return self._session_mgr._browser_manager.execute(_close, timeout=10.0)
+
+    def close_tab(self, target: Any) -> Dict[str, Any]:
+        """Closes a specific tab matching an index (int) or title/url substring (str)."""
+        def _close_spec(w: PlaywrightWorker) -> Dict[str, Any]:
+            w._ensure_context()
+            pages = [p for p in w.context.pages if not p.is_closed()]
+            target_page = None
+
+            if isinstance(target, int) or (isinstance(target, str) and target.isdigit()):
+                idx = int(target)
+                if 0 <= idx < len(pages):
+                    target_page = pages[idx]
+            elif isinstance(target, str) and target:
+                t_low = target.lower()
+                for p in pages:
+                    try:
+                        if t_low in p.url.lower() or t_low in p.title().lower():
+                            target_page = p
+                            break
+                    except Exception:
+                        pass
+
+            if not target_page:
+                return {"success": False, "action": "close_tab", "error": f"Tab matching '{target}' was not found among {len(pages)} open tabs."}
+
+            closed_url = target_page.url
+            target_page.close()
+
+            # Ensure active page is valid
+            remaining = [p for p in w.context.pages if not p.is_closed()]
+            if remaining:
+                w.pages[self.conversation_id] = remaining[-1]
+                remaining[-1].bring_to_front()
+            else:
+                w.pages[self.conversation_id] = w.context.new_page()
+
+            return {
+                "success": True,
+                "action": "close_tab",
+                "closed_target": target,
+                "closed_url": closed_url,
+                "remaining_tabs": len(remaining),
+                "active_url": w.pages[self.conversation_id].url
+            }
+
+        return self._session_mgr._browser_manager.execute(_close_spec, timeout=10.0)

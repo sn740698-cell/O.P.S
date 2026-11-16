@@ -142,6 +142,19 @@ class GUIController:
         """
         conn = self.connect_window(title)
         if not conn.get("success"):
+            running = ApplicationController.find_running_window(title)
+            if running and running.get("pid"):
+                try:
+                    import pywinauto
+                    pywinauto.keyboard.send_keys(text, with_spaces=True)
+                    return {
+                        "success": True,
+                        "action": "type_text",
+                        "target": title,
+                        "typed_length": len(text)
+                    }
+                except Exception:
+                    pass
             return conn
 
         win = self._active_window
@@ -243,6 +256,19 @@ class GUIController:
         """
         conn = self.connect_window(title)
         if not conn.get("success"):
+            running = ApplicationController.find_running_window(title)
+            if running and running.get("pid"):
+                try:
+                    import pywinauto
+                    pywinauto.keyboard.send_keys(text, with_spaces=True)
+                    return {
+                        "success": True,
+                        "action": "type_text",
+                        "target": title,
+                        "typed_length": len(text)
+                    }
+                except Exception:
+                    pass
             return conn
 
         win = self._active_window
@@ -290,6 +316,19 @@ class GUIController:
         """
         conn = self.connect_window(title)
         if not conn.get("success"):
+            running = ApplicationController.find_running_window(title)
+            if running and running.get("pid"):
+                try:
+                    import pywinauto
+                    pywinauto.keyboard.send_keys(text, with_spaces=True)
+                    return {
+                        "success": True,
+                        "action": "type_text",
+                        "target": title,
+                        "typed_length": len(text)
+                    }
+                except Exception:
+                    pass
             return conn
 
         win = self._active_window
@@ -383,6 +422,19 @@ class GUIController:
         """
         conn = self.connect_window(title)
         if not conn.get("success"):
+            running = ApplicationController.find_running_window(title)
+            if running and running.get("pid"):
+                try:
+                    import pywinauto
+                    pywinauto.keyboard.send_keys(text, with_spaces=True)
+                    return {
+                        "success": True,
+                        "action": "type_text",
+                        "target": title,
+                        "typed_length": len(text)
+                    }
+                except Exception:
+                    pass
             return conn
 
         try:
@@ -428,6 +480,19 @@ class GUIController:
         """
         conn = self.connect_window(title)
         if not conn.get("success"):
+            running = ApplicationController.find_running_window(title)
+            if running and running.get("pid"):
+                try:
+                    import pywinauto
+                    pywinauto.keyboard.send_keys(text, with_spaces=True)
+                    return {
+                        "success": True,
+                        "action": "type_text",
+                        "target": title,
+                        "typed_length": len(text)
+                    }
+                except Exception:
+                    pass
             return conn
 
         win = self._active_window

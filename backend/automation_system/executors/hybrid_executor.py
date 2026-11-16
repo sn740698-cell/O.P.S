@@ -134,6 +134,8 @@ class HybridExecutor:
                     text=params.get("text", ""),
                     control_id=params.get("control_id")
                 )
+                if params.get("press_enter"):
+                    self.desktop.send_keys(title=params.get("title", ""), keys="{ENTER}")
             elif action == "click_element" or action == "click_button":
                 result = self.desktop.click_button(
                     title=params.get("title", ""),
@@ -204,6 +206,12 @@ class HybridExecutor:
                 result = self.browser.google_search(query=params.get("query", ""))
             elif action == "google_click_top":
                 result = self.browser.google_click_top()
+            elif action in ["web_prompt_and_submit", "prompt_ai_chat", "web_text"]:
+                result = self.browser.web_prompt_and_submit(
+                    url=params.get("url", ""),
+                    prompt=params.get("prompt") or params.get("text", ""),
+                    submit=params.get("submit", True)
+                )
             elif action == "instagram_reels":
                 result = self.browser.instagram_reels()
             elif action == "instagram_open":

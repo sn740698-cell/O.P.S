@@ -21,8 +21,28 @@ import UserMessage from './UserMessage';
 import AssistantMessage from './AssistantMessage';
 import MarkdownRenderer from './MarkdownRenderer';
 import HumanApprovalModal from './HumanApprovalModal';
-import CockpitLoadingSkeleton from './skeletons/CockpitLoadingSkeleton';
+import CockpitLoadingSkeleton, { inferInitialModeAndEngine, DEFAULT_PIPELINE_STAGES } from './skeletons/CockpitLoadingSkeleton';
 import { retroSoundEngine } from '../utils/retroSounds';
+
+export function engineFromMode(mode) {
+  if (!mode) return null;
+  const m = mode.toUpperCase();
+  if (['DESKTOP', 'BROWSER', 'HYBRID AUTO', 'HYBRID_AUTO', 'AUTOMATION'].some(k => m.includes(k))) return 'AUTOMATION';
+  if (m === 'COMPOSITE') return 'COMPOSITE';
+  return 'ANSWERING';
+}
+
+export function resolveCategoryFromContent(text) {
+  if (!text || typeof text !== 'string') return null;
+  if (text.includes('DESKTOP AUTOMATION') || text.includes('[DESKTOP]')) return 'DESKTOP';
+  if (text.includes('BROWSER AUTOMATION') || text.includes('[BROWSER]')) return 'BROWSER';
+  if (text.includes('HYBRID AUTOMATION') || text.includes('[HYBRID AUTO]')) return 'HYBRID AUTO';
+  if (text.includes('COMPOSITE EXECUTION') || text.includes('[COMPOSITE]')) return 'COMPOSITE';
+  if (text.includes('WEB MODE RESPONSE') || text.includes('[WEB]')) return 'WEB';
+  if (text.includes('LLM MODE RESPONSE') || text.includes('[LLM]')) return 'LLM';
+  if (text.includes('DOCUMENT MODE') || text.includes('DOCUMENT PASSAGE') || text.includes('[DOC]')) return 'DOCUMENT';
+  return null;
+}
 
 export default function SeparatePopupCockpit() {
   // Continuous Conversation Lifecycle (Module: Chat Management & Lifecycle)
@@ -90,9 +110,12 @@ export default function SeparatePopupCockpit() {
   }, []);
 
   const scrollRef = useRef(null);
+  const mainContainerRef = useRef(null);
   const inputRef = useRef(null);
   const sseRef = useRef(null);
   const abortCtrlRef = useRef(null);
+  const isUserScrolledUp = useRef(false);
+  const scrollRafRef = useRef(null);
 
   // Clean up any lingering SSE or aborted requests on unmount
   useEffect(() => {
@@ -105,13 +128,57 @@ export default function SeparatePopupCockpit() {
         try { abortCtrlRef.current.abort(); } catch (_) {}
         abortCtrlRef.current = null;
       }
+      if (scrollRafRef.current) {
+        cancelAnimationFrame(scrollRafRef.current);
+      }
     };
   }, []);
 
-  // Auto-scroll on new messages or thoughts
+  // Monitor user scroll position to avoid forceful auto-scroll when reading history
+  const handleScroll = useCallback(() => {
+    if (!mainContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = mainContainerRef.current;
+    isUserScrolledUp.current = (scrollHeight - scrollTop - clientHeight > 120);
+  }, []);
+
+  // Smooth scroll helper
+  const scrollToBottom = useCallback((smooth = false) => {
+    if (!mainContainerRef.current || isUserScrolledUp.current) return;
+    const { scrollHeight, clientHeight } = mainContainerRef.current;
+    if (scrollHeight <= clientHeight) return;
+
+    if (smooth) {
+      mainContainerRef.current.scrollTo({
+        top: scrollHeight,
+        behavior: 'smooth'
+      });
+    } else {
+      mainContainerRef.current.scrollTop = scrollHeight;
+    }
+  }, []);
+
+  // Glitch-free throttled auto-scroll for streaming chunks
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversationHistory, streamingChunk, currentThought, isLoading]);
+    if (isUserScrolledUp.current) return;
+    if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    scrollRafRef.current = requestAnimationFrame(() => {
+      if (mainContainerRef.current && !isUserScrolledUp.current) {
+        mainContainerRef.current.scrollTop = mainContainerRef.current.scrollHeight;
+      }
+    });
+    return () => {
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, [streamingChunk, currentThought]);
+
+  // Smooth scroll only on discrete turn changes or loading state completion
+  useEffect(() => {
+    if (isUserScrolledUp.current) return;
+    const timer = setTimeout(() => {
+      scrollToBottom(true);
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [conversationHistory.length, isLoading, scrollToBottom]);
 
   // Load Active Conversation from Backend
   const loadConversation = useCallback(async (convId) => {
@@ -126,17 +193,25 @@ export default function SeparatePopupCockpit() {
           localStorage.setItem('ops_cockpit_conversation_id', data.conversation_id);
         }
         if (data.messages && data.messages.length > 0) {
-          const loadedHistory = data.messages.map((m) => ({
-            role: m.role === 'user' ? 'user' : 'assistant',
-            text: m.content,
-            content: m.content,
-            status: m.status,
-            category: m.metadata?.response_mode || m.metadata?.mode || 'LLM',
-            plan: m.metadata?.plan,
-            citations: m.metadata?.citations,
-            summary: m.metadata?.conversation_summary
-          }));
+          const loadedHistory = data.messages.map((m) => {
+            const cat = m.metadata?.response_mode || m.metadata?.mode || resolveCategoryFromContent(m.content) || 'LLM';
+            return {
+              role: m.role === 'user' ? 'user' : 'assistant',
+              text: m.content,
+              content: m.content,
+              status: m.status,
+              category: cat,
+              plan: m.metadata?.plan,
+              citations: m.metadata?.citations,
+              summary: m.metadata?.conversation_summary
+            };
+          });
           setConversationHistory(loadedHistory);
+          const lastAsst = [...loadedHistory].reverse().find(m => m.role === 'assistant');
+          if (lastAsst?.category) {
+            setActiveMode(lastAsst.category);
+            setActiveEngine(engineFromMode(lastAsst.category));
+          }
         }
       } else if (resp.status === 404) {
         const activeResp = await fetch('/api/chat/conversations/active/');
@@ -147,16 +222,25 @@ export default function SeparatePopupCockpit() {
             localStorage.setItem('ops_conversation_id', activeData.conversation_id);
             localStorage.setItem('ops_cockpit_conversation_id', activeData.conversation_id);
             if (activeData.messages && activeData.messages.length > 0) {
-              setConversationHistory(activeData.messages.map((m) => ({
-                role: m.role === 'user' ? 'user' : 'assistant',
-                text: m.content,
-                content: m.content,
-                status: m.status,
-                category: m.metadata?.response_mode || m.metadata?.mode || 'LLM',
-                plan: m.metadata?.plan,
-                citations: m.metadata?.citations,
-                summary: m.metadata?.conversation_summary
-              })));
+              const loadedHistory = activeData.messages.map((m) => {
+                const cat = m.metadata?.response_mode || m.metadata?.mode || resolveCategoryFromContent(m.content) || 'LLM';
+                return {
+                  role: m.role === 'user' ? 'user' : 'assistant',
+                  text: m.content,
+                  content: m.content,
+                  status: m.status,
+                  category: cat,
+                  plan: m.metadata?.plan,
+                  citations: m.metadata?.citations,
+                  summary: m.metadata?.conversation_summary
+                };
+              });
+              setConversationHistory(loadedHistory);
+              const lastAsst = [...loadedHistory].reverse().find(m => m.role === 'assistant');
+              if (lastAsst?.category) {
+                setActiveMode(lastAsst.category);
+                setActiveEngine(engineFromMode(lastAsst.category));
+              }
             }
           }
         }
@@ -249,8 +333,10 @@ export default function SeparatePopupCockpit() {
                   return prev;
                 });
               }
-              setActiveEngine(parsed.active_engine || 'ANSWERING');
-              if (parsed.response_mode) setActiveMode(parsed.response_mode);
+              const effMode = parsed.response_mode || inferInitialModeAndEngine(promptText).mode;
+              const effEngine = parsed.active_engine || engineFromMode(effMode);
+              setActiveEngine(effEngine);
+              setActiveMode(effMode);
               if (parsed.mode_reason) setModeReason(parsed.mode_reason);
               if (parsed.stages) setActiveStages(parsed.stages);
               if (parsed.current_stage) setCurrentStage(parsed.current_stage);
@@ -260,7 +346,8 @@ export default function SeparatePopupCockpit() {
 
             // Engine Selected Event
             if (parsed.event_type === 'ENGINE_SELECTED') {
-              const eng = parsed.active_engine || parsed.engine;
+              const effMode = parsed.response_mode || activeMode;
+              const eng = parsed.active_engine || parsed.engine || engineFromMode(effMode);
               if (eng) setActiveEngine(eng);
               if (parsed.response_mode) setActiveMode(parsed.response_mode);
               if (parsed.current_agent) setActiveAgent(parsed.current_agent);
@@ -282,14 +369,27 @@ export default function SeparatePopupCockpit() {
             if (parsed.event_type === 'text_chunk' && parsed.chunk) {
               setIsLoading(true);
               setStreamingChunk((prev) => prev + parsed.chunk);
+              try {
+                if (typeof BroadcastChannel !== 'undefined') {
+                  const bc = new BroadcastChannel('ops_cockpit_channel');
+                  bc.postMessage({
+                    type: 'TOKEN_CHUNK',
+                    chunk: parsed.chunk,
+                    conversationId: conversationId
+                  });
+                  bc.close();
+                }
+              } catch (_) {}
               return;
             }
 
             // 2. Mode selected / dynamic mode change
             if (parsed.event_type === 'MODE_SELECTED' || parsed.event_type === 'MODE_CHANGED') {
               const m = parsed.response_mode || parsed.new_mode;
-              if (m) setActiveMode(m);
-              if (parsed.active_engine) setActiveEngine(parsed.active_engine);
+              if (m) {
+                setActiveMode(m);
+                setActiveEngine(parsed.active_engine || engineFromMode(m));
+              }
               if (parsed.current_agent) setActiveAgent(parsed.current_agent);
               if (parsed.mode_reason || parsed.reason) setModeReason(parsed.mode_reason || parsed.reason);
               if (parsed.stages) setActiveStages(parsed.stages);
@@ -405,11 +505,41 @@ export default function SeparatePopupCockpit() {
               return;
             }
 
+            // 4.5 Human-in-the-Loop Approval Required Event
+            if (parsed.event_type === 'APPROVAL_REQUIRED') {
+              const apprObj = {
+                approval_id: parsed.approval_id,
+                action_type: parsed.action_type || 'AUTOMATION_ACTION',
+                description: parsed.approval_reason || parsed.safe_task_summary || 'Human authorization required for action.',
+                conversation_id: parsed.conversation_id || conversationId,
+                metadata: {
+                  action_summary: parsed.approval_reason || parsed.safe_task_summary,
+                  target: parsed.target || parsed.target_application || parsed.target_url || parsed.target_file_path || 'System Target',
+                  target_application: parsed.target_application,
+                  target_url: parsed.target_url,
+                  target_file_path: parsed.target_file_path,
+                  execution_plan: parsed.execution_plan,
+                  input_content: parsed.input_content,
+                  expected_result: parsed.expected_result,
+                  risk_level: parsed.risk_level || 'HIGH',
+                  is_destructive: parsed.is_destructive
+                }
+              };
+              setPendingApproval(apprObj);
+              setIsHitlModalOpen(true);
+              setIsLoading(false);
+              setStreamingChunk('');
+              setCurrentThought('Execution paused at Human-in-the-Loop authorization gate.');
+              setCurrentStage('Waiting for Human Approval');
+              retroSoundEngine.playBeep(440, 0.15);
+              return;
+            }
+
             // 5. Final completion
             if (parsed.event_type === 'response_completed') {
               const finalVal = parsed.final_answer || parsed.content;
-              const finalMode = parsed.response_mode || parsed.mode || 'LLM';
-              const finalEng = parsed.active_engine || (['DESKTOP', 'BROWSER', 'HYBRID AUTO'].includes(finalMode) ? 'AUTOMATION' : (finalMode === 'COMPOSITE' ? 'COMPOSITE' : 'ANSWERING'));
+              const finalMode = parsed.response_mode || parsed.mode || resolveCategoryFromContent(finalVal) || activeMode || 'LLM';
+              const finalEng = parsed.active_engine || engineFromMode(finalMode);
               setActiveEngine(finalEng);
               setActiveMode(finalMode);
               if (finalVal) {
@@ -515,44 +645,44 @@ export default function SeparatePopupCockpit() {
     };
   }, [conversationId]);
 
-  // Real-Time Event & Approval Listener
-  useEffect(() => {
-    // 1. Periodically check for backend PENDING Human-in-the-Loop approvals
-    const checkPendingApprovals = async () => {
-      // Guard: Do not poll without a valid conversation ID
-      if (!conversationId || conversationId === 'undefined' || conversationId === 'null') {
-        return;
-      }
-      try {
-        const resp = await fetch(`/api/chat/approvals/pending/?conversation_id=${encodeURIComponent(conversationId)}`);
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.approvals && data.approvals.length > 0) {
-            const topAppr = data.approvals[0];
-            // If already dismissed by user in this session, do not re-surface
-            if (dismissedApprovalsRef.current.has(topAppr.approval_id)) {
-              return;
-            }
-            setPendingApproval((prev) => {
-              if (prev?.approval_id === topAppr.approval_id) return prev;
-              return topAppr;
-            });
-            setIsHitlModalOpen(true);
-          } else {
-            // If no pending approvals exist for this conversation, close any open modal
-            // Keep modal open while active approval is being evaluated
-            if (isHitlModalOpen && pendingApproval?.conversation_id === conversationId && (!pendingApproval?.approval_id || dismissedApprovalsRef.current.has(pendingApproval?.approval_id))) {
-              setIsHitlModalOpen(false);
-              setPendingApproval(null);
-            }
+  // Periodically check for backend PENDING Human-in-the-Loop approvals
+  const checkPendingApprovals = useCallback(async () => {
+    // Guard: Do not poll without a valid conversation ID
+    if (!conversationId || conversationId === 'undefined' || conversationId === 'null') {
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/chat/approvals/pending/?conversation_id=${encodeURIComponent(conversationId)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.approvals && data.approvals.length > 0) {
+          const topAppr = data.approvals[0];
+          // If already dismissed by user in this session, do not re-surface
+          if (dismissedApprovalsRef.current.has(topAppr.approval_id)) {
+            return;
+          }
+          setPendingApproval((prev) => {
+            if (prev?.approval_id === topAppr.approval_id) return prev;
+            return topAppr;
+          });
+          setIsHitlModalOpen(true);
+        } else {
+          // If no pending approvals exist for this conversation, close any open modal
+          if (isHitlModalOpen && pendingApproval?.conversation_id === conversationId && (!pendingApproval?.approval_id || dismissedApprovalsRef.current.has(pendingApproval?.approval_id))) {
+            setIsHitlModalOpen(false);
+            setPendingApproval(null);
           }
         }
-      } catch (err) {
-        // silent check
       }
-    };
+    } catch (err) {
+      // silent check
+    }
+  }, [conversationId, isHitlModalOpen, pendingApproval]);
 
-    const approvalInterval = setInterval(checkPendingApprovals, 3000);
+  // Real-Time Event & Approval Listener
+  useEffect(() => {
+    checkPendingApprovals();
+    const approvalInterval = setInterval(checkPendingApprovals, 2500);
 
     // 2. Custom Window Event: Quick Action (Ctrl + Alt + Space)
     const handleQuickAction = () => {
@@ -576,7 +706,7 @@ export default function SeparatePopupCockpit() {
       window.removeEventListener('ops:quick-action', handleQuickAction);
       window.removeEventListener('ops:hitl-approval', handleDesktopHitl);
     };
-  }, [conversationId]);
+  }, [conversationId, checkPendingApprovals]);
 
   // Text-To-Speech Playback
   const handleSpeakText = (text) => {
@@ -601,15 +731,17 @@ export default function SeparatePopupCockpit() {
     const prompt = inputPrompt.trim();
     if (!prompt || isLoading) return;
 
+    const initial = inferInitialModeAndEngine(prompt);
+
     setInputPrompt('');
     setCurrentTaskPrompt(prompt);
     setIsLoading(true);
     setStreamingChunk('');
-    setActiveEngine(null);
-    setActiveMode(null);
-    setModeReason('Analyzing directive intent...');
-    setActiveStages(['Understanding request', 'Classifying intent', 'Preparing execution context', 'Executing pipeline', 'Verifying & delivering response']);
-    setCurrentStage('Understanding request');
+    setActiveEngine(initial.engine);
+    setActiveMode(initial.mode);
+    setModeReason(initial.reason);
+    setActiveStages(DEFAULT_PIPELINE_STAGES[initial.mode] || DEFAULT_PIPELINE_STAGES.LLM);
+    setCurrentStage(DEFAULT_PIPELINE_STAGES[initial.mode]?.[0] || 'Understanding request');
     setAutomationTelemetry(null);
     setResearchTelemetry({ sourcesCount: 0, pagesCount: 0, domains: [], evidenceStatus: '' });
     setActiveAgent('Global Intent Router');
@@ -618,6 +750,23 @@ export default function SeparatePopupCockpit() {
     // Add user turn immediately
     setConversationHistory((prev) => [...prev, { role: 'user', text: prompt, content: prompt }]);
     retroSoundEngine.playKeyClick();
+
+    // Cross-window sync with browser UI execution tabs
+    try {
+      localStorage.setItem('ops_active_query', prompt);
+      localStorage.setItem('ops_conversation_id', conversationId);
+      localStorage.setItem('ops_query_timestamp', Date.now().toString());
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('ops_cockpit_channel');
+        bc.postMessage({
+          type: 'QUERY_STARTED',
+          query: prompt,
+          conversationId: conversationId,
+          timestamp: Date.now()
+        });
+        bc.close();
+      }
+    } catch (_) {}
 
     const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
 
@@ -645,12 +794,51 @@ export default function SeparatePopupCockpit() {
       }
 
       const data = await resp.json();
+      if (data.status === 'waiting_for_approval' || data.approval_id) {
+        const apprObj = {
+          approval_id: data.approval_id,
+          action_type: data.action_type || (['DESKTOP', 'BROWSER', 'HYBRID AUTO'].includes(data.response_mode || data.mode || initial.mode) ? 'AUTOMATION_ACTION' : 'SYSTEM_ACTION'),
+          description: data.approval_reason || data.description || 'Human authorization required for action.',
+          conversation_id: data.conversation_id || conversationId,
+          metadata: {
+            action_summary: data.approval_reason || data.description || 'Authorize system execution',
+            target: data.target || data.target_application || data.target_url || data.target_file_path || 'System Target',
+            target_application: data.target_application,
+            target_url: data.target_url,
+            target_file_path: data.target_file_path,
+            execution_plan: data.execution_plan || data.plan,
+            input_content: data.input_content,
+            expected_result: data.expected_result,
+            risk_level: data.risk_level || 'HIGH',
+            is_destructive: data.is_destructive
+          }
+        };
+        setPendingApproval(apprObj);
+        setIsHitlModalOpen(true);
+        setIsLoading(false);
+        checkPendingApprovals();
+      }
       const botAnswer = data.content || data.final_answer || data.response || "Task completed.";
-      const finalCategory = data.response_mode || data.mode || activeMode || 'LLM';
-      const finalEngine = data.active_engine || (['DESKTOP', 'BROWSER', 'HYBRID AUTO'].includes(finalCategory) ? 'AUTOMATION' : (finalCategory === 'COMPOSITE' ? 'COMPOSITE' : 'ANSWERING'));
+      const finalCategory = data.response_mode || data.mode || resolveCategoryFromContent(botAnswer) || initial.mode || 'LLM';
+      const finalEngine = data.active_engine || engineFromMode(finalCategory);
 
       setActiveEngine(finalEngine);
       setActiveMode(finalCategory);
+
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('ops_cockpit_channel');
+          bc.postMessage({
+            type: 'QUERY_COMPLETED',
+            query: prompt,
+            finalAnswer: botAnswer,
+            mode: finalCategory,
+            engine: finalEngine,
+            conversationId: conversationId
+          });
+          bc.close();
+        }
+      } catch (_) {}
 
       setConversationHistory((prev) => {
         const last = prev[prev.length - 1];
@@ -742,7 +930,7 @@ export default function SeparatePopupCockpit() {
     // Reset input so re-selecting same file works
     e.target.value = '';
 
-    const validExtensions = ['pdf', 'docx', 'doc'];
+    const validExtensions = ['pdf', 'docx', 'doc', 'txt', 'md', 'csv', 'json', 'py', 'js', 'html', 'log'];
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!validExtensions.includes(ext)) {
       setDocError(`Unsupported format '.${ext}'. Please choose a PDF (.pdf) or Word (.docx) document.`);
@@ -931,6 +1119,18 @@ export default function SeparatePopupCockpit() {
         // Reset state for clean session
         setConversationId(nextConvId);
         localStorage.setItem('ops_cockpit_conversation_id', nextConvId);
+        localStorage.setItem('ops_conversation_id', nextConvId);
+
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('ops_cockpit_channel');
+            bc.postMessage({
+              type: 'SESSION_RESET',
+              newConversationId: nextConvId
+            });
+            bc.close();
+          }
+        } catch (_) {}
         setConversationHistory([]);
         setStreamingChunk('');
         setAttachedDocs([]);
@@ -954,40 +1154,10 @@ export default function SeparatePopupCockpit() {
     if (e.button !== 0) return;
     if (e.target.closest('button, input, textarea, a, select')) return;
 
-    // 1. Immediately trigger native Qt / Windows system move
+    // Immediately trigger native Qt / Windows system move
     try {
       document.title = `ops://drag/${Date.now()}`;
     } catch (_) {}
-
-    // 2. Attach continuous pointermove listener for instant dynamic tracking
-    let lastX = e.screenX ?? e.clientX;
-    let lastY = e.screenY ?? e.clientY;
-    let animFrame = null;
-
-    const onPointerMove = (ev) => {
-      const curX = ev.screenX ?? ev.clientX;
-      const curY = ev.screenY ?? ev.clientY;
-      const dx = curX - lastX;
-      const dy = curY - lastY;
-
-      if (Math.abs(dx) >= 1 || Math.abs(dy) >= 1) {
-        lastX = curX;
-        lastY = curY;
-        if (animFrame) cancelAnimationFrame(animFrame);
-        animFrame = requestAnimationFrame(() => {
-          document.title = `ops://move_by/${Math.round(dx)}/${Math.round(dy)}/${Date.now()}`;
-        });
-      }
-    };
-
-    const onPointerUp = () => {
-      if (animFrame) cancelAnimationFrame(animFrame);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-    };
-
-    window.addEventListener('pointermove', onPointerMove, { passive: true });
-    window.addEventListener('pointerup', onPointerUp, { once: true });
   };
 
   // Dynamic Desktop Window Edge/Corner Resizing Handler
@@ -996,62 +1166,10 @@ export default function SeparatePopupCockpit() {
     e.preventDefault();
     e.stopPropagation();
 
-    // 1. Trigger native Qt / Windows system resize
+    // Trigger native Qt / Windows system resize
     try {
       document.title = `ops://resize/${edge}/${Date.now()}`;
     } catch (_) {}
-
-    // 2. Continuous dynamic mouse drag resize calculation
-    const startX = e.screenX ?? e.clientX;
-    const startY = e.screenY ?? e.clientY;
-    const startW = window.innerWidth;
-    const startH = window.innerHeight;
-
-    setIsResizing(true);
-    setLiveResizeDims({ width: startW, height: startH });
-
-    let animFrame = null;
-
-    const onPointerMove = (ev) => {
-      const curX = ev.screenX ?? ev.clientX;
-      const curY = ev.screenY ?? ev.clientY;
-      const dx = curX - startX;
-      const dy = curY - startY;
-
-      let newW = startW;
-      let newH = startH;
-
-      if (edge.includes('right')) {
-        newW = Math.max(400, Math.min(startW + dx, 1600));
-      } else if (edge.includes('left')) {
-        newW = Math.max(400, Math.min(startW - dx, 1600));
-      }
-
-      if (edge.includes('bottom')) {
-        newH = Math.max(520, Math.min(startH + dy, 1800));
-      } else if (edge.includes('top')) {
-        newH = Math.max(520, Math.min(startH - dy, 1800));
-      }
-
-      if (animFrame) cancelAnimationFrame(animFrame);
-      animFrame = requestAnimationFrame(() => {
-        const roundedW = Math.round(newW);
-        const roundedH = Math.round(newH);
-        setLiveResizeDims({ width: roundedW, height: roundedH });
-        document.title = `ops://resize_to/${roundedW}/${roundedH}/${Date.now()}`;
-      });
-    };
-
-    const onPointerUp = () => {
-      if (animFrame) cancelAnimationFrame(animFrame);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      setTimeout(() => setIsResizing(false), 350);
-      retroSoundEngine.playKeyClick();
-    };
-
-    window.addEventListener('pointermove', onPointerMove, { passive: true });
-    window.addEventListener('pointerup', onPointerUp, { once: true });
   };
 
   // Close Cockpit Window
@@ -1099,12 +1217,12 @@ export default function SeparatePopupCockpit() {
         title={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "HUMAN-IN-THE-LOOP // EXECUTION APPROVAL" : "Human Approval Required"}
         subtitle={pendingApproval?.description || (pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Authorize system automation task execution?" : "Delete Current Conversation?")}
         actionSummary={pendingApproval?.metadata?.action_summary || pendingApproval?.description}
-        target={pendingApproval?.metadata?.target || pendingApproval?.metadata?.target_application || pendingApproval?.metadata?.target_file_path || pendingApproval?.metadata?.target_url}
-        executionPlan={pendingApproval?.metadata?.execution_plan || pendingApproval?.metadata?.steps}
-        inputContent={pendingApproval?.metadata?.input_content}
-        expectedResult={pendingApproval?.metadata?.expected_result}
-        isDestructive={pendingApproval?.metadata?.is_destructive}
-        riskLevel={pendingApproval?.metadata?.risk_level}
+        target={pendingApproval?.metadata?.target || pendingApproval?.target || pendingApproval?.metadata?.target_application || pendingApproval?.target_application || pendingApproval?.metadata?.target_file_path || pendingApproval?.metadata?.target_url}
+        executionPlan={pendingApproval?.metadata?.execution_plan || pendingApproval?.execution_plan || pendingApproval?.metadata?.steps || pendingApproval?.plan}
+        inputContent={pendingApproval?.metadata?.input_content || pendingApproval?.input_content}
+        expectedResult={pendingApproval?.metadata?.expected_result || pendingApproval?.expected_result}
+        isDestructive={pendingApproval?.metadata?.is_destructive || pendingApproval?.is_destructive}
+        riskLevel={pendingApproval?.metadata?.risk_level || pendingApproval?.risk_level}
         denyLabel="DENY"
         denySublabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "Cancel this automation step. No actions performed." : "Keep my conversation."}
         acceptLabel={pendingApproval?.action_type?.startsWith('AUTOMATION') ? "ACCEPT AND EXECUTE" : "ACCEPT"}
@@ -1228,7 +1346,11 @@ export default function SeparatePopupCockpit() {
       </div>
 
       {/* 4.B: MAIN CONVERSATION AREA */}
-      <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-3 space-y-3.5 select-text font-mono">
+      <main
+        ref={mainContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-3 space-y-3.5 select-text font-mono overscroll-contain"
+      >
         {conversationHistory.length === 0 && !isLoading ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-zinc-500 space-y-3 p-4 my-auto select-none">
             <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-lg shadow-inner">
@@ -1371,7 +1493,7 @@ export default function SeparatePopupCockpit() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.docx,.doc"
+            accept=".pdf,.docx,.doc,.txt,.md,.csv,.json,.py,.js,.html,.log"
             onChange={handleFileUpload}
             className="hidden"
           />

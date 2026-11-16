@@ -96,7 +96,13 @@ def _understand_and_decompose_query(query: str) -> Dict[str, Any]:
             queries.append(f"{ent} official documentation")
 
     # 3. Add clean user query
-    clean_q = re.sub(r"^(?:find|search|explain|research|tell me about)\s+", "", query, flags=re.IGNORECASE).strip()
+    clean_q = re.sub(
+        r"^(?:please\s+|can\s+you\s+|could\s+you\s+)?(?:search\s+(?:the\s+|on\s+(?:the\s+)?)?web|web\s+search)\s*(?:and\s+get\s+(?:me\s+)?(?:some\s+)?answers)?\s*(?:for|about|on|regarding)?\s*",
+        "",
+        query,
+        flags=re.IGNORECASE
+    )
+    clean_q = re.sub(r"^(?:find|search|explain|research|tell me about|look up)\s+", "", clean_q, flags=re.IGNORECASE).strip()
     if clean_q:
         queries.append(clean_q)
     queries.append(query)

@@ -113,6 +113,18 @@ class AdvancedPromptUnderstandingAgent:
                 reasoning_summary="Identified informational inquiry; routed to LLM Mode."
             )
 
+        # Check for explicit search web keyword directives
+        if "search web" in q_low or "search the web" in q_low or bool(re.search(r"\bsearch\s+(?:the\s+)?web\b", q_low)):
+            return ReasoningPlanContract(
+                task_id=task_id,
+                task_type="RESEARCH",
+                user_objective=f"Search the web and retrieve answers for: {query}",
+                answering_engine="WEB",
+                automation_engine="NONE",
+                confidence=0.99,
+                reasoning_summary="Explicit 'search web' directive routed directly to WEB Mode in Answering Engine."
+            )
+
         # Check for web research queries
         if any(w in q_low for w in ["latest", "recent", "current version", "who won", "news"]):
             return ReasoningPlanContract(

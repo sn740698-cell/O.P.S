@@ -25,108 +25,24 @@ class AutomationVerifier:
     def verify_window_exists(cls, title_substring: str, timeout: float = 6.0) -> Dict[str, Any]:
         """
         Empirically verifies that a desktop window containing the title_substring is active on Windows.
-        Uses pywinauto Desktop or Win32 enum_windows.
+        Uses ApplicationController.find_running_window on interactive desktop (WinSta0\\Default).
         """
         t0 = time.time()
-        last_error = None
-        
+        from automation_system.desktop.application_controller import ApplicationController
+
         while time.time() - t0 < timeout:
-            # 1. Check UIA backend on current thread desktop
-            try:
-                import pywinauto
-                from pywinauto import Desktop
-                desktop = Desktop(backend="uia")
-                for w in desktop.windows():
-                    try:
-                        win_title = w.window_text()
-                        if title_substring.lower() in win_title.lower():
-                            return {
-                                "verified": True,
-                                "verification_type": "window_exists",
-                                "target": title_substring,
-                                "matched_window_title": win_title,
-                                "handle": w.handle,
-                                "duration_s": round(time.time() - t0, 2)
-                            }
-                    except Exception:
-                        pass
-            except Exception as e:
-                last_error = str(e)
-
-            # 2. Check Win32 backend on current thread desktop
-            try:
-                from pywinauto import Desktop
-                desktop_w32 = Desktop(backend="win32")
-                for w in desktop_w32.windows():
-                    try:
-                        win_title = w.window_text()
-                        if title_substring.lower() in win_title.lower():
-                            return {
-                                "verified": True,
-                                "verification_type": "window_exists",
-                                "target": title_substring,
-                                "matched_window_title": win_title,
-                                "handle": w.handle,
-                                "duration_s": round(time.time() - t0, 2)
-                            }
-                    except Exception:
-                        pass
-            except Exception as e:
-                last_error = str(e)
-
-            # 3. Check interactive 'default' desktop windows (WinSta0\Default)
-            try:
-                import win32service
-                import win32gui
-                import win32con
-                hdesk = win32service.OpenDesktop("default", 0, False, win32con.GENERIC_READ)
-                matched_w = []
-                def _cb(hwnd, _):
-                    try:
-                        t = win32gui.GetWindowText(hwnd)
-                        if t and title_substring.lower() in t.lower():
-                            matched_w.append((hwnd, t))
-                    except Exception:
-                        pass
-                win32gui.EnumDesktopWindows(int(hdesk), _cb, None)
-                if matched_w:
-                    hwnd, t = matched_w[0]
-                    return {
-                        "verified": True,
-                        "verification_type": "window_exists",
-                        "target": title_substring,
-                        "matched_window_title": t,
-                        "handle": hwnd,
-                        "duration_s": round(time.time() - t0, 2)
-                    }
-            except Exception:
-                pass
-
-            # 4. Special empirical check for VS Code (which reports windows via code --status)
-            if any(term in title_substring.lower() for term in ["visual studio code", "vscode", "code"]):
-                try:
-                    import subprocess
-                    proc_res = subprocess.run(
-                        ["cmd.exe", "/c", "code", "--status"],
-                        capture_output=True,
-                        text=True,
-                        timeout=3
-                    )
-                    if proc_res.returncode == 0:
-                        for line in proc_res.stdout.splitlines():
-                            if "window [" in line.lower() and "visual studio code" in line.lower():
-                                clean_title = line.split("(", 1)[-1].rstrip(")") if "(" in line else line.strip()
-                                return {
-                                    "verified": True,
-                                    "verification_type": "window_exists",
-                                    "target": title_substring,
-                                    "matched_window_title": clean_title,
-                                    "duration_s": round(time.time() - t0, 2)
-                                }
-                except Exception:
-                    pass
-
-            time.sleep(0.4)
+            running = ApplicationController.find_running_window(title_substring)
+            if running:
+                return {
+                    "verified": True,
+                    "verification_type": "window_exists",
+                    "target": title_substring,
+                    "matched_window_title": running.get("title") or title_substring,
+                    "handle": running.get("hwnd"),
+                    "pid": running.get("pid"),
+                    "duration_s": round(time.time() - t0, 2)
+                }
+            time.sleep(0.3)
 
         return {
             "verified": False,

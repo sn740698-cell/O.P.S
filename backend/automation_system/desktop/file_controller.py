@@ -242,13 +242,16 @@ class FileController:
     def edit_file(
         cls,
         path: str,
-        target_snippet: str,
-        replacement_snippet: str,
-        backup: bool = True
+        target_snippet: Optional[str] = None,
+        replacement_snippet: Optional[str] = None,
+        new_content: Optional[str] = None,
+        append: bool = False,
+        backup: bool = True,
+        create_backup: bool = True
     ) -> Dict[str, Any]:
         """
-        Performs targeted safe in-file modification.
-        - Preserves unrelated content, comments, and formatting.
+        Performs targeted safe in-file modification or overwriting.
+        - Preserves unrelated content, comments, and formatting when target_snippet is used.
         - Backs up existing file to <path>.bak before editing.
         """
         try:
@@ -261,21 +264,28 @@ class FileController:
             with open(target, "r", encoding="utf-8", errors="replace") as f:
                 original_text = f.read()
 
-            if target_snippet not in original_text:
-                return {
-                    "success": False,
-                    "action": "edit_file",
-                    "path": target,
-                    "error": f"Target snippet to replace was not found in '{os.path.basename(target)}'."
-                }
-
             # Create backup if requested
             backup_path = None
-            if backup:
+            if backup or create_backup:
                 backup_path = f"{target}.bak"
                 shutil.copy2(target, backup_path)
 
-            modified_text = original_text.replace(target_snippet, replacement_snippet, 1)
+            if new_content is not None:
+                if append:
+                    modified_text = original_text + ("\n" if not original_text.endswith("\n") else "") + new_content
+                else:
+                    modified_text = new_content
+            elif target_snippet and replacement_snippet is not None:
+                if target_snippet not in original_text:
+                    return {
+                        "success": False,
+                        "action": "edit_file",
+                        "path": target,
+                        "error": f"Target snippet to replace was not found in '{os.path.basename(target)}'."
+                    }
+                modified_text = original_text.replace(target_snippet, replacement_snippet, 1)
+            else:
+                return {"success": False, "action": "edit_file", "path": target, "error": "No edit directives provided."}
 
             with open(target, "w", encoding="utf-8") as f:
                 f.write(modified_text)
@@ -359,3 +369,92 @@ class FileController:
             }
         except Exception as e:
             return {"success": False, "action": "delete_folder", "path": path, "error": str(e)}
+
+    @classmethod
+    def rename_file(cls, old_path: str, new_path: str) -> Dict[str, Any]:
+        """
+        Renames a file from old_path to new_path (or new filename in same directory).
+        """
+        try:
+            src = cls.resolve_safe_path(old_path)
+            if not os.path.exists(src):
+                return {"success": False, "action": "rename_file", "path": src, "error": f"Source file '{src}' does not exist."}
+            if cls.is_protected_path(src):
+                return {"success": False, "action": "rename_file", "path": src, "error": f"Renaming protected path is prohibited: {src}"}
+
+            # If new_path is just a filename, place in same directory
+            if not os.path.isabs(new_path) and os.path.dirname(new_path) == "":
+                dst = os.path.join(os.path.dirname(src), new_path)
+            else:
+                dst = cls.resolve_safe_path(new_path)
+
+            os.rename(src, dst)
+            renamed = os.path.exists(dst) and not os.path.exists(src)
+            return {
+                "success": renamed,
+                "action": "rename_file",
+                "old_path": src,
+                "new_path": dst,
+                "verified": renamed,
+                "message": f"Renamed '{src}' to '{dst}'."
+            }
+        except Exception as e:
+            return {"success": False, "action": "rename_file", "old_path": old_path, "new_path": new_path, "error": str(e)}
+
+    @classmethod
+    def copy_file(cls, src_path: str, dst_path: str) -> Dict[str, Any]:
+        """
+        Copies a file from src_path to dst_path (file or folder).
+        """
+        try:
+            src = cls.resolve_safe_path(src_path)
+            if not os.path.exists(src):
+                return {"success": False, "action": "copy_file", "path": src, "error": f"Source file '{src}' does not exist."}
+
+            dst = cls.resolve_safe_path(dst_path)
+            if os.path.isdir(dst):
+                dst = os.path.join(dst, os.path.basename(src))
+
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy2(src, dst)
+            copied = os.path.exists(dst)
+            return {
+                "success": copied,
+                "action": "copy_file",
+                "src_path": src,
+                "dst_path": dst,
+                "verified": copied,
+                "message": f"Copied '{src}' to '{dst}'."
+            }
+        except Exception as e:
+            return {"success": False, "action": "copy_file", "src_path": src_path, "dst_path": dst_path, "error": str(e)}
+
+    @classmethod
+    def move_file(cls, src_path: str, dst_path: str) -> Dict[str, Any]:
+        """
+        Moves a file from src_path to dst_path (file or folder).
+        """
+        try:
+            src = cls.resolve_safe_path(src_path)
+            if not os.path.exists(src):
+                return {"success": False, "action": "move_file", "path": src, "error": f"Source file '{src}' does not exist."}
+            if cls.is_protected_path(src):
+                return {"success": False, "action": "move_file", "path": src, "error": f"Moving protected path is prohibited: {src}"}
+
+            dst = cls.resolve_safe_path(dst_path)
+            if os.path.isdir(dst):
+                dst = os.path.join(dst, os.path.basename(src))
+
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.move(src, dst)
+            moved = os.path.exists(dst) and not os.path.exists(src)
+            return {
+                "success": moved,
+                "action": "move_file",
+                "src_path": src,
+                "dst_path": dst,
+                "verified": moved,
+                "message": f"Moved '{src}' to '{dst}'."
+            }
+        except Exception as e:
+            return {"success": False, "action": "move_file", "src_path": src_path, "dst_path": dst_path, "error": str(e)}

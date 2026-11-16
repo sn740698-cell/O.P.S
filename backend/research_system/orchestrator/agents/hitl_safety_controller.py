@@ -102,12 +102,37 @@ def hitl_safety_controller_node(state: CentralGraphState) -> Dict[str, Any]:
                 "task_status": "CANCELLED"
             }
 
-        # Case 3: MANDATORY HITL APPROVAL GATE FOR ALL AUTOMATION ACTIONS
+        # Case 3: HITL APPROVAL GATE FOR CONSEQUENTIAL ACTIONS
         steps = state.get("execution_plan", [])
         auto_mode = state.get("automation_mode", "DESKTOP")
         is_automation_task = (task_type == "AUTOMATION") or (len(steps) > 0 and any(s.get("executor") in ["desktop", "browser", "system"] for s in steps))
 
         if is_automation_task:
+            # Check if any step or directive involves high-risk/consequential changes
+            plan_requires_approval = any(s.get("requires_approval", False) or s.get("risk_level") in ["HIGH", "CRITICAL"] for s in steps)
+            policy_requires_approval = False
+            for s in steps:
+                r_level, req_appr, _ = SafetyPolicy.evaluate_step_risk(s.get("action", ""), s.get("params", {}), query=query)
+                if req_appr or r_level in ["HIGH", "CRITICAL"]:
+                    policy_requires_approval = True
+                    break
+
+            needs_approval = plan_requires_approval or policy_requires_approval
+
+            if not needs_approval:
+                emit_agent_completed(
+                    state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE,
+                    "Directive verified against Safety Policy: Non-destructive operation approved for immediate execution.",
+                    output_summary="Risk: LOW | Auto-Approved",
+                    duration_s=round(time.time() - t0, 2)
+                )
+                return {
+                    "current_agent": AGENT_ID,
+                    "approval_required": False,
+                    "approval_status": "APPROVED",
+                    "task_status": "EXECUTING"
+                }
+
             hitl_details = SafetyPolicy.build_automation_hitl_details(query, steps, mode=auto_mode)
             approval_id = f"appr_{int(time.time())}_{uuid.uuid4().hex[:6]}"
             conv = Conversation.objects.filter(conversation_id=conv_id).first()

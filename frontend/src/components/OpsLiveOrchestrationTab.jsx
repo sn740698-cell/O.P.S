@@ -47,14 +47,15 @@ import { retroSoundEngine } from '../utils/retroSounds';
 // Stage 03: Specialized Agent Fleet (Developer, Debugger, Tester, Reviewer, Web, Research, Automation, Browser, RAG)
 // Stage 04: Verification & Response (Ground-Truth Verifier, Response Engine)
 
-const LAYERS = [2, 4, 5, 2];
+const LAYERS = [2, 4, 8, 8, 3];
 const LAST = LAYERS.length - 1;
 
 const STAGE_LABELS = [
   "GROUP 01: GLOBAL INTELLIGENCE",
   "GROUP 02: ANSWERING ENGINE",
-  "GROUP 03: AUTOMATION ENGINE",
-  "GROUP 04: COMPOSITE COORDINATION & DELIVERY"
+  "GROUP 03: BROWSER SPECIALIST FLEET",
+  "GROUP 04: DESKTOP SPECIALIST FLEET",
+  "GROUP 05: COORDINATION & DELIVERY"
 ];
 
 const AGENT_NODES = [
@@ -81,11 +82,11 @@ const AGENT_NODES = [
       role: "Decomposes directives into execution plans, subtasks, agent dependencies, and approval gates.",
       tool: "Ollama Qwen3 1.7B Orchestrator",
       parent: "Global Intent Router",
-      child: "Group 2 / Group 3 / Group 4",
+      child: "Group 2 / Group 3 / Group 4 / Group 5",
       matchKeys: ["task_understanding_planner", "task_planner", "supervisor", "research_planner", "planner"]
     }
   ],
-  // Group 02: Answering Engine (3 Reasoning Agents + 1 Research Fleet Worker)
+  // Group 02: Answering Engine (4 Agents)
   [
     {
       id: "local_reasoning_agent",
@@ -136,82 +137,228 @@ const AGENT_NODES = [
       matchKeys: ["answer_synthesis_agent", "answer_generation", "citation_result_worker"]
     }
   ],
-  // Group 03: Automation Engine (2 Planners/Controllers, 2 Executors, 1 Verifier)
+  // Group 03: Browser Specialist Fleet (8 Specialist Agents B01-B08)
   [
     {
-      id: "automation_planner",
-      name: "Automation Planner",
-      tag: "AUTO PLANNER",
-      model: "Qwen3 1.7B / Deterministic",
-      type: "reasoning_agent",
-      role: "Synthesizes deterministic structured step sequences for desktop and browser automation.",
-      tool: "Automation Step Generator",
-      parent: "HITL & Safety Controller",
-      child: "Desktop / Browser Automation Executor",
-      matchKeys: ["automation_planner", "auto_planner", "automation_service"]
+      id: "b1_lifecycle_agent",
+      name: "Browser Lifecycle Agent",
+      tag: "B1: LIFECYCLE",
+      model: "Playwright Headed/Headless",
+      type: "execution_worker",
+      role: "Manages Chromium instance lifecycle, process flags, persistent contexts, and clean shutdowns.",
+      tool: "Playwright Browser Launcher",
+      parent: "Task Understanding & Planner",
+      child: "Tab Management Agent",
+      matchKeys: ["b1_lifecycle", "browser_lifecycle", "lifecycle_agent", "playwright_browser", "browser_automation_executor"]
     },
     {
-      id: "desktop_automation_executor",
-      name: "Desktop Automation Executor",
-      tag: "PYWINAUTO RUNNER",
+      id: "b2_tab_agent",
+      name: "Tab Management Agent",
+      tag: "B2: TAB MGR",
+      model: "Playwright Context",
+      type: "execution_worker",
+      role: "Controls multi-tab sessions, opening, closing, switching, and tracking active tabs across operations.",
+      tool: "Playwright Page Controller",
+      parent: "Browser Lifecycle Agent",
+      child: "Website Resolution Agent",
+      matchKeys: ["b2_tab", "tab_management", "tab_agent"]
+    },
+    {
+      id: "b3_resolution_agent",
+      name: "Website Resolution Agent",
+      tag: "B3: RESOLUTION",
+      model: "Fast URL Resolver",
+      type: "reasoning_agent",
+      role: "Resolves natural-language requests and service names (e.g. 'Spotify', 'GitHub') into validated URLs.",
+      tool: "DNS & URL Resolution Protocol",
+      parent: "Tab Management Agent",
+      child: "Browser Navigation Agent",
+      matchKeys: ["b3_resolution", "website_resolution", "resolution_agent"]
+    },
+    {
+      id: "b4_navigation_agent",
+      name: "Browser Navigation Agent",
+      tag: "B4: NAVIGATION",
+      model: "Playwright Router",
+      type: "execution_worker",
+      role: "Handles URL loads, dynamic SPA transitions, HTTP redirects, and network-idle wait states.",
+      tool: "Playwright Goto & Wait State",
+      parent: "Website Resolution Agent",
+      child: "Web Interaction Agent",
+      matchKeys: ["b4_navigation", "browser_navigation", "navigation_agent"]
+    },
+    {
+      id: "b5_interaction_agent",
+      name: "Web Interaction Agent",
+      tag: "B5: INTERACTION",
+      model: "DOM Accessibility Tree",
+      type: "execution_worker",
+      role: "Executes element clicks, scrolling, hover actions, typing, and DOM event dispatching.",
+      tool: "Playwright Pointer & Click Engine",
+      parent: "Browser Navigation Agent",
+      child: "Form & Transfer Agent",
+      matchKeys: ["b5_interaction", "web_interaction", "interaction_agent"]
+    },
+    {
+      id: "b6_form_agent",
+      name: "Form & Transfer Agent",
+      tag: "B6: FORM & DATA",
+      model: "Form Fill & Extract Engine",
+      type: "execution_worker",
+      role: "Handles input fields, credential autofill, file uploads, and downloaded web artifacts.",
+      tool: "Playwright Input & File Handler",
+      parent: "Web Interaction Agent",
+      child: "Browser Verification Agent",
+      matchKeys: ["b6_form", "form_extraction", "b6_transfer", "transfer_agent"]
+    },
+    {
+      id: "b7_verification_agent",
+      name: "Browser Verification Agent",
+      tag: "B7: VERIFICATION",
+      model: "DOM & Visual Asserter",
+      type: "reasoning_agent",
+      role: "Verifies page title, URL destinations, selector presence, and screenshot visual proofs.",
+      tool: "Playwright Assertion Engine",
+      parent: "Form & Transfer Agent",
+      child: "Browser Recovery Agent / Task Bridger",
+      matchKeys: ["b7_verification", "browser_verification", "verification_agent"]
+    },
+    {
+      id: "b8_recovery_agent",
+      name: "Browser Recovery Agent",
+      tag: "B8: RECOVERY",
+      model: "Self-Healing Overlay Healer",
+      type: "reasoning_agent",
+      role: "Recovers broken pages, handles popups, cookie consent overlays, and auto-retries failed steps.",
+      tool: "Playwright Dialog & Healer",
+      parent: "Browser Verification Agent",
+      child: "Composite Task Coordinator",
+      matchKeys: ["b8_recovery", "browser_recovery", "recovery_agent"]
+    }
+  ],
+  // Group 04: Desktop Specialist Fleet (8 Specialist Agents D01-D08)
+  [
+    {
+      id: "d1_discovery_agent",
+      name: "App Discovery Agent",
+      tag: "D1: DISCOVERY",
+      model: "Win32 Registry & System Path",
+      type: "execution_worker",
+      role: "Discovers installed Windows apps, executable paths, UWP apps, and active system processes.",
+      tool: "Windows System Registry Scanner",
+      parent: "Task Understanding & Planner",
+      child: "App Lifecycle Agent",
+      matchKeys: ["d1_discovery", "app_discovery", "application_discovery"]
+    },
+    {
+      id: "d2_app_agent",
+      name: "App Lifecycle Agent",
+      tag: "D2: APP LIFECYCLE",
+      model: "Subprocess & Win32 Process",
+      type: "execution_worker",
+      role: "Launches native applications, manages PID tracking, and graceful application termination.",
+      tool: "Process Execution Controller",
+      parent: "App Discovery Agent",
+      child: "Window Management Agent",
+      matchKeys: ["d2_app", "app_lifecycle", "application_lifecycle"]
+    },
+    {
+      id: "d3_window_agent",
+      name: "Window Management Agent",
+      tag: "D3: WINDOW MGR",
+      model: "Win32 DWM Controller",
+      type: "execution_worker",
+      role: "Focuses, minimizes, maximizes, positions, and brings native windows to foreground.",
+      tool: "win32gui & win32process",
+      parent: "App Lifecycle Agent",
+      child: "GUI Interaction Agent",
+      matchKeys: ["d3_window", "window_management", "window_agent"]
+    },
+    {
+      id: "d4_gui_agent",
+      name: "GUI Interaction Agent",
+      tag: "D4: GUI INTERACTION",
       model: "Pywinauto UIA / Win32",
       type: "execution_worker",
-      role: "Executes native Windows application control, window management, keyboard, and mouse actions.",
-      tool: "Pywinauto Native Engine",
-      parent: "Automation Planner",
-      child: "Verification & Recovery Agent",
-      matchKeys: ["desktop_automation_executor", "pywinauto", "desktop_executor"]
+      role: "Interacts with native desktop UI elements, buttons, menus, and controls via UIA.",
+      tool: "Pywinauto Accessibility Tree",
+      parent: "Window Management Agent",
+      child: "Keyboard & Input Agent",
+      matchKeys: ["d4_gui", "gui_interaction", "pywinauto", "desktop_automation_executor"]
     },
     {
-      id: "browser_automation_executor",
-      name: "Browser Automation Executor",
-      tag: "PLAYWRIGHT RUNNER",
-      model: "Playwright Chromium Engine",
+      id: "d5_input_agent",
+      name: "Keyboard & Input Agent",
+      tag: "D5: KEYBOARD & INPUT",
+      model: "Win32 SendInput / PyAutoGUI",
       type: "execution_worker",
-      role: "Executes headless or headed browser navigation, clicking, typing, downloads, and DOM verification.",
-      tool: "Playwright Browser Engine",
-      parent: "Automation Planner",
-      child: "Verification & Recovery Agent",
-      matchKeys: ["browser_automation_executor", "browser_executor", "playwright_browser"]
+      role: "Synthesizes native keystrokes, shortcuts, hotkeys, text typing, and mouse coordinates.",
+      tool: "Low-Level Input Driver",
+      parent: "GUI Interaction Agent",
+      child: "File & Explorer Agent",
+      matchKeys: ["d5_input", "keyboard_input", "input_agent"]
     },
     {
-      id: "verification_recovery_agent",
-      name: "Verification & Recovery Agent",
-      tag: "STATE VERIFIER",
-      model: "AutomationVerifier Engine",
-      type: "reasoning_agent",
-      role: "Empirically verifies step execution postconditions (process list, window state, files) and executes self-healing.",
-      tool: "AutomationVerifier Postcondition Engine",
-      parent: "Desktop / Browser Automation Executor",
-      child: "Composite Task Coordinator / Result Formatter",
-      matchKeys: ["verification_recovery_agent", "verifier", "recovery_agent"]
+      id: "d6_file_agent",
+      name: "File & Explorer Agent",
+      tag: "D6: FILE & EXPLORER",
+      model: "Shell32 / Explorer Engine",
+      role: "Navigates directories, opens folders in Explorer, manages paths, and file dialogues.",
+      tool: "Windows Shell32 / Path Resolver",
+      parent: "Keyboard & Input Agent",
+      child: "Code Injection Agent",
+      matchKeys: ["d6_file", "file_explorer", "file_agent"]
     },
+    {
+      id: "d7_code_agent",
+      name: "Code Injection Agent",
+      tag: "D7: CODE GENERATOR",
+      model: "Qwen3 1.7B Code Typist",
+      type: "execution_worker",
+      role: "Generates and injects clean code, scripts, and documentation into editors and IDEs.",
+      tool: "Editor Clipboard & Type Engine",
+      parent: "File & Explorer Agent",
+      child: "Desktop Verification Agent",
+      matchKeys: ["d7_code", "code_injection", "code_agent"]
+    },
+    {
+      id: "d8_verification_agent",
+      name: "Desktop Verification Agent",
+      tag: "D8: VERIFICATION",
+      model: "Process & Window Verifier",
+      type: "reasoning_agent",
+      role: "Inspects process existence, window titles, UI states, and verifies desktop postconditions.",
+      tool: "AutomationVerifier Engine",
+      parent: "Code Injection Agent",
+      child: "Composite Task Coordinator / Safety Gate",
+      matchKeys: ["d8_verification", "desktop_verification", "verification_recovery_agent", "verifier"]
+    }
+  ],
+  // Group 05: Composite Coordination & Delivery (3 Agents)
+  [
     {
       id: "hitl_safety_controller",
       name: "HITL & Safety Controller",
       tag: "SAFETY GATE",
       model: "SafetyPolicy Gatekeeper",
       type: "adaptive_controller",
-      role: "Enforces non-bypassable human approval for destructive operations and solicits disambiguation.",
+      role: "Enforces non-bypassable human approval for destructive operations and system actions.",
       tool: "SafetyPolicy Risk Evaluator",
-      parent: "Task Understanding & Planner",
-      child: "Automation Planner",
-      matchKeys: ["hitl_safety_controller", "safety_controller", "approval_controller", "safety_policy"]
-    }
-  ],
-  // Group 04: Composite Coordination & Delivery (2 Agents)
-  [
+      parent: "Supervisor / Fleets",
+      child: "Composite Task Coordinator",
+      matchKeys: ["hitl_safety_controller", "safety_controller", "safety_gate", "safety_policy"]
+    },
     {
       id: "composite_task_coordinator",
       name: "Composite Task Coordinator",
       tag: "TASK BRIDGER",
-      model: "Cross-Group Orchestrator",
+      model: "Cross-Engine Coordinator",
       type: "reasoning_agent",
-      role: "Bridges multi-phase directives combining web research and automation into a single cohesive pipeline.",
+      role: "Bridges multi-phase directives combining web research, browser automation, and desktop actions.",
       tool: "Composite Directive Coordinator",
-      parent: "Group 2 & Group 3",
+      parent: "Browser & Desktop Fleets",
       child: "Result Formatter Agent",
-      matchKeys: ["composite_task_coordinator", "composite_coordinator", "task_coordinator"]
+      matchKeys: ["composite_task_coordinator", "composite_coordinator", "task_coordinator", "hybrid_coordinator"]
     },
     {
       id: "result_formatter_agent",
@@ -219,7 +366,7 @@ const AGENT_NODES = [
       tag: "DELIVERY AGENT",
       model: "Qwen3 1.7B Q8_0",
       type: "reasoning_agent",
-      role: "Delivers the final output in the articulate JARVIS persona, compiles bibliographies, and appends Discussion So Far.",
+      role: "Delivers the final output in the articulate JARVIS persona, compiles bibliographies, and appends telemetry.",
       tool: "Ollama Qwen3 1.7B Delivery Engine",
       parent: "Composite Task Coordinator / Synthesis Agent",
       child: "END",
@@ -252,6 +399,8 @@ function findActiveNode(agentStr) {
   return null;
 }
 
+const findAgentNode = findActiveNode;
+
 export default function OpsLiveOrchestrationTab({
   activeAgent,
   currentThought,
@@ -271,6 +420,7 @@ export default function OpsLiveOrchestrationTab({
   const [quickInput, setQuickInput] = useState('');
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [hoveredAgent, setHoveredAgent] = useState(null);
+  const lastHoverIdRef = useRef(null);
   const [copied, setCopied] = useState(false);
 
   // Derived Real-Time Agent State Map derived from actual backend events
@@ -349,10 +499,17 @@ export default function OpsLiveOrchestrationTab({
     return states;
   }, [liveEvents, activeAgent, currentThought, isLoading]);
 
-  // Canvas DOM refs
+  // Canvas DOM refs and execution state tracking
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const triggerPulseRef = useRef(null);
+  const activeAgentRef = useRef(activeAgent);
+  const isLoadingRef = useRef(isLoading);
+
+  useEffect(() => {
+    activeAgentRef.current = activeAgent;
+    isLoadingRef.current = isLoading;
+  }, [activeAgent, isLoading]);
 
   // Automatically trigger synaptic pulse waves when a task starts or active agent transitions
   useEffect(() => {
@@ -381,268 +538,232 @@ export default function OpsLiveOrchestrationTab({
     if (!wrap || !canvas) return;
     const ctx = canvas.getContext("2d");
 
-    // Weights: layer l to layer l+1
-    const W = LAYERS.slice(1).map((n, l) =>
-      Array.from({ length: n }, () =>
-        Array.from({ length: LAYERS[l] }, () => randn() * Math.sqrt(2 / LAYERS[l]) * 1.3)
-      )
-    );
-    const B = LAYERS.map((n) => Array.from({ length: n }, () => 0.15 + Math.random() * 0.2));
+    // Canonical O.P.S. Architectural Pathways (Clean, purposeful connections - zero chaotic clutter)
+    const CANONICAL_PATHWAYS = [
+      // 1. Group 01: Global Intelligence Ingress
+      { l1: 0, i: 0, l2: 0, j: 1, type: "ingress" }, // Intent Router -> Supervisor Agent
 
-    // Organic axon shapes (sinewave bundles with 6 harmonic filaments)
-    const C = LAYERS.slice(1).map((n, l) =>
-      Array.from({ length: n }, () =>
-        Array.from({ length: LAYERS[l] }, () => ({
-          bend: (Math.random() - 0.5) * 22,
-          ph: Math.random() * TAU,
-          ph2: Math.random() * TAU,
-          f: 1.2 + Math.random() * 1.1,
-          sp: 0.0006 + Math.random() * 0.0005,
-          b0: Math.random(),
-          bs: 0.5 + Math.random(),
-          dp: 0.6 + Math.random() * 0.4,
-          hue: Math.random(),
-          st: Array.from({ length: F }, (_, n) => ({
-            k: (n / (F - 1) - 0.5) * 3.6 + (Math.random() - 0.5) * 0.5,
-            ph: Math.random() * TAU,
-            sp: 0.0004 + Math.random() * 0.0008,
-            gl: Math.random(),
-          })),
-        }))
-      )
-    );
+      // 2. Supervisor Dispatches to Answering Engine
+      { l1: 0, i: 1, l2: 1, j: 0, type: "dispatch" }, // Supervisor -> Reasoning Agent
+      { l1: 0, i: 1, l2: 1, j: 1, type: "dispatch" }, // Supervisor -> Web Research Fleet
 
-    const act = LAYERS.map((n) => new Array(n).fill(0));
-    const glow = LAYERS.map((n) => new Array(n).fill(0));
-    const heat = LAYERS.slice(1).map((n, l) =>
-      Array.from({ length: n }, () => new Array(LAYERS[l]).fill(0))
-    );
+      // 3. Group 02: Answering Engine Pipeline
+      { l1: 1, i: 0, l2: 1, j: 3, type: "reasoning", bow: -22 }, // Reasoning -> Synthesis
+      { l1: 1, i: 1, l2: 1, j: 2, type: "pipeline" },            // Web Research -> Evidence Validation
+      { l1: 1, i: 2, l2: 1, j: 3, type: "pipeline" },            // Evidence Validation -> Synthesis
+      { l1: 1, i: 3, l2: 4, j: 2, type: "delivery", bow: 18 },   // Synthesis -> Delivery Agent
 
-    // Cross-links and quality loops matching canonical specification:
-    const ARCHITECTURAL_CROSS_LINKS = [
-      { l1: 2, i: 3, l2: 2, j: 1, bow: -35, f: 1.6, sp: 0.0010, ph: 0.5, hue: 0.95, isLoop: true }, // Verifier -> Desktop Exec Recovery loop
-      { l1: 2, i: 3, l2: 2, j: 2, bow: -20, f: 1.4, sp: 0.0009, ph: 0.8, hue: 0.85, isLoop: true }, // Verifier -> Browser Exec Recovery loop
-      { l1: 0, i: 1, l2: 1, j: 0, bow: 12, f: 1.3, sp: 0.0008, ph: 1.1, hue: 0.2 },  // Planner -> Local Reasoning
-      { l1: 0, i: 1, l2: 1, j: 1, bow: 0, f: 1.3, sp: 0.0008, ph: 1.4, hue: 0.3 },   // Planner -> Web Research
-      { l1: 0, i: 1, l2: 2, j: 4, bow: 15, f: 1.3, sp: 0.0008, ph: 1.7, hue: 0.4 },  // Planner -> HITL Safety Gate
-      { l1: 1, i: 3, l2: 3, j: 0, bow: 10, f: 1.3, sp: 0.0008, ph: 2.0, hue: 0.5 },  // Answer Synthesis -> Composite Coordinator
-      { l1: 2, i: 3, l2: 3, j: 0, bow: -10, f: 1.3, sp: 0.0008, ph: 2.3, hue: 0.6 }, // Verifier -> Composite Coordinator
+      // 4. Supervisor Dispatches to Automation Fleets & Safety
+      { l1: 0, i: 1, l2: 2, j: 0, type: "dispatch" },           // Supervisor -> B1 Lifecycle
+      { l1: 0, i: 1, l2: 3, j: 0, type: "dispatch", bow: 22 },  // Supervisor -> D1 Discovery
+      { l1: 0, i: 1, l2: 4, j: 0, type: "safety", bow: -26 },   // Supervisor -> Safety Gate
+
+      // 5. Group 03: Browser Specialist Fleet Sequential Pipeline (B1 -> B2 -> ... -> B8)
+      { l1: 2, i: 0, l2: 2, j: 1, type: "fleet" },
+      { l1: 2, i: 1, l2: 2, j: 2, type: "fleet" },
+      { l1: 2, i: 2, l2: 2, j: 3, type: "fleet" },
+      { l1: 2, i: 3, l2: 2, j: 4, type: "fleet" },
+      { l1: 2, i: 4, l2: 2, j: 5, type: "fleet" },
+      { l1: 2, i: 5, l2: 2, j: 6, type: "fleet" },
+      { l1: 2, i: 6, l2: 2, j: 7, type: "fleet" },
+
+      // 6. Group 04: Desktop Specialist Fleet Sequential Pipeline (D1 -> D2 -> ... -> D8)
+      { l1: 3, i: 0, l2: 3, j: 1, type: "fleet" },
+      { l1: 3, i: 1, l2: 3, j: 2, type: "fleet" },
+      { l1: 3, i: 2, l2: 3, j: 3, type: "fleet" },
+      { l1: 3, i: 3, l2: 3, j: 4, type: "fleet" },
+      { l1: 3, i: 4, l2: 3, j: 5, type: "fleet" },
+      { l1: 3, i: 5, l2: 3, j: 6, type: "fleet" },
+      { l1: 3, i: 6, l2: 3, j: 7, type: "fleet" },
+
+      // 7. Cross-Fleet Automation Bridge (Browser Download -> Desktop Explorer)
+      { l1: 2, i: 5, l2: 3, j: 5, type: "bridge", bow: 0 },
+
+      // 8. Fleets Convergence into Delivery & Safety
+      { l1: 2, i: 6, l2: 4, j: 1, type: "delivery" }, // B7 Browser Verifier -> Task Bridger
+      { l1: 2, i: 7, l2: 4, j: 1, type: "delivery" }, // B8 Recovery -> Task Bridger
+      { l1: 3, i: 7, l2: 4, j: 0, type: "safety" },   // D8 Desktop Verifier -> Safety Gate
+      { l1: 3, i: 7, l2: 4, j: 1, type: "delivery" }, // D8 Desktop Verifier -> Task Bridger
+
+      // 9. Coordination & Delivery Pipeline
+      { l1: 4, i: 0, l2: 4, j: 1, type: "pipeline" }, // Safety Gate -> Task Bridger
+      { l1: 4, i: 1, l2: 4, j: 2, type: "pipeline" }, // Task Bridger -> Delivery Agent
+
+      // 10. Adaptive Quality & Self-Healing Feedback Loops (Dashed curves)
+      { l1: 2, i: 7, l2: 2, j: 3, bow: -36, type: "loop", isLoop: true }, // B8 Recovery -> B4 Navigation Retry
+      { l1: 3, i: 7, l2: 3, j: 1, bow: 36, type: "loop", isLoop: true },  // D8 Verifier -> D2 App Lifecycle Retry
     ];
 
-    const G = [...ARCHITECTURAL_CROSS_LINKS];
+    // Initialize pathway channel aesthetics (3 living harmonic filaments & quantum packet streams)
+    const pathwayMeta = CANONICAL_PATHWAYS.map((p, idx) => ({
+      ...p,
+      idx,
+      hue: (idx / CANONICAL_PATHWAYS.length),
+      speedMult: 0.85 + ((idx * 7) % 5) * 0.15,
+      // Continuous quantum photon stream phases along each pathway
+      quantaPhases: [
+        ((idx * 0.29) % 1),
+        ((idx * 0.29 + 0.5) % 1)
+      ],
+      // 3 living harmonic filaments with organic phase velocities
+      filaments: [
+        { offset: -2.0, ph: (idx * 0.9), amp: 2.8, freq: 2.0, speed: 0.0016 },
+        { offset: 0.0, ph: (idx * 1.5 + Math.PI * 0.5), amp: 4.2, freq: 2.8, speed: 0.0024 },
+        { offset: 2.0, ph: (idx * 2.3 + Math.PI), amp: 2.8, freq: 2.2, speed: 0.0019 }
+      ]
+    }));
 
     let nodes = [];
-    let radius = 14;
+    let radius = 11;
     let width = 0;
     let height = 0;
     let pulses = [];
-    let pm = new Map();
-    let timers = [];
-    let waves = [];
     let hover = null;
     let mouse = { x: -999, y: -999 };
     let raf;
     let last = performance.now();
 
+    // Responsive layout calculation with guaranteed vertical clearances
     const layout = () => {
       const rect = wrap.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       width = rect.width;
-      height = Math.max(rect.height, 680);
+      height = Math.max(rect.height, 780);
       canvas.width = width * dpr;
       canvas.height = height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const maxLayerCount = Math.max(...LAYERS);
-      const gap = Math.min(58, (height * 0.84) / maxLayerCount);
-      radius = Math.max(12, Math.min(16, gap * 0.26));
-      const padX = Math.max(65, width * 0.11);
+      // 68px vertical gap guarantees >28px clean buffer between every badge and adjacent node
+      const gap = 68;
+      radius = 11;
 
-      // Node placement with diamond curved arc bulge for Stage 03 fleet
+      // 5 evenly distributed horizontal stage anchors across the canvas
+      const xPercents = [0.09, 0.28, 0.49, 0.70, 0.90];
+
       nodes = LAYERS.map((n, l) =>
         Array.from({ length: n }, (_, i) => {
-          const arcOffset = l === 2 ? Math.sin((i / (n - 1 || 1)) * Math.PI) * 45 : 0;
+          const bx = width * xPercents[l];
+          const by = height / 2 + 10 + (i - (n - 1) / 2) * gap;
           return {
-            bx: padX + ((width - padX * 2) * l) / LAST + arcOffset,
-            by: height / 2 + 16 + (i - (n - 1) / 2) * gap,
-            x: 0,
-            y: 0,
+            bx,
+            by,
+            x: bx,
+            y: by,
             ph: Math.random() * TAU,
+            hoverProgress: 0,
+            activation: 0,
+            glow: 0
           };
         })
       );
     };
 
-    const pointAt = (l, j, i, s, t, k = 0) => {
-      const A = nodes[l][i];
-      const Bn = nodes[l + 1][j];
-      const c = C[l][j][i];
-      const dx = (Bn.x - A.x) * 0.5;
-      const x1 = A.x + dx, y1 = A.y, x2 = Bn.x - dx, y2 = Bn.y;
+    // Point on pathway generator (smooth cubic Bézier across stages, vertical spinal curve within fleets)
+    const getPathwayPoint = (p, s, now, fl = null) => {
+      const A = nodes[p.l1]?.[p.i];
+      const B = nodes[p.l2]?.[p.j];
+      if (!A || !B) return [0, 0];
+
+      // Envelope: strictly 0 at s=0 and s=1, mathematically guaranteeing endpoints NEVER detach from node centers
+      const env = Math.sin(Math.PI * s);
+      const flOffset = fl ? fl.offset : 0;
+      const flAmp = fl ? fl.amp : 3.0;
+      const flPh = fl ? fl.ph : 0;
+      const flSpeed = fl ? fl.speed : 0.002;
+      const flFreq = fl ? fl.freq : 2.5;
+
+      // Intra-column vertical pipeline flow (e.g. B1 -> B2 or self-healing loops)
+      if (p.l1 === p.l2) {
+        const xBase = A.x;
+        const yBase = A.y + (B.y - A.y) * s;
+        const lateralBow = p.bow || (p.isLoop ? (p.l1 === 2 ? -36 : 36) : 0);
+        // Harmonic waves undulating horizontally: never disturbs y, so 0% vertical collision risk
+        const wave1 = Math.sin(s * Math.PI * flFreq - now * flSpeed + flPh) * flAmp;
+        const wave2 = Math.cos(s * Math.PI * 1.6 + now * 0.0012) * 1.4;
+        const lateral = env * (lateralBow + wave1 + wave2) + flOffset * 0.8 * env;
+        return [xBase + lateral, yBase];
+      }
+
+      // Inter-column horizontal flow (smooth cubic Bézier)
+      const dx = (B.x - A.x) * 0.46;
+      const x1 = A.x + dx, y1 = A.y;
+      const x2 = B.x - dx, y2 = B.y;
       const u = 1 - s;
-      const x = u * u * u * A.x + 3 * u * u * s * x1 + 3 * u * s * s * x2 + s * s * s * Bn.x;
-      const y = u * u * u * A.y + 3 * u * u * s * y1 + 3 * u * s * s * y2 + s * s * s * Bn.y;
-      let tx = 3 * u * u * (x1 - A.x) + 6 * u * s * (x2 - x1) + 3 * s * s * (Bn.x - x2);
-      let ty = 3 * u * u * (y1 - A.y) + 6 * u * s * (y2 - y1) + 3 * s * s * (Bn.y - y2);
-      const m = Math.hypot(tx, ty) || 1;
-      tx /= m; ty /= m;
-      const h = heat[l][j][i];
-      const env = Math.pow(Math.sin(Math.PI * s), 0.8);
-      const wave =
-        Math.sin(TAU * c.f * s - t * c.sp * 6 + c.ph) +
-        0.45 * Math.sin(TAU * c.f * 2.3 * s - t * c.sp * 9 + c.ph2);
-      let boost = 0;
-      const ps = pm.get(l * 10000 + j * 100 + i);
-      if (ps) for (const q of ps) { const d = (s - q.e) / 0.14; boost += q.s * Math.exp(-d * d); }
-      const breathe = 1 + 0.25 * Math.sin(t * 0.0007 + c.ph);
-      let off = env * ((2.2 * breathe + h * 5 + boost * 4) * wave + c.bend * Math.sin(Math.PI * s));
-      if (k) off += env * k * 4 * (1 + h) * Math.sin(TAU * c.f * 1.6 * s - t * c.sp * 8 + c.ph2 * k + k * 2);
-      return [x - ty * off, y + tx * off];
+      const bx = u * u * u * A.x + 3 * u * u * s * x1 + 3 * u * s * s * x2 + s * s * s * B.x;
+      const by = u * u * u * A.y + 3 * u * u * s * y1 + 3 * u * s * s * y2 + s * s * s * B.y;
+
+      // Organic living fluid sinewave undulation with dual harmonics
+      const wave1 = Math.sin(s * Math.PI * flFreq - now * flSpeed + flPh) * flAmp;
+      const wave2 = Math.cos(s * Math.PI * 3.8 + now * (flSpeed * 0.8) + flPh) * 1.2;
+      const lateralBow = (p.bow || 0) * env;
+      return [bx, by + env * (wave1 + wave2) + lateralBow + flOffset * 0.6 * env];
     };
 
-    const prog = (t) => t * t * (3 - 2 * t);
-
-    const ghostPoint = (g, sv, t, k) => {
-      const A = nodes[g.l1][g.i], Bn = nodes[g.l2][g.j];
-      const dx = Bn.x - A.x, dy = Bn.y - A.y;
-      const len = Math.hypot(dx, dy) || 1;
-      const u = 1 - sv;
-      const x1 = A.x + dx * 0.33 + g.bow, y1 = A.y + dy * 0.33;
-      const x2 = Bn.x - dx * 0.33 + g.bow, y2 = Bn.y - dy * 0.33;
-      const x = u * u * u * A.x + 3 * u * u * sv * x1 + 3 * u * sv * sv * x2 + sv * sv * sv * Bn.x;
-      const y = u * u * u * A.y + 3 * u * u * sv * y1 + 3 * u * sv * sv * y2 + sv * sv * sv * Bn.y;
-      const env = Math.sin(Math.PI * sv);
-      const off = env * (3.0 * Math.sin(TAU * g.f * sv - t * g.sp * 6 + g.ph + k) + k * 3);
-      return [x - (dy / len) * off, y + (dx / len) * off];
-    };
-
-    // Vivid Crimson & Tactical Silver Synaptic Colors
+    // Color Tinting
     const tint = (hue, h) => {
       const base = mix([235, 45, 60], [255, 140, 160], hue);
       return mix(base, [255, 255, 255], Math.min(1, h * 0.7)).join(",");
     };
 
-    const startWave = (now) => {
-      const wave = {
-        input: Array.from({ length: LAYERS[0] }, () => 0.8),
-        values: LAYERS.map((n) => new Array(n).fill(0)),
-        pending: LAYERS.map((n, l) => new Array(n).fill(l === 0 ? 0 : LAYERS[l - 1])),
-      };
-      waves.push(wave);
-      wave.input.forEach((_, i) => timers.push({ t: now + 20 + Math.random() * 60, wave, l: 0, i }));
-    };
+    // Trigger action potential pulse wave through active pathways
+    const startPulseWave = (customL = null, customI = null) => {
+      const activeAgent = activeAgentRef.current;
+      const activeTarget = findActiveNode(activeAgent);
+      const targetL = customL !== null ? customL : (activeTarget ? activeTarget.l : 0);
+      const targetI = customI !== null ? customI : (activeTarget ? activeTarget.i : 0);
 
-    triggerPulseRef.current = () => {
-      startWave(performance.now());
-    };
+      // Find outgoing or incoming pathways from target
+      const relevant = pathwayMeta.filter(p => 
+        (p.l1 === targetL && p.i === targetI) ||
+        (p.l2 === targetL && p.j === targetI)
+      );
+      const targets = relevant.length > 0 ? relevant : pathwayMeta.slice(0, 3);
 
-    const fire = (wave, l, i, now) => {
-      const z = wave.values[l][i] + B[l][i];
-      const a = l === 0 ? wave.input[i] : l === LAST ? sigmoid(z) : Math.max(0, z);
-      act[l][i] = a;
-      glow[l][i] = Math.min(1, a / (l === LAST ? 1 : 1.1));
-      if (l === LAST) return;
-      for (let j = 0; j < LAYERS[l + 1]; j++) {
+      const now = performance.now();
+      targets.forEach((path) => {
         pulses.push({
-          wave,
-          l,
-          i,
-          j,
+          path,
           born: now + Math.random() * 30,
-          dur: TRAVEL * (0.85 + Math.random() * 0.2),
-          v: a * W[l][j][i]
+          dur: TRAVEL * (0.75 + Math.random() * 0.25),
+          v: 0.8
         });
-      }
+      });
     };
 
-    // Frame Loop
+    triggerPulseRef.current = startPulseWave;
+
+    // Frame Animation Loop (Silky 60 FPS)
     const frame = (now) => {
       const dt = Math.min(now - last, 50);
       last = now;
 
-      // Identify currently executing agent from props / live state
+      const activeAgent = activeAgentRef.current;
+      const isLoading = isLoadingRef.current;
       const activeTarget = findActiveNode(activeAgent) || (isLoading ? { l: 0, i: 0, node: AGENT_NODES[0][0] } : null);
       const isSystemWorking = Boolean(isLoading && activeTarget);
 
-      // Active working continuous stream
-      if (isSystemWorking && activeTarget) {
-        glow[activeTarget.l][activeTarget.i] = 1.0;
-        act[activeTarget.l][activeTarget.i] = 1.0;
-
-        if (Math.random() < 0.25) {
-          const l = activeTarget.l;
-          const i = activeTarget.i;
-          if (l < LAST) {
-            const j = Math.floor(Math.random() * LAYERS[l + 1]);
-            pulses.push({
-              amb: true,
-              wave: null,
-              l,
-              i,
-              j,
-              born: now,
-              dur: TRAVEL * 0.85,
-              v: 0.5 + Math.random() * 0.3
-            });
-          }
-        }
-      }
-
-      // Drift of nodes
+      // Stable micro-breathing (horizontal sway <= 0.6px, zero vertical drift to avoid label jitter)
       nodes.forEach((layer) =>
         layer.forEach((n) => {
-          n.x = n.bx + Math.sin(now * 0.0006 + n.ph) * 1.5;
-          n.y = n.by + Math.cos(now * 0.0005 + n.ph * 1.3) * 2.0;
+          n.x = n.bx + Math.sin(now * 0.0004 + n.ph) * 0.6;
+          n.y = n.by; // Fixed vertical anchor guarantees zero vertical overlap!
         })
       );
 
-      // Timers for wave execution
-      timers = timers.filter((tm) => {
-        if (now < tm.t) return true;
-        fire(tm.wave, tm.l, tm.i, now);
-        return false;
-      });
-
-      // Pulses
-      pulses = pulses.filter((p) => {
-        if (now - p.born < p.dur) return true;
-        if (p.amb) {
-          heat[p.l][p.j][p.i] = Math.max(heat[p.l][p.j][p.i], 0.35);
-          return false;
-        }
-        const { wave, l, j } = p;
-        heat[l][j][p.i] = Math.min(1, Math.abs(p.v) * 1.5 + 0.3);
-        wave.values[l + 1][j] += p.v;
-        if (--wave.pending[l + 1][j] === 0) {
-          timers.push({ t: now + 20 + Math.random() * 60, wave, l: l + 1, i: j });
-        }
-        return false;
-      });
-
-      pm = new Map();
-      for (const p of pulses) {
-        const t = (now - p.born) / p.dur;
-        if (t < 0 || t > 1) continue;
-        const key = p.l * 10000 + p.j * 100 + p.i;
-        const q = { e: prog(t), s: Math.min(1, Math.abs(p.v) * 1.6 + 0.2) };
-        const arr = pm.get(key);
-        arr ? arr.push(q) : pm.set(key, [q]);
+      // Continuous pulse generation during active execution
+      if (isSystemWorking && Math.random() < 0.08) {
+        startPulseWave();
       }
-      waves = waves.filter((w) => w.pending.some((row, l) => l > 0 && row.some((c) => c > 0)));
 
-      // Glow decay
-      const decayRate = isSystemWorking ? 520 : 250;
-      const gd = Math.exp(-dt / decayRate);
-      const hd = Math.exp(-dt / 400);
-      glow.forEach((r) => r.forEach((_, i) => (r[i] *= gd)));
-      heat.forEach((a) => a.forEach((r) => r.forEach((_, i) => (r[i] *= hd))));
+      // Filter active pulses
+      pulses = pulses.filter((p) => now - p.born < p.dur);
 
-      // Hover check
+      // Stable Hit Test against fixed node anchor coordinates (eliminates hover strobing)
       hover = null;
       let activeHoverNodeMeta = null;
       nodes.forEach((layer, l) =>
         layer.forEach((n, i) => {
-          if (Math.hypot(n.x - mouse.x, n.y - mouse.y) < radius + 8) {
+          if (Math.hypot(n.bx - mouse.x, n.by - mouse.y) < radius + 10) {
             hover = { l, i };
             if (AGENT_NODES[l] && AGENT_NODES[l][i]) {
               activeHoverNodeMeta = {
@@ -650,24 +771,41 @@ export default function OpsLiveOrchestrationTab({
                 layerIdx: l,
                 nodeIdx: i,
                 x: n.x,
-                y: n.y,
-                activation: act[l][i]
+                y: n.y
               };
             }
           }
         })
       );
-      setHoveredAgent(activeHoverNodeMeta);
 
-      // ==================== DRAWING ====================
+      // Smooth Spring Lerp for hover transitions on all nodes
+      nodes.forEach((layer, l) =>
+        layer.forEach((n, i) => {
+          const isTarget = (hover && hover.l === l && hover.i === i) ? 1.0 : 0.0;
+          n.hoverProgress += (isTarget - n.hoverProgress) * 0.16;
+        })
+      );
+
+      // Deduplicated state update for Bottom HUD (never re-renders during tracking)
+      const newHoverId = activeHoverNodeMeta ? activeHoverNodeMeta.id : null;
+      if (newHoverId !== lastHoverIdRef.current) {
+        lastHoverIdRef.current = newHoverId;
+        setHoveredAgent(activeHoverNodeMeta);
+        // Instantaneous synaptic burst along connected strings when hovering an agent!
+        if (activeHoverNodeMeta && triggerPulseRef.current) {
+          triggerPulseRef.current(activeHoverNodeMeta.layerIdx, activeHoverNodeMeta.nodeIdx);
+        }
+      }
+
+      // ==================== RENDERING ====================
       ctx.globalCompositeOperation = "source-over";
       ctx.fillStyle = "#050508";
       ctx.fillRect(0, 0, width, height);
 
-      // 1. Draw Tactical Grid Background
-      ctx.strokeStyle = "rgba(220, 38, 38, 0.08)";
+      // 1. Draw Subtle Tactical Grid
+      ctx.strokeStyle = "rgba(220, 38, 38, 0.06)";
       ctx.lineWidth = 1;
-      const step = 48;
+      const step = 52;
       for (let gx = 0; gx < width; gx += step) {
         ctx.beginPath();
         ctx.moveTo(gx, 0);
@@ -681,116 +819,185 @@ export default function OpsLiveOrchestrationTab({
         ctx.stroke();
       }
 
-      // 2. Draw Main Synaptic Connections (Multi-strand sinewave tendril bundles)
+      // 2. Draw Clean Canonical Synaptic Pathways
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.globalCompositeOperation = "lighter";
       const SEG = 24;
 
-      for (let l = 0; l < LAST; l++) {
-        for (let j = 0; j < LAYERS[l + 1]; j++) {
-          for (let i = 0; i < LAYERS[l]; i++) {
-            const h = heat[l][j][i];
-            const c = C[l][j][i];
-            const related = hover && ((hover.l === l && hover.i === i) || (hover.l === l + 1 && hover.i === j));
-            const isPathActive = isSystemWorking && activeTarget && ((activeTarget.l === l && activeTarget.i === i) || (activeTarget.l === l + 1 && activeTarget.i === j));
-            
-            const rgb = tint(c.hue, h);
-            const baseAlpha = isPathActive ? 0.85 : related ? 0.65 : 0.24;
-            const amp = baseAlpha + h * 0.45;
+      for (const p of pathwayMeta) {
+        const nodeA = nodes[p.l1]?.[p.i];
+        const nodeB = nodes[p.l2]?.[p.j];
+        if (!nodeA || !nodeB) continue;
 
-            for (const st of c.st) {
-              const pts = [];
-              for (let q = 0; q <= SEG; q++) pts.push(pointAt(l, j, i, q / SEG, now, st.k));
-              const shimmer = 0.75 + 0.25 * Math.sin(now * st.sp * 3 + st.ph);
-              ctx.strokeStyle = `rgba(${rgb}, ${Math.min(0.95, amp * shimmer)})`;
-              ctx.lineWidth = isPathActive ? 1.4 : related ? 1.0 : 0.75;
-              ctx.beginPath();
-              pts.forEach(([x, y], q) => (q ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-              ctx.stroke();
+        const isConnectedHover = hover && (
+          (hover.l === p.l1 && hover.i === p.i) ||
+          (hover.l === p.l2 && hover.i === p.j)
+        );
+        const hoverIntensity = Math.max(nodeA.hoverProgress, nodeB.hoverProgress);
+        const isPathActive = isSystemWorking && activeTarget && (
+          (activeTarget.l === p.l1 && activeTarget.i === p.i) ||
+          (activeTarget.l === p.l2 && activeTarget.i === p.j)
+        );
 
-              // Moving glint along axon
-              const i0 = Math.floor(((now * 0.00012 * (1 + st.gl) + st.gl) % 1) * (SEG - 5));
-              ctx.strokeStyle = `rgba(${rgb}, ${Math.min(0.9, amp * 2.8 * shimmer)})`;
-              ctx.lineWidth = isPathActive ? 2.0 : 1.2;
-              ctx.beginPath();
-              for (let q = i0; q <= i0 + 4; q++) {
-                q === i0 ? ctx.moveTo(pts[q][0], pts[q][1]) : ctx.lineTo(pts[q][0], pts[q][1]);
-              }
-              ctx.stroke();
-            }
-          }
+        const isLoop = Boolean(p.isLoop);
+        const baseColor = isLoop ? "245, 158, 11" : tint(p.hue, 0.2);
+
+        // Standby baseline alpha boosted to 0.35 so strands are crisp and visible
+        // When hovered, connected pathways burst to 0.95 with neon glow, unconnected pathways dim gently to 0.16
+        const anyNodeHovered = Boolean(hover);
+        let alpha = isPathActive ? 0.95 : isLoop ? 0.75 : (0.35 + hoverIntensity * 0.60);
+        if (anyNodeHovered && !isConnectedHover) {
+          alpha = Math.max(0.14, alpha * 0.45);
         }
-      }
 
-      // 3. Draw Architectural Cross-Links (Quality loops and recovery dispatches)
-      for (const g of G) {
-        if (!nodes[g.l1] || !nodes[g.l1][g.i] || !nodes[g.l2] || !nodes[g.l2][g.j]) continue;
-        const related = hover && ((hover.l === g.l1 && hover.i === g.i) || (hover.l === g.l2 && hover.i === g.j));
-        const isPathActive = isSystemWorking && activeTarget && ((activeTarget.l === g.l1 && activeTarget.i === g.i) || (activeTarget.l === g.l2 && activeTarget.i === g.j));
-        
-        const rgb = g.isLoop ? "245, 158, 11" : tint(g.hue, 0.25);
-        const alpha = g.isLoop ? 0.85 : isPathActive ? 0.75 : related ? 0.55 : 0.22;
+        const lineWidth = isPathActive ? 1.8 : isLoop ? 1.3 : (0.9 + hoverIntensity * 0.8);
 
-        ctx.strokeStyle = `rgba(${rgb}, ${alpha})`;
-        ctx.lineWidth = g.isLoop ? 1.4 : isPathActive ? 1.2 : 0.75;
-        if (g.isLoop) {
-          ctx.setLineDash([4, 4]);
+        // Dynamic animated glow halo on hovered and active pathways
+        if (hoverIntensity > 0.08 || isPathActive) {
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          const haloAlpha = isPathActive ? 0.4 : (0.35 * hoverIntensity);
+          ctx.strokeStyle = `rgba(244, 63, 94, ${haloAlpha})`;
+          ctx.lineWidth = lineWidth * 3.6;
+          ctx.beginPath();
+          for (let q = 0; q <= SEG; q++) {
+            const pt = getPathwayPoint(p, q / SEG, now, p.filaments[1]);
+            if (q === 0) ctx.moveTo(pt[0], pt[1]);
+            else ctx.lineTo(pt[0], pt[1]);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Loop animation: scrolling dashed feedback loop
+        if (isLoop) {
+          ctx.setLineDash([6, 6]);
+          ctx.lineDashOffset = -now * 0.024;
         } else {
           ctx.setLineDash([]);
         }
-        ctx.beginPath();
-        for (let q = 0; q <= SEG; q++) {
-          const [x, y] = ghostPoint(g, q / SEG, now, 0);
-          q ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+
+        // Draw living filaments
+        for (const fl of p.filaments) {
+          const pts = [];
+          for (let q = 0; q <= SEG; q++) {
+            pts.push(getPathwayPoint(p, q / SEG, now, fl));
+          }
+
+          ctx.strokeStyle = `rgba(${baseColor}, ${alpha})`;
+          ctx.lineWidth = lineWidth;
+          ctx.beginPath();
+          pts.forEach(([x, y], q) => (q ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+          ctx.stroke();
         }
-        ctx.stroke();
+
         ctx.setLineDash([]);
       }
 
-      // 4. Draw Electric Wave Sparks & Radiant Halos
+      // 3. Draw Traveling Action Potentials & Continuous Quantum Streams
       ctx.globalCompositeOperation = "lighter";
-      for (const p of pulses) {
-        const t = (now - p.born) / p.dur;
-        if (t < 0) continue;
-        const e = prog(t);
-        const s = Math.min(1, Math.abs(p.v) * 1.6 + 0.2);
-        const M = 9;
-        const s0 = Math.max(0, e - 0.24);
-        let prev = pointAt(p.l, p.j, p.i, s0, now);
-        for (let k = 1; k <= M; k++) {
-          const cur = pointAt(p.l, p.j, p.i, s0 + ((e - s0) * k) / M, now);
-          ctx.strokeStyle = `rgba(255, 240, 240, ${s * (k / M) * (k / M)})`;
-          ctx.lineWidth = 1.2 + s * 1.6 * (k / M);
+
+      // 3A. Continuous Data Photons (Always running smoothly along all canonical pathways)
+      for (const p of pathwayMeta) {
+        const nodeA = nodes[p.l1]?.[p.i];
+        const nodeB = nodes[p.l2]?.[p.j];
+        if (!nodeA || !nodeB) continue;
+
+        const isHoveredPath = hover && (
+          (hover.l === p.l1 && hover.i === p.i) ||
+          (hover.l === p.l2 && hover.i === p.j)
+        );
+        const isPathActive = isSystemWorking && activeTarget && (
+          (activeTarget.l === p.l1 && activeTarget.i === p.i) ||
+          (activeTarget.l === p.l2 && activeTarget.i === p.j)
+        );
+
+        // Speed surges dynamically when pathway is active or hovered
+        const speedRate = isHoveredPath ? 0.00065 : isPathActive ? 0.00055 : 0.00024;
+        const trailLength = isHoveredPath ? 0.09 : isPathActive ? 0.08 : 0.055;
+
+        for (const phaseOffset of p.quantaPhases) {
+          const t = ((now * speedRate * p.speedMult + phaseOffset) % 1 + 1) % 1;
+          
+          const headPt = getPathwayPoint(p, t, now, null);
+          const midPt = getPathwayPoint(p, Math.max(0, t - trailLength * 0.5), now, null);
+          const tailPt = getPathwayPoint(p, Math.max(0, t - trailLength), now, null);
+
+          // Glowing comet tail
+          const tailAlpha = isHoveredPath ? 0.95 : isPathActive ? 0.85 : 0.42;
+          const streakW = isHoveredPath ? 2.5 : isPathActive ? 2.0 : 1.3;
+
+          ctx.strokeStyle = isHoveredPath
+            ? `rgba(255, 230, 230, ${tailAlpha})`
+            : p.isLoop
+            ? `rgba(251, 191, 36, ${tailAlpha})`
+            : `rgba(255, 120, 140, ${tailAlpha})`;
+          ctx.lineWidth = streakW;
           ctx.beginPath();
-          ctx.moveTo(prev[0], prev[1]);
-          ctx.lineTo(cur[0], cur[1]);
+          ctx.moveTo(tailPt[0], tailPt[1]);
+          ctx.lineTo(midPt[0], midPt[1]);
+          ctx.lineTo(headPt[0], headPt[1]);
           ctx.stroke();
-          prev = cur;
+
+          // Luminous Photon Glow Head
+          const glowRadius = isHoveredPath ? 8.5 : isPathActive ? 7.0 : 4.8;
+          const halo = ctx.createRadialGradient(headPt[0], headPt[1], 0, headPt[0], headPt[1], glowRadius);
+          halo.addColorStop(0, "rgba(255, 255, 255, 0.98)");
+          halo.addColorStop(0.35, isHoveredPath ? "rgba(255, 80, 100, 0.85)" : "rgba(239, 68, 68, 0.65)");
+          halo.addColorStop(1, "rgba(225, 29, 46, 0)");
+          ctx.fillStyle = halo;
+          ctx.beginPath();
+          ctx.arc(headPt[0], headPt[1], glowRadius, 0, TAU);
+          ctx.fill();
+
+          // Tiny sharp white core
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(headPt[0], headPt[1], isHoveredPath ? 1.8 : 1.2, 0, TAU);
+          ctx.fill();
         }
-        const halo = ctx.createRadialGradient(prev[0], prev[1], 0, prev[0], prev[1], 10);
-        halo.addColorStop(0, `rgba(255, 245, 245, ${0.9 * s})`);
-        halo.addColorStop(1, "rgba(235, 30, 45, 0)");
+      }
+
+      // 3B. High-Energy Action Potential Pulses (Triggered on dispatch, execution & hover enter)
+      for (const pulse of pulses) {
+        const t = (now - pulse.born) / pulse.dur;
+        if (t < 0 || t > 1) continue;
+
+        const p = pulse.path;
+        const curPt = getPathwayPoint(p, t, now, null);
+        const trailPt = getPathwayPoint(p, Math.max(0, t - 0.14), now, null);
+
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.98)";
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(trailPt[0], trailPt[1]);
+        ctx.lineTo(curPt[0], curPt[1]);
+        ctx.stroke();
+
+        const halo = ctx.createRadialGradient(curPt[0], curPt[1], 0, curPt[0], curPt[1], 10);
+        halo.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+        halo.addColorStop(0.4, "rgba(239, 68, 68, 0.75)");
+        halo.addColorStop(1, "rgba(225, 29, 46, 0)");
         ctx.fillStyle = halo;
         ctx.beginPath();
-        ctx.arc(prev[0], prev[1], 10, 0, TAU);
+        ctx.arc(curPt[0], curPt[1], 10, 0, TAU);
         ctx.fill();
       }
 
       ctx.globalCompositeOperation = "source-over";
 
-      // 5. Draw 3D Agent Spheres with Scanlines & Specular Glints
+      // 4. Draw 3D Agent Spheres & Badges (Rock-solid positioning with guaranteed clearance)
       for (let l = 0; l < LAYERS.length; l++) {
         for (let i = 0; i < LAYERS[l]; i++) {
           const n = nodes[l][i];
           const isNodeActive = isSystemWorking && activeTarget && activeTarget.l === l && activeTarget.i === i;
-          const isHovered = hover && hover.l === l && hover.i === i;
-          const r = radius * (isNodeActive ? 1.25 : 1.0);
+          const hp = n.hoverProgress || 0;
+          const r = radius * (isNodeActive ? 1.25 : (1.0 + hp * 0.20));
 
-          // A. Bloom Glow for Active Nodes
+          // A. Bloom Glow for Active Executing Node
           if (isNodeActive) {
             ctx.globalCompositeOperation = "lighter";
-            const bloomRadius = r * 4.8;
+            const bloomRadius = r * 4.2;
             const bloom = ctx.createRadialGradient(n.x, n.y, r * 0.2, n.x, n.y, bloomRadius);
             bloom.addColorStop(0, "rgba(255, 70, 90, 0.95)");
             bloom.addColorStop(0.35, "rgba(239, 68, 68, 0.55)");
@@ -801,20 +1008,30 @@ export default function OpsLiveOrchestrationTab({
             ctx.fill();
             ctx.globalCompositeOperation = "source-over";
 
-            // Pulsing reticle
+            // Pulsing tactical ring
             ctx.strokeStyle = `rgba(255, 255, 255, ${0.8 + 0.2 * Math.sin(now * 0.009)})`;
-            ctx.lineWidth = 2.0;
+            ctx.lineWidth = 1.8;
             ctx.beginPath();
-            ctx.arc(n.x, n.y, r + 6 + Math.sin(now * 0.008) * 3, 0, TAU);
+            ctx.arc(n.x, n.y, r + 5 + Math.sin(now * 0.008) * 2.5, 0, TAU);
             ctx.stroke();
           }
 
-          // B. Hover Reticle
-          if (isHovered && !isNodeActive) {
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-            ctx.lineWidth = 1.6;
+          // B. Smooth Spring Hover Halo
+          if (hp > 0.01 && !isNodeActive) {
+            ctx.globalCompositeOperation = "lighter";
+            const hoverHalo = ctx.createRadialGradient(n.x, n.y, r * 0.3, n.x, n.y, r * 2.5);
+            hoverHalo.addColorStop(0, `rgba(255, 60, 80, ${0.42 * hp})`);
+            hoverHalo.addColorStop(1, "rgba(225, 29, 46, 0)");
+            ctx.fillStyle = hoverHalo;
             ctx.beginPath();
-            ctx.arc(n.x, n.y, r + 4, 0, TAU);
+            ctx.arc(n.x, n.y, r * 2.5, 0, TAU);
+            ctx.fill();
+            ctx.globalCompositeOperation = "source-over";
+
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * hp})`;
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r + 3 + (1 - hp) * 3, 0, TAU);
             ctx.stroke();
           }
 
@@ -839,43 +1056,46 @@ export default function OpsLiveOrchestrationTab({
             ctx.fill();
           } else {
             const body = ctx.createRadialGradient(n.x - r * 0.35, n.y - r * 0.35, r * 0.08, n.x, n.y, r);
-            body.addColorStop(0, isHovered ? "rgb(240, 50, 75)" : "rgb(175, 25, 42)");
-            body.addColorStop(0.5, isHovered ? "rgb(185, 25, 42)" : "rgb(115, 12, 22)");
-            body.addColorStop(1, isHovered ? "rgb(100, 10, 18)" : "rgb(55, 5, 10)");
+            const r0 = Math.round(175 + hp * 65);
+            const g0 = Math.round(25 + hp * 25);
+            const b0 = Math.round(42 + hp * 33);
+            body.addColorStop(0, `rgb(${r0}, ${g0}, ${b0})`);
+            body.addColorStop(0.5, hp > 0.5 ? "rgb(185, 25, 42)" : "rgb(115, 12, 22)");
+            body.addColorStop(1, hp > 0.5 ? "rgb(100, 10, 18)" : "rgb(55, 5, 10)");
             ctx.fillStyle = body;
-            ctx.strokeStyle = isHovered ? "rgb(255, 120, 140)" : "rgba(244, 63, 94, 0.85)";
-            ctx.lineWidth = isHovered ? 2.0 : 1.6;
+            ctx.strokeStyle = hp > 0.3 ? "rgb(255, 120, 140)" : "rgba(244, 63, 94, 0.85)";
+            ctx.lineWidth = 1.4 + hp * 0.4;
             ctx.beginPath();
             ctx.arc(n.x, n.y, r, 0, TAU);
             ctx.fill();
             ctx.stroke();
 
             // Crisp Specular Glint
-            ctx.fillStyle = isHovered ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 255, 255, 0.75)";
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.75 + hp * 0.2})`;
             ctx.beginPath();
             ctx.arc(n.x - r * 0.3, n.y - r * 0.3, r * 0.22, 0, TAU);
             ctx.fill();
           }
 
-          // D. Tactical Badge Under Each Node (Exact Rectangular HUD Style from photo)
+          // D. Tactical Badge (Fixed height 14px, zero vertical collision)
           const agentMeta = AGENT_NODES[l]?.[i];
           if (agentMeta) {
             const tagText = agentMeta.tag;
-            ctx.font = "bold 9px 'JetBrains Mono', 'Geist Mono', monospace";
+            ctx.font = "bold 8.5px 'JetBrains Mono', 'Geist Mono', monospace";
             const textMetrics = ctx.measureText(tagText);
             const pillW = textMetrics.width + 10;
-            const pillH = 15;
+            const pillH = 14;
             const pillX = n.x - pillW / 2;
-            const pillY = n.y + r + 5;
+            const pillY = n.y + r + 4;
 
             ctx.fillStyle = isNodeActive
               ? "rgba(220, 20, 40, 0.95)"
-              : isHovered
+              : hp > 0.2
               ? "rgba(35, 8, 14, 0.92)"
-              : "rgba(16, 16, 22, 0.88)";
+              : "rgba(16, 16, 22, 0.90)";
             ctx.strokeStyle = isNodeActive
               ? "#ffffff"
-              : isHovered
+              : hp > 0.2
               ? "#ef4444"
               : "rgba(239, 68, 68, 0.65)";
             ctx.lineWidth = 1;
@@ -884,38 +1104,10 @@ export default function OpsLiveOrchestrationTab({
 
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = isNodeActive ? "#ffffff" : isHovered ? "#ffffff" : "#f4f4f5";
+            ctx.fillStyle = isNodeActive ? "#ffffff" : hp > 0.2 ? "#ffffff" : "#f4f4f5";
             ctx.fillText(tagText, n.x, pillY + pillH / 2);
           }
         }
-      }
-
-      // 6. Canvas Tooltip Render for Hovered Agent
-      if (hover && AGENT_NODES[hover.l]?.[hover.i]) {
-        const meta = AGENT_NODES[hover.l][hover.i];
-        const n = nodes[hover.l][hover.i];
-        const isHoverActive = isSystemWorking && activeTarget && activeTarget.l === hover.l && activeTarget.i === hover.i;
-
-        const badgeW = 200;
-        const badgeH = 40;
-        const boxX = Math.max(10, Math.min(width - badgeW - 10, n.x - badgeW / 2));
-        const boxY = Math.max(10, n.y - radius - badgeH - 12);
-
-        ctx.fillStyle = "rgba(5, 5, 8, 0.95)";
-        ctx.strokeStyle = isHoverActive ? "#ef4444" : "#f43f5e";
-        ctx.lineWidth = 1.4;
-        ctx.fillRect(boxX, boxY, badgeW, badgeH);
-        ctx.strokeRect(boxX, boxY, badgeW, badgeH);
-
-        ctx.textAlign = "left";
-        ctx.textBaseline = "alphabetic";
-        ctx.font = "bold 10px 'JetBrains Mono', 'Geist Mono', monospace";
-        ctx.fillStyle = "#ffffff";
-        ctx.fillText(meta.name.slice(0, 26), boxX + 8, boxY + 14);
-
-        ctx.font = "9px 'JetBrains Mono', 'Geist Mono', monospace";
-        ctx.fillStyle = isHoverActive ? "#ef4444" : "#fca5a5";
-        ctx.fillText(`⚡ ${meta.model.slice(0, 28)}`, boxX + 8, boxY + 28);
       }
 
       raf = requestAnimationFrame(frame);
@@ -928,14 +1120,15 @@ export default function OpsLiveOrchestrationTab({
 
     const onMove = (e) => {
       const r = canvas.getBoundingClientRect();
-      const mx = e.clientX - r.left;
-      const my = e.clientY - r.top;
-      mouse = { x: mx, y: my };
+      mouse = { x: e.clientX - r.left, y: e.clientY - r.top };
     };
 
     const onLeave = () => {
       mouse = { x: -999, y: -999 };
-      setHoveredAgent(null);
+      if (lastHoverIdRef.current !== null) {
+        lastHoverIdRef.current = null;
+        setHoveredAgent(null);
+      }
     };
 
     const onDown = (e) => {
@@ -946,7 +1139,7 @@ export default function OpsLiveOrchestrationTab({
       let clicked = null;
       nodes.forEach((layer, l) => {
         layer.forEach((n, i) => {
-          if (Math.hypot(n.x - mx, n.y - my) < radius + 12) {
+          if (Math.hypot(n.bx - mx, n.by - my) < radius + 12) {
             clicked = AGENT_NODES[l][i];
           }
         });
@@ -969,7 +1162,7 @@ export default function OpsLiveOrchestrationTab({
       canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("pointerdown", onDown);
     };
-  }, [activeAgent, isLoading]);
+  }, []); // Run ONCE on mount: never tears down or re-randomizes on state transitions!
 
   // Active Mission Progress Extraction
   const activeMission = useMemo(() => {
@@ -989,110 +1182,55 @@ export default function OpsLiveOrchestrationTab({
   return (
     <div className="space-y-4 font-mono select-none">
 
-      {/* ==================== 1. TOP INTERACTIVE DISPATCH & REAL-TIME CONTROLS ==================== */}
-      <div className="retro-box p-3 space-y-2 bg-[#09090b] border-zinc-800">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <form onSubmit={handleQuickDispatch} className="flex items-center gap-2 flex-1 max-w-2xl">
-            <span className="text-red-500 font-bold text-xs flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5 text-red-500 fill-red-500" />
-              <span>DIRECTIVE:</span>
-            </span>
-            <input
-              type="text"
-              value={quickInput}
-              onChange={(e) => setQuickInput(e.target.value)}
-              placeholder="Enter directive (e.g. 'Open Chrome', 'Build React dashboard', 'Where is my API code?')..."
-              disabled={isLoading}
-              className="flex-1 bg-black border border-zinc-700 px-3 py-1.5 text-xs text-white placeholder-zinc-500 outline-none focus:border-red-500 transition"
-            />
-            <button
-              type="submit"
-              disabled={!quickInput.trim() || isLoading}
-              className="retro-btn-red px-3 py-1.5 text-xs flex items-center gap-1 disabled:opacity-40"
-            >
-              {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-              <span>DISPATCH</span>
-            </button>
-          </form>
+      {/* ==================== 1. ACTIVE DIRECTIVE & COCKPIT STATUS BANNER ==================== */}
+      <div className="retro-box p-3 bg-[#09090b] border-zinc-800 flex flex-wrap items-center justify-between gap-3 font-mono">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <span className="px-2 py-0.5 bg-red-600 text-white font-black text-xs border border-red-500 shadow-sm shrink-0 flex items-center gap-1">
+            <Zap className="w-3.5 h-3.5 text-white fill-white" />
+            <span>COCKPIT DIRECTIVE:</span>
+          </span>
+          <span className="text-xs font-bold text-white truncate max-w-2xl select-text">
+            {activeTaskPrompt ? `"${activeTaskPrompt}"` : "(Awaiting directive from Desktop Popup Cockpit...)"}
+          </span>
+        </div>
 
-          {/* STOP & REFRESH Real-Time Control Buttons */}
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 text-[10px] px-2 py-1 bg-black border border-zinc-800">
+            <span className="text-zinc-500 font-bold uppercase">STATUS:</span>
+            <span className={isLoading ? "text-amber-400 font-bold animate-pulse" : "text-emerald-400 font-bold"}>
+              {isLoading ? `[BUSY: ${activeAgent || 'ORCHESTRATING'}]` : "[STANDBY: READY]"}
+            </span>
+          </div>
+
+          {/* STOP Real-Time Control Button */}
+          {isLoading && onStopExecution && (
             <button
-              onClick={() => onStopExecution && onStopExecution()}
-              disabled={!isLoading}
-              title="STOP execution (Preserves session and dialogue context)"
-              className="px-2.5 py-1.5 text-xs bg-zinc-900 border border-zinc-700 hover:border-amber-500 hover:text-amber-400 text-zinc-300 flex items-center gap-1 font-bold disabled:opacity-40 transition"
+              onClick={() => onStopExecution()}
+              title="STOP ongoing execution"
+              className="px-2.5 py-1 text-xs bg-zinc-900 border border-zinc-700 hover:border-amber-500 hover:text-amber-400 text-zinc-300 flex items-center gap-1 font-bold transition"
             >
               <Square className="w-3.5 h-3.5 text-amber-500 fill-current" />
               <span>[ ⏹ STOP ]</span>
             </button>
+          )}
 
+          {/* REFRESH Session Button */}
+          {onClearMemory && (
             <button
-              onClick={() => onClearMemory && onClearMemory()}
-              title="REFRESH session (Clears volatile context, creates new session ID, preserves ChromaDB)"
-              className="px-2.5 py-1.5 text-xs bg-zinc-900 border border-zinc-700 hover:border-red-500 hover:text-red-400 text-zinc-300 flex items-center gap-1 font-bold transition"
+              onClick={() => onClearMemory()}
+              disabled={isLoading}
+              title="REFRESH session (Clears volatile context, creates new session ID)"
+              className="px-2.5 py-1 text-xs bg-zinc-900 border border-zinc-700 hover:border-red-500 hover:text-red-400 text-zinc-300 flex items-center gap-1 font-bold transition disabled:opacity-40"
             >
               <RefreshCw className="w-3.5 h-3.5 text-red-500" />
               <span>[ ↻ REFRESH ]</span>
             </button>
-          </div>
-        </div>
-
-        {/* Real-time Preset Scenarios */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2 border-t border-zinc-800">
-          <div className="flex flex-wrap items-center gap-1.5 text-xs bg-black/60 p-1.5 border border-zinc-800/80">
-            <span className="text-red-400 font-bold text-[10px] flex items-center gap-1">
-              <Terminal className="w-3 h-3 text-red-500" />
-              <span>CORE TASKS:</span>
-            </span>
-            <button
-              onClick={() => handleTestFlow('Open Chrome.')}
-              disabled={isLoading}
-              className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
-            >
-              [1. Open Chrome]
-            </button>
-            <button
-              onClick={() => handleTestFlow('Where is my API code?')}
-              disabled={isLoading}
-              className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
-            >
-              [2. RAG Code Search]
-            </button>
-            <button
-              onClick={() => handleTestFlow('Search the latest React documentation.')}
-              disabled={isLoading}
-              className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
-            >
-              [3. Web Research]
-            </button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5 text-xs bg-black/60 p-1.5 border border-zinc-800/80">
-            <span className="text-zinc-300 font-bold text-[10px] flex items-center gap-1">
-              <Layers className="w-3 h-3 text-red-500" />
-              <span>COMPLEX MISSIONS:</span>
-            </span>
-            <button
-              onClick={() => handleTestFlow('Build a React dashboard.')}
-              disabled={isLoading}
-              className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
-            >
-              [4. Build React Dashboard]
-            </button>
-            <button
-              onClick={() => handleTestFlow('Fix the failing login tests.')}
-              disabled={isLoading}
-              className="retro-btn px-2 py-0.5 text-[10px] hover:border-red-600 hover:text-white"
-            >
-              [5. Debug Failing Tests]
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
       {/* ==================== AI EXECUTIVE RESPONSE & LIVE STREAMING OUTPUT ==================== */}
-      {(isLoading || briefingText || streamingChunk) && (
+      {(isLoading || briefingText || streamingChunk || (conversationHistory && conversationHistory.some(m => m.role === 'assistant' || m.role === 'bot'))) && (
         <div className="retro-box-red p-4 bg-[#09090c] border border-red-900/80 shadow-2xl space-y-3 font-mono">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-2.5">
             <div className="flex items-center gap-2">
@@ -1112,7 +1250,8 @@ export default function OpsLiveOrchestrationTab({
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText(briefingText);
+                    const textToCopy = briefingText || [...(conversationHistory || [])].reverse().find(m => m.role === 'assistant' || m.role === 'bot')?.text || '';
+                    navigator.clipboard.writeText(textToCopy);
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}
@@ -1141,7 +1280,7 @@ export default function OpsLiveOrchestrationTab({
           {/* Real-time Streaming Skeleton or Token Renderer */}
           {isLoading ? (
             <CockpitLoadingSkeleton
-              query={quickInput || activeTaskPrompt}
+              query={activeTaskPrompt}
               activeAgent={activeAgent}
               currentThought={currentThought}
               streamingChunk={streamingChunk}
@@ -1150,14 +1289,14 @@ export default function OpsLiveOrchestrationTab({
             />
           ) : (
             <div className="text-xs text-zinc-200 leading-relaxed font-mono select-text">
-              <MarkdownRenderer content={briefingText} />
+              <MarkdownRenderer content={briefingText || [...(conversationHistory || [])].reverse().find(m => m.role === 'assistant' || m.role === 'bot')?.text || ''} />
             </div>
           )}
         </div>
       )}
 
       {/* ==================== 2. MAIN AUTHORITATIVE AGENT TOPOLOGY CANVAS ==================== */}
-      <div className="relative bg-[#050505] border-2 border-zinc-800 rounded shadow-2xl overflow-hidden min-h-[580px]">
+      <div className="relative bg-[#050505] border-2 border-zinc-800 rounded shadow-2xl overflow-hidden min-h-[780px]">
         {/* Subtle scanline overlay */}
         <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.5)_50%)] bg-[length:100%_4px] z-10" />
 
@@ -1168,7 +1307,7 @@ export default function OpsLiveOrchestrationTab({
               O.P.S. v3.0 ORCHESTRATION TOPOLOGY
             </span>
             <span className="text-[10px] text-emerald-400 bg-black/90 px-2 py-0.5 border border-emerald-800/80 font-bold hidden sm:inline-block">
-              ● 13 SPECIALIZED AGENTS ACTIVE
+              ● 25 SPECIALIZED AGENTS ACTIVE
             </span>
           </div>
 
@@ -1182,7 +1321,10 @@ export default function OpsLiveOrchestrationTab({
         </div>
 
         {/* Stage Column Labels Header */}
-        <div className="absolute top-10 left-0 right-0 grid grid-cols-4 px-4 text-center z-20 pointer-events-none">
+        <div
+          className="absolute top-10 left-0 right-0 grid px-4 text-center z-20 pointer-events-none"
+          style={{ gridTemplateColumns: `repeat(${STAGE_LABELS.length}, minmax(0, 1fr))` }}
+        >
           {STAGE_LABELS.map((lbl, idx) => (
             <div key={idx} className="text-[9px] font-extrabold text-zinc-400 uppercase tracking-wider">
               {lbl}
@@ -1191,7 +1333,7 @@ export default function OpsLiveOrchestrationTab({
         </div>
 
         {/* The Live Canvas */}
-        <div ref={wrapRef} className="w-full h-[600px] min-h-[560px] relative">
+        <div ref={wrapRef} className="w-full h-[780px] min-h-[740px] relative">
           <canvas ref={canvasRef} className="block w-full h-full cursor-pointer" />
         </div>
 
@@ -1251,7 +1393,7 @@ export default function OpsLiveOrchestrationTab({
             </div>
 
             {activeMission && activeMission.steps.length > 0 ? (
-              <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-1">
+              <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-1 overscroll-contain scroll-smooth">
                 <div className="text-xs text-zinc-300 font-bold bg-zinc-950 p-2 border border-zinc-800">
                   <span className="text-red-500">GOAL: </span>
                   <span>{activeMission.goal}</span>
@@ -1327,7 +1469,7 @@ export default function OpsLiveOrchestrationTab({
               </span>
             </div>
 
-            <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[300px] pr-1 font-mono text-xs">
+            <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[300px] pr-1 font-mono text-xs overscroll-contain scroll-smooth">
               {liveEvents.length > 0 ? (
                 liveEvents.slice().reverse().map((evt, idx) => {
                   const time = new Date(evt.timestamp * 1000 || Date.now()).toLocaleTimeString();

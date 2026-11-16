@@ -44,7 +44,7 @@ class VerificationEngine:
         while time.time() < t_end:
             attempts += 1
             win_info = ApplicationController.find_running_window(window_title)
-            if win_info and win_info.get("hwnd"):
+            if win_info and (win_info.get("hwnd") or win_info.get("pid")):
                 return {
                     "verified": True,
                     "target": window_title,

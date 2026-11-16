@@ -77,17 +77,15 @@ def global_intent_router_node(state: CentralGraphState) -> Dict[str, Any]:
             except Exception as e_rag:
                 logger.warning(f"RAG document check notice: {e_rag}")
 
-        is_explicit_doc_query = False
-        if has_active_docs:
-            doc_triggers = [
-                "resume", "document", "uploaded", "ncc", "pdf", "word", "docx",
-                "this document", "my document", "in the file", "from the file",
-                "read my", "summarize my", "achievements", "according to the doc"
-            ]
-            if any(dt in q_lower for dt in doc_triggers):
-                is_explicit_doc_query = True
+        if not has_active_docs and state.get("active_documents"):
+            has_active_docs = True
+            active_docs = state.get("active_documents")
 
-        if has_active_docs and is_explicit_doc_query:
+        is_explicit_web = any(w in q_lower for w in ["search the web", "search online", "google it", "look up on google", "web research", "search web"])
+        is_greeting = q_lower in ["hi", "hello", "hey", "who are you", "what can you do", "good morning", "good evening"]
+
+        # When a document is attached, automatically query it unless explicit web search or greeting
+        if has_active_docs and not is_explicit_web and not is_greeting:
             doc_names = ", ".join([d.get("doc_name", "document") for d in active_docs])
             reason = f"Directive targets active temporary document session ({doc_names})."
             stages = STAGES_MAP.get(MODE_DOCUMENT, [])

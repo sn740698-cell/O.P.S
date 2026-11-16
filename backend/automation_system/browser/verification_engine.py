@@ -49,6 +49,7 @@ class BrowserVerificationEngine:
         verified = url_ok and title_ok and elem_ok
         return {
             "verified": verified,
+            "success": verified,
             "verification_type": "browser_page_state",
             "current_url": cur_url,
             "page_title": cur_title,

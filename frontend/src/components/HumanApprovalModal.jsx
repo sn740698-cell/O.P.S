@@ -135,7 +135,7 @@ export default function HumanApprovalModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md font-mono select-none"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-md font-mono select-none"
       onClick={handleBackdropClick}
       role="alertdialog"
       aria-modal="true"
