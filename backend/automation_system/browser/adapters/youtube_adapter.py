@@ -58,36 +58,136 @@ class YouTubeAdapter:
 
     @classmethod
     def click_first_video(cls, page: Page) -> Dict[str, Any]:
-        """Clicks the top video result in the YouTube search listing."""
-        res = InteractionEngine.click_first_result(page)
-        time.sleep(2.0)
+        """Clicks or navigates to the top video result in the YouTube search listing."""
+        t0 = time.time()
+        # 1. Dismiss overlays/consent dialogs if any
+        NavigationEngine._dismiss_overlays(page)
+
+        # 2. Wait up to 6s for video items to populate into DOM
+        try:
+            page.wait_for_selector(
+                "ytd-video-renderer, ytd-rich-item-renderer, a#video-title, a[href*='watch?v=']",
+                timeout=6000
+            )
+        except Exception:
+            pass
+
+        # 3. Extract top watch href and title directly from DOM
+        top_href = None
+        title_text = "YouTube Video"
+        try:
+            res_meta = page.evaluate("""() => {
+                const candidates = document.querySelectorAll(
+                    "ytd-video-renderer a#video-title, ytd-rich-item-renderer a#video-title, a#video-title, ytd-video-renderer a#thumbnail, a[href*='watch?v=']"
+                );
+                for (const c of candidates) {
+                    const href = c.getAttribute('href');
+                    const text = (c.innerText || c.getAttribute('title') || '').trim();
+                    if (href && href.includes('watch?v=') && !href.includes('&list=')) {
+                        return { href: href, title: text };
+                    }
+                }
+                for (const c of candidates) {
+                    const href = c.getAttribute('href');
+                    const text = (c.innerText || c.getAttribute('title') || '').trim();
+                    if (href && href.includes('watch?v=')) {
+                        return { href: href, title: text };
+                    }
+                }
+                return null;
+            }""")
+            if res_meta:
+                top_href = res_meta.get("href")
+                if res_meta.get("title"):
+                    title_text = res_meta.get("title")
+        except Exception:
+            pass
+
+        # 4. Attempt physical locator click first
+        clicked = False
+        yt_selectors = [
+            "ytd-video-renderer a#video-title",
+            "ytd-rich-item-renderer a#video-title",
+            "a#video-title",
+            "ytd-video-renderer a#thumbnail",
+            "a[href^='/watch']"
+        ]
+        for sel in yt_selectors:
+            try:
+                loc = page.locator(sel).first
+                if loc.is_visible(timeout=1500):
+                    loc_text = loc.inner_text().strip()
+                    if loc_text:
+                        title_text = loc_text
+                    loc.click(timeout=5000, force=True)
+                    clicked = True
+                    break
+            except Exception:
+                continue
+
+        time.sleep(1.5)
+
+        # 5. If not yet on a watch URL, directly navigate to extracted top_href
+        cur_url = page.url.lower()
+        if "watch?v=" not in cur_url and top_href:
+            target_url = f"https://www.youtube.com{top_href}" if top_href.startswith("/") else top_href
+            logger.info(f"Directly navigating to extracted YouTube video URL: {target_url}")
+            try:
+                page.goto(target_url, timeout=12000, wait_until="domcontentloaded")
+                clicked = True
+            except Exception as e:
+                logger.warning(f"Direct navigation to {target_url} encountered error: {e}")
+
+        # 6. Unpause video element if paused
+        try:
+            page.evaluate("""() => {
+                const v = document.querySelector('video');
+                if (v && v.paused) {
+                    v.play().catch(() => {});
+                }
+            }""")
+        except Exception:
+            pass
+
+        time.sleep(1.0)
         verif = BrowserVerificationEngine.verify_youtube_video_playing(page)
-        res["verification"] = verif
-        return res
+        success = clicked or verif.get("verified", False) or "watch?v=" in page.url.lower()
+
+        return {
+            "success": success,
+            "action": "click_first_video",
+            "site": "YouTube",
+            "clicked_title": title_text or page.title(),
+            "current_url": page.url,
+            "duration_s": round(time.time() - t0, 2),
+            "verification": verif
+        }
 
     @classmethod
     def execute_full_search_and_play(cls, page: Page, query: str) -> Dict[str, Any]:
         """
         Executes sequential flow: Open YouTube -> Search -> Click first result -> Verify playback.
         """
+        import urllib.parse
         t0 = time.time()
         logger.info(f"Starting YouTube workflow for: '{query}'")
 
-        # Step 1: Search directly or via URL
-        encoded_q = query.replace(" ", "+")
+        # Step 1: Clean query and navigate directly to search results
+        clean_q = query.strip()
+        encoded_q = urllib.parse.quote_plus(clean_q)
         search_url = f"https://www.youtube.com/results?search_query={encoded_q}"
         nav_res = NavigationEngine.navigate(page, search_url)
 
-        time.sleep(1.5)
+        time.sleep(1.2)
 
-        # Step 2: Click first result
+        # Step 2: Click first result or directly navigate to its watch URL
         click_res = cls.click_first_video(page)
 
         # Step 3: Verification
         verif = BrowserVerificationEngine.verify_youtube_video_playing(page)
 
         duration = round(time.time() - t0, 2)
-        success = click_res.get("success", False) or verif.get("verified", False)
+        success = click_res.get("success", False) or verif.get("verified", False) or "watch?v=" in page.url.lower()
 
         return {
             "success": success,

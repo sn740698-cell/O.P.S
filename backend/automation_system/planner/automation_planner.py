@@ -1962,8 +1962,8 @@ class AutomationPlanner:
                     if clean_term:
                         song_name = clean_term
 
-            has_chain_click = any(w in q_lower for w in ["open the first", "click the first", "play the first", "first result", "click on that", "click on the", "click video", "click the video", "and click", "click that video"])
-            wants_play = has_chain_click or q_lower.startswith("play ") or "play the song" in q_lower or "and play" in q_lower or ("play " in q_lower and "search" not in q_lower)
+            has_chain_click = any(w in q_lower for w in ["open the first", "click the first", "play the first", "first result", "click on that", "click on the", "click video", "click the video", "and click", "click that video", "click it", "open it", "and open", "and click it", "and play it"])
+            wants_play = has_chain_click or q_lower.startswith("play ") or "play the song" in q_lower or "and play" in q_lower or ("play " in q_lower and "search" not in q_lower) or any(w in q_lower for w in ["open on youtube", "play on youtube", "click it", "open it", "play it"])
             has_search_directive = any(w in q_lower for w in ["search for", "search", "find"]) or "search" in q_lower
 
             if wants_play:
