@@ -38,7 +38,7 @@ def verification_recovery_agent_node(state: CentralGraphState) -> Dict[str, Any]
         all_exec = (auto_results.get("desktop_results") or []) + (auto_results.get("browser_results") or [])
         for step in steps:
             s_id = step.get("step_id")
-            matching_exec = next((r for r in all_exec if r.get("step_id") == s_id), None)
+            matching_exec = next((r for r in all_exec if str(r.get("step_id", "")) == str(s_id)), None)
 
             v_spec = step.get("verification") or {}
             v_type = v_spec.get("type", "")

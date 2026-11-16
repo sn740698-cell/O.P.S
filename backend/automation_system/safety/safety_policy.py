@@ -22,6 +22,8 @@ logger = logging.getLogger("OPS.SafetyPolicy")
 
 # High-Risk Actions that MUST trigger Human-in-the-Loop approval
 CONSEQUENTIAL_ACTIONS = {
+    "launch_app": "Launch desktop application or program",
+    "open_app": "Launch desktop application or program",
     "delete_file": "Permanent deletion of file(s)",
     "delete_folder": "Permanent deletion of folder(s)",
     "install_software": "Installation of system software or packages",

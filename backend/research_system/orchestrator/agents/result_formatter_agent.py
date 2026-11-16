@@ -190,7 +190,7 @@ def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
             step_lines = []
             for s in steps:
                 s_id = s.get("step_id")
-                matching_res = next((r for r in executed_steps if r.get("step_id") == s_id), None)
+                matching_res = next((r for r in executed_steps if str(r.get("step_id", "")) == str(s_id)), None)
                 if matching_res:
                     s_ok = bool(matching_res.get("success", False))
                     s_icon = "✅" if s_ok else "❌"

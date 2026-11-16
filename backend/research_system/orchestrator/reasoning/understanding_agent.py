@@ -4,6 +4,7 @@ Connects Qwen3 1.7B with multi-stage context resolution,
 schema contract parsing, and deterministic self-correction.
 """
 
+import re
 import json
 import time
 import logging

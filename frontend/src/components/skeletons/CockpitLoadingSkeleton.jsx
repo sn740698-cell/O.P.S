@@ -88,27 +88,16 @@ export function inferInitialModeAndEngine(query = '') {
   const q = query.toLowerCase().trim();
 
   // Desktop directive intent
-  if (
-    q.includes('from the desktop') ||
-    q.includes('on the desktop') ||
-    q.includes('from desktop') ||
-    q.includes('on desktop') ||
-    q.includes('desktop app') ||
-    q.includes('open notepad') ||
-    q.includes('open vs code') ||
-    q.includes('open vscode') ||
-    q.includes('open visual studio code') ||
-    q.includes('open nvidia') ||
-    q.includes('open tor browser from the desktop') ||
-    q.includes('open calculator') ||
-    q.includes('open task manager') ||
-    q.includes('open cmd') ||
-    q.includes('open terminal') ||
-    q.includes('open powershell') ||
-    q.includes('open file explorer') ||
-    q.includes('open explorer') ||
-    q.includes('type text into')
-  ) {
+  const desktopApps = [
+    'notepad', 'vs code', 'vscode', 'visual studio code', 'code',
+    'calculator', 'calc', 'paint', 'mspaint', 'word', 'excel', 'powerpoint',
+    'cmd', 'terminal', 'powershell', 'file explorer', 'explorer',
+    'nvidia', 'nvidia app', 'tor browser from the desktop',
+    'from the desktop', 'on the desktop', 'from desktop', 'on desktop', 'desktop app'
+  ];
+
+  const hasDesktopApp = desktopApps.some((app) => q.includes(app));
+  if (hasDesktopApp && !q.includes('in browser') && !q.includes('in the browser')) {
     return {
       mode: 'DESKTOP',
       engine: 'AUTOMATION',
@@ -117,26 +106,16 @@ export function inferInitialModeAndEngine(query = '') {
   }
 
   // Browser directive intent
-  if (
-    q.includes('in the browser') ||
-    q.includes('in browser') ||
-    q.includes('open google') ||
-    q.includes('search google') ||
-    q.includes('on youtube') ||
-    q.includes('open youtube') ||
-    q.includes('play on youtube') ||
-    q.includes('open instagram') ||
-    q.includes('open github') ||
-    q.includes('open gemini') ||
-    q.includes('open chatgpt') ||
-    q.includes('open claude') ||
-    q.includes('open geohacker') ||
-    q.includes('open lovable') ||
-    q.includes('open emergent') ||
-    q.includes('open website') ||
-    q.includes('navigate to') ||
-    q.startsWith('browse ')
-  ) {
+  const browserKws = [
+    'google', 'youtube', 'instagram', 'github', 'gemini', 'chatgpt', 'claude',
+    'geohacker', 'lovable', 'emergent', 'perplexity', 'reddit', 'linkedin',
+    'twitter', 'x.com', 'whatsapp', 'telegram', 'spotify', 'coursera', 'udemy',
+    'wikipedia', 'amazon', 'netflix', 'browser', 'in browser', 'in the browser',
+    'website', 'navigate to', 'browse'
+  ];
+
+  const isBrowser = browserKws.some((kw) => q.includes(kw));
+  if (isBrowser) {
     return {
       mode: 'BROWSER',
       engine: 'AUTOMATION',
@@ -144,12 +123,20 @@ export function inferInitialModeAndEngine(query = '') {
     };
   }
 
-  // General automation / multi-application
-  if (q.includes('open ') && (q.includes(' and type') || q.includes(' and search'))) {
+  // General open / launch defaults to DESKTOP if imperative desktop-like, or BROWSER if search
+  if (q.includes('search ') || q.includes('look up ')) {
     return {
       mode: 'BROWSER',
       engine: 'AUTOMATION',
-      reason: 'User directive targets web portal automation.'
+      reason: 'User directive targets browser search.'
+    };
+  }
+
+  if (q.startsWith('open ') || q.startsWith('launch ') || q.startsWith('start ')) {
+    return {
+      mode: 'DESKTOP',
+      engine: 'AUTOMATION',
+      reason: 'User directive targets application launch and desktop execution.'
     };
   }
 

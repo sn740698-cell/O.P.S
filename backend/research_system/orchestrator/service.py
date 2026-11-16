@@ -255,6 +255,7 @@ class CentralOrchestratorService:
                 "final_answer": final_answer,
                 "approval_id": appr_id,
                 "approval_required": appr_req,
+                "approval_status": final_state.get("approval_status"),
                 "clarification_required": clarify_req,
                 "clarification_prompt": final_state.get("clarification_prompt"),
                 "duration_s": duration,

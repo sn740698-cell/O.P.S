@@ -794,7 +794,7 @@ export default function SeparatePopupCockpit() {
       }
 
       const data = await resp.json();
-      if (data.status === 'waiting_for_approval' || data.approval_id) {
+      if (data.status === 'waiting_for_approval' || data.status === 'pending_approval' || data.approval_id) {
         const apprObj = {
           approval_id: data.approval_id,
           action_type: data.action_type || (['DESKTOP', 'BROWSER', 'HYBRID AUTO'].includes(data.response_mode || data.mode || initial.mode) ? 'AUTOMATION_ACTION' : 'SYSTEM_ACTION'),

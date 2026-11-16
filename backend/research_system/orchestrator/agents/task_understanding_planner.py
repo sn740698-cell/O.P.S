@@ -120,10 +120,25 @@ def task_understanding_planner_node(state: CentralGraphState) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Task Understanding Planner error: {e}", exc_info=True)
-        emit_agent_failed(state, AGENT_ID, AGENT_NAME, GROUP_ID, str(e))
+        fallback_task_type = state.get("task_type") or "AUTOMATION"
+        fallback_auto_mode = state.get("automation_mode") or "BROWSER"
+        fallback_ans_mode = state.get("answering_mode") or "LLM"
+        fallback_plan = _build_default_plan(fallback_task_type, fallback_ans_mode, fallback_auto_mode, query)
+        emit_agent_completed(
+            state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE,
+            f"Fallback plan formulated ({len(fallback_plan)} stages).",
+            output_summary=f"Task Type: {fallback_task_type} | Mode: {fallback_auto_mode or fallback_ans_mode}",
+            duration_s=round(time.time() - t0, 2)
+        )
         return {
             "current_agent": AGENT_ID,
-            "errors": [f"Task planning error: {e}"]
+            "task_type": fallback_task_type,
+            "answering_mode": fallback_ans_mode,
+            "automation_mode": fallback_auto_mode,
+            "user_goal": query,
+            "execution_plan": fallback_plan,
+            "subtasks": fallback_plan,
+            "proposed_plan": fallback_plan
         }
 
 
