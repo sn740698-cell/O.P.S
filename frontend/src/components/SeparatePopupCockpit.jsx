@@ -1309,29 +1309,6 @@ export default function SeparatePopupCockpit() {
               {activeEngine || (isLoading ? 'ROUTING' : 'STANDBY')}
             </span>
           </span>
-          <span className="text-zinc-700">|</span>
-          <span className="flex items-center gap-1">
-            <span className="text-zinc-500 font-bold uppercase">ACTIVE MODE:</span>
-            <span className={`font-black ${
-              activeMode === 'LLM' ? 'text-blue-400' :
-              activeMode === 'WEB' ? 'text-emerald-400' :
-              activeMode === 'HYBRID' ? 'text-purple-400' :
-              activeMode === 'DOCUMENT' ? 'text-amber-400' :
-              activeMode === 'DESKTOP' ? 'text-cyan-400' :
-              activeMode === 'BROWSER' ? 'text-indigo-400' :
-              activeMode === 'COMPOSITE' ? 'text-rose-400' :
-              activeMode ? 'text-rose-400' : 'text-zinc-400'
-            }`}>
-              {activeMode || (isLoading ? 'DETECTING' : 'IDLE')}
-            </span>
-          </span>
-          <span className="text-zinc-700">|</span>
-          <span className="flex items-center gap-1">
-            <span className="text-zinc-500 font-bold uppercase">CURRENT AGENT:</span>
-            <span className="font-bold text-zinc-200">
-              {activeAgent || (isLoading ? 'Global Intent Router' : 'JARVIS Supervisor')}
-            </span>
-          </span>
         </div>
         <div className="flex items-center gap-1.5 pl-2">
           <span className="text-zinc-500 font-bold uppercase">STATUS:</span>
