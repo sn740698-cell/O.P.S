@@ -116,6 +116,74 @@ export default function SeparatePopupCockpit() {
   const abortCtrlRef = useRef(null);
   const isUserScrolledUp = useRef(false);
   const scrollRafRef = useRef(null);
+  const broadcastChannelRef = useRef(null);
+
+  // Synchronized state refs to prevent interval / effect dependency loops
+  const isHitlModalOpenRef = useRef(isHitlModalOpen);
+  isHitlModalOpenRef.current = isHitlModalOpen;
+  const pendingApprovalRef = useRef(pendingApproval);
+  pendingApprovalRef.current = pendingApproval;
+  const isLoadingRef = useRef(isLoading);
+  isLoadingRef.current = isLoading;
+
+  // Single persistent BroadcastChannel instance across component lifecycle
+  useEffect(() => {
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        broadcastChannelRef.current = new BroadcastChannel('ops_cockpit_channel');
+      }
+    } catch (_) {}
+    return () => {
+      if (broadcastChannelRef.current) {
+        try { broadcastChannelRef.current.close(); } catch (_) {}
+        broadcastChannelRef.current = null;
+      }
+    };
+  }, []);
+
+  const postCockpitBroadcast = useCallback((msg) => {
+    try {
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.postMessage(msg);
+      }
+    } catch (_) {}
+  }, []);
+
+  // Deduplicating and atomic message state updater: updates existing assistant turn in-place to prevent duplication
+  const updateOrAppendAssistantTurn = useCallback((newTurn) => {
+    setConversationHistory((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && (last.role === 'assistant' || last.role === 'bot')) {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          ...last,
+          text: newTurn.text,
+          content: newTurn.content || newTurn.text,
+          category: newTurn.category || last.category,
+          plan: newTurn.plan || last.plan,
+          citations: (newTurn.citations && newTurn.citations.length > 0) ? newTurn.citations : (last.citations || []),
+          summary: newTurn.summary || last.summary,
+          status: newTurn.status || last.status,
+          isError: newTurn.isError ?? last.isError
+        };
+        return updated;
+      }
+      return [
+        ...prev,
+        {
+          role: 'assistant',
+          text: newTurn.text,
+          content: newTurn.content || newTurn.text,
+          category: newTurn.category || 'LLM',
+          plan: newTurn.plan,
+          citations: newTurn.citations || [],
+          summary: newTurn.summary,
+          status: newTurn.status,
+          isError: newTurn.isError
+        }
+      ];
+    });
+  }, []);
 
   // Clean up any lingering SSE or aborted requests on unmount
   useEffect(() => {
@@ -141,23 +209,7 @@ export default function SeparatePopupCockpit() {
     isUserScrolledUp.current = (scrollHeight - scrollTop - clientHeight > 120);
   }, []);
 
-  // Smooth scroll helper
-  const scrollToBottom = useCallback((smooth = false) => {
-    if (!mainContainerRef.current || isUserScrolledUp.current) return;
-    const { scrollHeight, clientHeight } = mainContainerRef.current;
-    if (scrollHeight <= clientHeight) return;
-
-    if (smooth) {
-      mainContainerRef.current.scrollTo({
-        top: scrollHeight,
-        behavior: 'smooth'
-      });
-    } else {
-      mainContainerRef.current.scrollTop = scrollHeight;
-    }
-  }, []);
-
-  // Glitch-free throttled auto-scroll for streaming chunks
+  // Stable, glitch-free instant auto-scroll for streaming chunks without smooth-scroll jumping
   useEffect(() => {
     if (isUserScrolledUp.current) return;
     if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
@@ -171,14 +223,16 @@ export default function SeparatePopupCockpit() {
     };
   }, [streamingChunk, currentThought]);
 
-  // Smooth scroll only on discrete turn changes or loading state completion
+  // Instant scroll on discrete turn additions or loading state completion
   useEffect(() => {
     if (isUserScrolledUp.current) return;
-    const timer = setTimeout(() => {
-      scrollToBottom(true);
-    }, 40);
-    return () => clearTimeout(timer);
-  }, [conversationHistory.length, isLoading, scrollToBottom]);
+    if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    scrollRafRef.current = requestAnimationFrame(() => {
+      if (mainContainerRef.current && !isUserScrolledUp.current) {
+        mainContainerRef.current.scrollTop = mainContainerRef.current.scrollHeight;
+      }
+    });
+  }, [conversationHistory.length, isLoading]);
 
   // Load Active Conversation from Backend
   const loadConversation = useCallback(async (convId) => {
@@ -327,10 +381,11 @@ export default function SeparatePopupCockpit() {
                 setCurrentTaskPrompt(promptText);
                 setConversationHistory((prev) => {
                   const last = prev[prev.length - 1];
-                  if (!last || last.role !== 'user' || (last.text !== promptText && last.content !== promptText)) {
-                    return [...prev, { role: 'user', text: promptText, content: promptText }];
+                  if (last && last.role === 'user') {
+                    // Already have active user turn for this request
+                    return prev;
                   }
-                  return prev;
+                  return [...prev, { role: 'user', text: promptText, content: promptText }];
                 });
               }
               const effMode = parsed.response_mode || inferInitialModeAndEngine(promptText).mode;
@@ -369,17 +424,11 @@ export default function SeparatePopupCockpit() {
             if (parsed.event_type === 'text_chunk' && parsed.chunk) {
               setIsLoading(true);
               setStreamingChunk((prev) => prev + parsed.chunk);
-              try {
-                if (typeof BroadcastChannel !== 'undefined') {
-                  const bc = new BroadcastChannel('ops_cockpit_channel');
-                  bc.postMessage({
-                    type: 'TOKEN_CHUNK',
-                    chunk: parsed.chunk,
-                    conversationId: conversationId
-                  });
-                  bc.close();
-                }
-              } catch (_) {}
+              postCockpitBroadcast({
+                type: 'TOKEN_CHUNK',
+                chunk: parsed.chunk,
+                conversationId: conversationId
+              });
               return;
             }
 
@@ -543,22 +592,12 @@ export default function SeparatePopupCockpit() {
               setActiveEngine(finalEng);
               setActiveMode(finalMode);
               if (finalVal) {
-                setConversationHistory((prev) => {
-                  const last = prev[prev.length - 1];
-                  if (last && (last.role === 'assistant' || last.role === 'bot') && (last.text === finalVal || last.content === finalVal)) {
-                    return prev;
-                  }
-                  return [
-                    ...prev,
-                    {
-                      role: 'assistant',
-                      text: finalVal,
-                      content: finalVal,
-                      category: finalMode,
-                      citations: parsed.citations || [],
-                      summary: parsed.conversation_summary
-                    }
-                  ];
+                updateOrAppendAssistantTurn({
+                  text: finalVal,
+                  content: finalVal,
+                  category: finalMode,
+                  citations: parsed.citations || [],
+                  summary: parsed.conversation_summary
                 });
               }
               setIsLoading(false);
@@ -645,7 +684,7 @@ export default function SeparatePopupCockpit() {
     };
   }, [conversationId]);
 
-  // Periodically check for backend PENDING Human-in-the-Loop approvals
+  // Periodically check for backend PENDING Human-in-the-Loop approvals (decoupled from modal state to prevent render loops)
   const checkPendingApprovals = useCallback(async () => {
     // Guard: Do not poll without a valid conversation ID
     if (!conversationId || conversationId === 'undefined' || conversationId === 'null') {
@@ -668,7 +707,8 @@ export default function SeparatePopupCockpit() {
           setIsHitlModalOpen(true);
         } else {
           // If no pending approvals exist for this conversation, close any open modal
-          if (isHitlModalOpen && pendingApproval?.conversation_id === conversationId && (!pendingApproval?.approval_id || dismissedApprovalsRef.current.has(pendingApproval?.approval_id))) {
+          const currPending = pendingApprovalRef.current;
+          if (isHitlModalOpenRef.current && currPending?.conversation_id === conversationId && (!currPending?.approval_id || dismissedApprovalsRef.current.has(currPending?.approval_id))) {
             setIsHitlModalOpen(false);
             setPendingApproval(null);
           }
@@ -677,7 +717,7 @@ export default function SeparatePopupCockpit() {
     } catch (err) {
       // silent check
     }
-  }, [conversationId, isHitlModalOpen, pendingApproval]);
+  }, [conversationId]);
 
   // Real-Time Event & Approval Listener
   useEffect(() => {
@@ -756,16 +796,12 @@ export default function SeparatePopupCockpit() {
       localStorage.setItem('ops_active_query', prompt);
       localStorage.setItem('ops_conversation_id', conversationId);
       localStorage.setItem('ops_query_timestamp', Date.now().toString());
-      if (typeof BroadcastChannel !== 'undefined') {
-        const bc = new BroadcastChannel('ops_cockpit_channel');
-        bc.postMessage({
-          type: 'QUERY_STARTED',
-          query: prompt,
-          conversationId: conversationId,
-          timestamp: Date.now()
-        });
-        bc.close();
-      }
+      postCockpitBroadcast({
+        type: 'QUERY_STARTED',
+        query: prompt,
+        conversationId: conversationId,
+        timestamp: Date.now()
+      });
     } catch (_) {}
 
     const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
@@ -825,38 +861,22 @@ export default function SeparatePopupCockpit() {
       setActiveEngine(finalEngine);
       setActiveMode(finalCategory);
 
-      try {
-        if (typeof BroadcastChannel !== 'undefined') {
-          const bc = new BroadcastChannel('ops_cockpit_channel');
-          bc.postMessage({
-            type: 'QUERY_COMPLETED',
-            query: prompt,
-            finalAnswer: botAnswer,
-            mode: finalCategory,
-            engine: finalEngine,
-            conversationId: conversationId
-          });
-          bc.close();
-        }
-      } catch (_) {}
+      postCockpitBroadcast({
+        type: 'QUERY_COMPLETED',
+        query: prompt,
+        finalAnswer: botAnswer,
+        mode: finalCategory,
+        engine: finalEngine,
+        conversationId: conversationId
+      });
 
-      setConversationHistory((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && (last.role === 'assistant' || last.role === 'bot') && (last.text === botAnswer || last.content === botAnswer)) {
-          return prev;
-        }
-        return [
-          ...prev,
-          {
-            role: 'assistant',
-            text: botAnswer,
-            content: botAnswer,
-            category: finalCategory,
-            plan: data.plan,
-            citations: data.citations,
-            summary: data.conversation_summary
-          }
-        ];
+      updateOrAppendAssistantTurn({
+        text: botAnswer,
+        content: botAnswer,
+        category: finalCategory,
+        plan: data.plan || data.execution_plan,
+        citations: data.citations || [],
+        summary: data.conversation_summary
       });
 
       retroSoundEngine.playBeep(520, 0.08);
@@ -1090,17 +1110,13 @@ export default function SeparatePopupCockpit() {
         setActiveEngine(finalEngine);
         setActiveMode(finalCategory);
 
-        setConversationHistory((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            text: botAnswer,
-            content: botAnswer,
-            category: finalCategory,
-            plan: data.plan || data.step_results,
-            summary: data.conversation_summary
-          }
-        ]);
+        updateOrAppendAssistantTurn({
+          text: botAnswer,
+          content: botAnswer,
+          category: finalCategory,
+          plan: data.plan || data.step_results,
+          summary: data.conversation_summary
+        });
         retroSoundEngine.playBeep(780, 0.12);
       } else {
         const resp = await fetch(
@@ -1121,16 +1137,10 @@ export default function SeparatePopupCockpit() {
         localStorage.setItem('ops_cockpit_conversation_id', nextConvId);
         localStorage.setItem('ops_conversation_id', nextConvId);
 
-        try {
-          if (typeof BroadcastChannel !== 'undefined') {
-            const bc = new BroadcastChannel('ops_cockpit_channel');
-            bc.postMessage({
-              type: 'SESSION_RESET',
-              newConversationId: nextConvId
-            });
-            bc.close();
-          }
-        } catch (_) {}
+        postCockpitBroadcast({
+          type: 'SESSION_RESET',
+          newConversationId: nextConvId
+        });
         setConversationHistory([]);
         setStreamingChunk('');
         setAttachedDocs([]);
