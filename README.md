@@ -1,253 +1,173 @@
-# ⚡ O.P.S. 2.0 — Over-Engineered Programmed System
+# ⚡ O.P.S. — Autonomous Workstation Operating System
 
-> *"Your personal AI built to do more than it should."*
+> *"An actuation-first operating system for Windows and the Web, bridging local cognitive reasoning with physical desktop and browser execution."*
 
-![O.P.S. Main Dashboard](assets/screenshots/dashboard_main.png)
+![O.P.S. Ambient Operating System](assets/screenshots/ops_ambient_dashboard_live.jpg)
 
-[![LangGraph](https://img.shields.io/badge/Orchestrator-LangGraph-orange?style=for-the-badge&logo=python)](https://github.com/langchain-ai/langgraph)
+[![LangGraph](https://img.shields.io/badge/Orchestrator-LangGraph%20v3.0-orange?style=for-the-badge&logo=python)](https://github.com/langchain-ai/langgraph)
 [![React 18](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-blue?style=for-the-badge&logo=react)](https://react.dev/)
-[![Django](https://img.shields.io/badge/Backend-Django%20REST-green?style=for-the-badge&logo=django)](https://www.djangoproject.com/)
-[![Ollama](https://img.shields.io/badge/Local%20Models-Qwen3%20%7C%20Ollama-purple?style=for-the-badge)](https://ollama.com/)
+[![Django](https://img.shields.io/badge/Backend-Django%205%20REST-green?style=for-the-badge&logo=django)](https://www.djangoproject.com/)
+[![Ollama](https://img.shields.io/badge/Local%20Models-Tri--Model%20Fleet-purple?style=for-the-badge)](https://ollama.com/)
 [![Pinecone](https://img.shields.io/badge/Vector%20DB-Pinecone%20Serverless-black?style=for-the-badge)](https://www.pinecone.io/)
-[![Playwright](https://img.shields.io/badge/Automation-Playwright%20%2B%20Pywinauto-red?style=for-the-badge)](https://playwright.dev/)
+[![Playwright](https://img.shields.io/badge/Automation-Playwright%20Chromium-red?style=for-the-badge)](https://playwright.dev/)
+[![Pywinauto](https://img.shields.io/badge/Desktop%20Automation-Pywinauto%20UIA-darkblue?style=for-the-badge)](https://pywinauto.readthedocs.io/)
 [![Crawlee](https://img.shields.io/badge/Web%20Crawler-Crawlee%20%2B%20BS4-brightgreen?style=for-the-badge)](https://crawlee.dev/python/)
 
 ---
 
-## 🌟 What is O.P.S. 2.0?
+## 🌟 What is O.P.S.?
 
-**O.P.S. (Over-Engineered Programmed System) 2.0** is a local-first, autonomous personal AI operating system engineered for your workstation. Unlike standard chatbots that only produce text, O.P.S. 2.0 acts as an intelligent digital co-pilot capable of understanding natural language directives, selecting the optimal execution strategy, performing deep research, reasoning locally, and **autonomously executing complex workflows across Windows desktop applications and web browsers**.
+**O.P.S. (Over-Engineered Programmed System)** is a local-first, autonomous personal AI operating system engineered for your workstation. Unlike standard chatbots that only produce text, O.P.S. acts as an intelligent digital co-pilot capable of understanding natural language directives, selecting the optimal execution strategy, performing deep research, reasoning locally, and **autonomously executing complex workflows across Windows desktop applications and web browsers**.
 
-Whether you need complex programming logic, verified live web intelligence, hands-free desktop automation, or temporary document analysis, O.P.S. 2.0 handles it through a **hierarchical multi-agent automation architecture** coordinated by LangGraph, rendering real-time execution telemetry through an ultra-responsive, retro-futuristic **Pop-up Cockpit HUD**.
+Whether you need complex programming logic, verified live web intelligence, hands-free desktop automation, or temporary document analysis, O.P.S. handles it through a **25-agent hierarchical automation architecture** coordinated by LangGraph, rendering real-time execution telemetry through an ultra-responsive, retro-futuristic **Pop-up Cockpit HUD**.
 
 ---
 
-### 🧠 The Core Identity: What O.P.S. Really Is
+## 🧠 The Engineering Philosophy: What O.P.S. Really Is
 
 At its core, **O.P.S. is not a conversational chatbot — it is an Actuation Operating System for Workstations.**
 
 Most modern AI systems stop at text generation: you ask them to inspect a webpage, write code, or open an application, and they return conversational Markdown describing what *you* should do. O.P.S. rejects this passive paradigm in favor of **sovereign workstation actuation**:
 
 1. **Actuation Over Narration (Doing vs. Talking)**  
-   Language is treated as a high-level command bus. When you instruct O.P.S. to *"Open VS Code and write hello world"* or *"Navigate to YouTube and play a song"*, it doesn't give you instructions. It decomposes your intent into atomic pipeline steps, attaches to existing OS handles or launches single-instance processes, actuates real UI controls (keyboard/mouse/DOM), and validates the resulting system state.
+   Language is treated as a high-level command bus. When you instruct O.P.S. to *"Open VS Code"*, *"Open Notepad and type..."*, or *"Open YouTube and play a song"*, it does not output hypothetical instructions. It decomposes your intent into atomic pipeline steps, attaches to existing OS handles or launches single-instance processes, actuates real UI controls (keyboard, mouse, DOM), and validates the resulting system state.
 
 2. **Workstation Sovereignty & Local-First Privacy**  
    O.P.S. is built from the ground up to respect operator privacy and local hardware. Utilizing lightweight quantized local models (`Qwen3 0.6B` for sub-100ms routing, `Qwen3 1.7B` for structured reasoning, `Llama 3.2 1B` for execution orchestration) hosted via Ollama, private queries and desktop interactions never leak out to third-party cloud servers.
 
-3. **Deterministic Verifiability (No Fake Completions)**  
+3. **Deterministic Verifiability (Refusing Fake Completions)**  
    A major failure mode of contemporary agentic frameworks is "optimistic hallucination" — reporting success without verifying whether an action actually took effect. O.P.S. enforces empirical state verification across every step: PID detection, window handle focus verification, Playwright DOM element checks, and network response statuses. If a target application fails to respond or an action cannot be verified, it is honestly reported as `PARTIAL` or `FAILED`.
 
-4. **Human-in-the-Loop (HITL) Safety Governance**  
-   Real desktop automation has real-world consequences. O.P.S. embeds a deterministic safety layer (`SafetyPolicy`) that intercepts consequential operations — such as launching native executables, modifying system files, or navigating untrusted URLs — and halts execution until authorized by the human operator through the HUD modal.
+4. **Single-Instance Process Discipline & Multi-Tab Isolation**  
+   Desktop automation features intelligent process deduplication: if an application (like VS Code or Notepad) is already running, O.P.S. focuses the existing window rather than spawning redundant instances. In browser automation, O.P.S. spawns independent tabs for each web service (Google, YouTube, GitHub, Instagram, GeoHacker, etc.) without overwriting or destroying previously open work.
 
-5. **Avionics Cockpit Paradigm vs. Chat Bubble Clutter**  
+5. **Human-in-the-Loop (HITL) Safety Governance**  
+   Real desktop automation has real-world consequences. O.P.S. embeds a deterministic safety layer (`SafetyPolicy`) that intercepts consequential operations — such as launching native executables, modifying system files, or navigating untrusted URLs — and halts execution until authorized by the human operator through the Cockpit HUD modal.
+
+6. **Avionics Cockpit HUD Paradigm vs. Chat Bubble Clutter**  
    Instead of traditional messaging bubbles that obscure operational state, O.P.S. delivers a dedicated tactical Pop-up Cockpit HUD. It displays live engine routing (`ANSWERING`, `AUTOMATION`, `COMPOSITE`), step-by-step pipeline execution, empirical status badges, and continuous discussion summaries in a low-latency, cybernetic interface.
 
 ---
 
-## 📸 User Interface Gallery
+## 📸 Master UI & Live Execution Showcase
 
-| **Ambient Operating System Dashboard** | **13-Component Agent Topology Canvas** |
-| :---: | :---: |
-| ![Ambient OS Dashboard](assets/screenshots/dashboard_main.png) | ![Agent Topology](assets/screenshots/agent_orchestration_topology.png) |
-| *Full-screen mission control with Tri-Model telemetry & Ops Heart* | *Live HTML5 canvas with neural axons and glint telemetry* |
+Below are genuine, live operational executions of O.P.S. captured directly from our workstation deployment:
 
-| **Desktop Automation (Pywinauto)** | **Browser Automation (Playwright)** |
-| :---: | :---: |
-| ![Desktop Automation](assets/screenshots/desktop_automation_notepad.png) | ![Browser Automation](assets/screenshots/browser_automation_youtube.png) |
-| *Native Windows Notepad launch, keyboard actuation & verification* | *Playwright Chromium navigation, YouTube search & playback* |
+### 1. Workstation Mission Control & Multi-Agent Neural Topology
 
-| **Temporary Document RAG Intelligence** | **Standalone Pop-up Cockpit HUD** |
+| **Ambient AI Operating System Dashboard** | **O.P.S. v3.0 Live Orchestration Topology** |
 | :---: | :---: |
-| ![Temporary Document RAG](assets/screenshots/temporary_document_rag.png) | ![Pop-up Cockpit HUD](assets/screenshots/popup_cockpit_answering_modes.png) |
-| *Grounded Word & PDF QA with Pinecone vector retrieval* | *Continuous desktop overlay with LLM & Web modes* |
+| ![Ambient AI OS Dashboard](assets/screenshots/ops_ambient_dashboard_live.jpg) | ![25-Agent Orchestration Topology](assets/screenshots/ops_orchestration_topology_25agents.jpg) |
+| *Full-screen workstation dashboard displaying real-time Tri-Model telemetry (`Qwen3 0.6B`, `Qwen3 1.7B`, `Llama 3.2 1B Instruct`), active directive monitor, and the pulsing biological Ops Heart canvas.* | *Interactive HTML5 neural canvas displaying 25 active specialized agents across 5 hierarchical groups with live action potential glints streaming across synaptic axons.* |
 
 ---
 
-## 🚀 What's New in O.P.S. 2.0: Multi-Agent Automation System
+### 2. Cognitive Answering Fleets (Local LLM, Web Research & Document RAG)
 
-The latest O.P.S. 2.0 upgrade introduces a major architectural leap forward: a **hierarchical, multi-agent automation engine** that splits macroscopic automation requests into specialist sub-agents, coordinated by superior fleet commanders, backed by a DAG-based hybrid scheduler, a 6-stage reasoning pipeline, and a redesigned web crawling engine.
+| **Local LLM Answering Mode** | **Live Web Research Mode** |
+| :---: | :---: |
+| ![LLM Mode Response](assets/screenshots/ops_cockpit_llm_mode_live.jpg) | ![Web Mode Response](assets/screenshots/ops_cockpit_web_mode_live.jpg) |
+| **Directive:** *"Display information to me about the LLM, the RAG, and also about AI engineering."*<br>• Local sub-second token streaming using `Qwen3 1.7B`<br>• Zero internet dependency, strictly offline conceptual reasoning<br>• High-density tactical Markdown typography | **Directive:** *"Search the web and list me the latest AI news for Google, ChatGPT, and Anthropic as of September 2026."*<br>• Crawlee + BeautifulSoup multi-page web crawler<br>• Cross-domain anti-hallucination fact verification<br>• Direct citation grounding with verified evidence tags |
+
+| **Ephemeral Document RAG Mode (Pinecone Serverless)** |
+| :---: |
+| ![Document RAG Mode Response](assets/screenshots/ops_cockpit_document_rag_live.jpg) |
+| **Directive:** Document interrogation on uploaded `Suraj_MN_Resume.pdf`<br>• 768-dimensional local vector embeddings via `nomic-embed-text`<br>• Exact page-level evidence attribution (`[1] Suraj_MN_Resume.pdf (Page 1)`)<br>• Guaranteed ephemeral lifecycle: full Pinecone index wipe upon session reset |
+
+---
+
+### 3. Autonomous Browser Automation Fleet (Playwright)
+
+| **Autonomous YouTube Playback** | **Dynamic Multi-Tab Google Search** |
+| :---: | :---: |
+| ![Browser Automation YouTube](assets/screenshots/ops_browser_automation_youtube_live.jpg) | ![Browser Automation Google](assets/screenshots/ops_browser_automation_google_live.jpg) |
+| **Directive:** *"Open YouTube and play the Kalyani song."*<br>• Playwright Chromium context management<br>• Locates input field, enters query, and clicks first matching video result<br>• Real-time video playback verified live on the workstation | **Directive:** *"Open Google and search Punitha Rajkumar."*<br>• Creates an isolated browser tab without clobbering active tabs<br>• Enters query, navigates to Google results, and asserts DOM load<br>• Verified empirical telemetry in the Pop-up Cockpit |
+
+---
+
+### 4. Autonomous Desktop Automation Fleet (Pywinauto)
+
+| **Visual Studio Code Single-Instance Launch** | **Native Windows Notepad Keystroke Actuation** |
+| :---: | :---: |
+| ![Desktop Automation VS Code](assets/screenshots/ops_desktop_automation_vscode_live.jpg) | ![Desktop Automation Notepad](assets/screenshots/ops_desktop_automation_notepad_live.jpg) |
+| **Directive:** *"Open VS Code."*<br>• Process enumeration & handle latching via Pywinauto<br>• Single-instance discipline: brings existing window to focus without duplicates<br>• Verified PID and window foreground state | **Directive:** *"Open Notepad and type: Hey OpS, how are you? I'm doing great."*<br>• Launches/focuses Notepad editor window<br>• Actuates native keyboard input via UIA `ValuePattern.SetValue`<br>• Empirically verifies entered text within editor control |
+
+---
+
+## 🏛️ The 25-Agent Hierarchical Architecture
+
+O.P.S. organizes 25 specialized autonomous agents across **5 distinct command tiers**, as visualized on our live neural orchestration canvas:
 
 ```
-                                  ┌─────────────────────────────┐
-                                  │   USER NATURAL DIRECTIVE    │
-                                  └──────────────┬──────────────┘
-                                                 │
-                                                 ▼
-                                  ┌─────────────────────────────┐
-                                  │ [A01] Global Intent Router  │  <-- Qwen3 0.6B Fast (<100ms)
-                                  └──────────────┬──────────────┘
-                                                 │
-                                                 ▼
-                                  ┌─────────────────────────────┐
-                                  │ [A02] Task Understanding &  │  <-- 6-Stage Reasoning Pipeline
-                                  │       Planning Engine       │      (Context, Engine, Invariants)
-                                  └──────────────┬──────────────┘
-                                                 │
-                  ┌──────────────────────────────┼──────────────────────────────┐
-                  ▼                              ▼                              ▼
-      ┌───────────────────────┐      ┌───────────────────────┐      ┌───────────────────────┐
-      │   ANSWERING ENGINE    │      │  AUTOMATION ENGINE    │      │  COMPOSITE WORKFLOW   │
-      └───────────┬───────────┘      └───────────┬───────────┘      └───────────┬───────────┘
-                  │                              │                              │
-         ┌────────┴────────┐            ┌────────┴────────┐                     │
-         ▼                 ▼            ▼                 ▼                     │
-  [A08] Local LLM    [A09] Web R&D   [BSA] Browser    [DSA] Desktop             │
-  (Qwen3 1.7B)       (Crawlee+BS4)   Superior Fleet   Superior Fleet            │
-                           │         (B01 – B08)      (D01 – D08)               │
-                           │                  \        /                        │
-                           │             ┌─────▼──────▼─────┐                   │
-                           │             │ [A16] Hybrid DAG │<──────────────────┘
-                           │             │   Coordinator    │
-                           │             └─────────┬────────┘
-                           │                       │
-                           ▼                       ▼
-                     [A14] Grounded          [A20] HITL Safety &
-                     Synthesis               [A21] Verification
-                           \                       /
-                            ▼                     ▼
-                       ┌───────────────────────────────┐
-                       │  [A22] Result Formatter /     │
-                       │        O.P.S. Cockpit HUD     │
-                       └───────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        O.P.S. v3.0 NEURAL ORCHESTRATION TOPOLOGY                       │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ GROUP 01: GLOBAL INTELLIGENCE                                                         │
+│   ├── [G01] Global Intent Router          <-- Sub-100ms task classification (Qwen3 0.6B)│
+│   └── [G02] Supervisor Agent               <-- Macro-plan decomposition & fleet routing │
+│                                                                                        │
+│ GROUP 02: ANSWERING ENGINE                                                            │
+│   ├── [A01] Reasoning Agent               <-- Local deep conceptual reasoning (Qwen3)   │
+│   ├── [A02] Research Fleet                <-- Crawlee + BS4 multi-page web crawling     │
+│   ├── [A03] Verification Agent             <-- Anti-hallucination evidence cross-checker│
+│   └── [A04] Synthesis Agent              <-- Coherent multi-source citation synthesizer│
+│                                                                                        │
+│ GROUP 03: BROWSER SPECIALIST FLEET (Playwright)                                       │
+│   ├── [B01] B1: Lifecycle Agent           <-- Persistent Chromium context initialization│
+│   ├── [B02] B2: Tab Manager               <-- Multi-tab isolation, indexing & switching │
+│   ├── [B03] B3: Resolution Agent          <-- Service & URL resolution (YouTube, Google)│
+│   ├── [B04] B4: Navigation Agent          <-- DOMContentLoaded & network idle assertion │
+│   ├── [B05] B5: Interaction Agent         <-- Element locating, safe click & scrolling  │
+│   ├── [B06] B6: Form & Data Entry         <-- Form population & validation assertions   │
+│   └── [B07] B7: Verification Agent        <-- Post-action DOM & page title verifier     │
+│                                                                                        │
+│ GROUP 04: DESKTOP SPECIALIST FLEET (Pywinauto)                                        │
+│   ├── [D01] D1: Discovery Agent           <-- Process enumeration & window handle scan  │
+│   ├── [D02] D2: App Lifecycle             <-- Single-instance Win32 & UWP launch control│
+│   ├── [D03] D3: Window Manager            <-- Window foreground latching & focus toggle │
+│   ├── [D04] D4: GUI Interaction           <-- Accessibility UIA tree traversal & click  │
+│   ├── [D05] D5: Keyboard & Input          <-- ValuePattern text injection & hotkeys     │
+│   ├── [D06] D6: File & Explorer           <-- Atomic directory & file read/write ops    │
+│   └── [D07] D7: Code Generator            <-- AST-verified script & code synthesis      │
+│                                                                                        │
+│ GROUP 05: COORDINATION & DELIVERY                                                     │
+│   ├── [C01] Safety Gate                   <-- HITL approval gate for consequential acts │
+│   ├── [C02] Task Bridger                  <-- Cross-fleet hybrid DAG scheduler          │
+│   └── [C03] Delivery Agent                <-- Result Formatter & Cockpit HUD delivery   │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🤖 The Hierarchical Multi-Agent Fleets
+## 🤖 The Specialist Fleets in Detail
 
-### 1. 🌐 Browser Superior Fleet (`B01–B08`)
+### 1. 🌐 Browser Specialist Fleet (`B01–B07`)
 Led by the `BrowserSuperiorAgent`, this fleet orchestrates resilient web interaction through a dedicated thread-affined Playwright worker (`OPS-PlaywrightWorker`), preventing cross-thread event loop deadlocks:
 
 | Agent ID | Sub-Agent Specialist | Implementation File | Key Operational Responsibilities |
 |:---:|:---|:---|:---|
 | **B01** | **Browser Lifecycle** | `b1_lifecycle_agent.py` | Launches, manages, reuses, and gracefully terminates persistent Chromium contexts with isolated user data profiles. |
-| **B02** | **Tab Management** | `b2_tab_agent.py` | Creates, tracks, indexes, switches, and closes browser tabs with multi-page state preservation. |
-| **B03** | **Navigation** | `b3_navigation_agent.py` | Dispatches URLs, manages back/forward history, handles reloads, and asserts `domcontentloaded` / network idle states. |
-| **B04** | **Web Interaction** | `b4_interaction_agent.py` | Locates elements, handles auto-scrolling into viewports, performs safe clicks, hovers, and multi-option selection. |
-| **B05** | **Form & Data Entry** | `b5_form_agent.py` | Fills input fields, validates entered values via DOM inspection, toggles checkboxes/radios, and holds submission pending approval. |
-| **B06** | **Download & Transfer** | `b6_transfer_agent.py` | Tracks active file downloads, verifies byte counts and MIME types on disk, and handles multipart file uploads. |
+| **B02** | **Tab Manager** | `b2_tab_agent.py` | Creates, tracks, indexes, switches, and closes browser tabs with multi-page state preservation. |
+| **B03** | **Resolution Agent** | `b3_resolution_agent.py` | Resolves arbitrary web services (Google, YouTube, GitHub, Instagram, GeoHacker, lovable.ai, etc.) to canonical URLs. |
+| **B04** | **Navigation Agent** | `b4_navigation_agent.py` | Dispatches URLs, manages back/forward history, handles reloads, and asserts `domcontentloaded` / network idle states. |
+| **B05** | **Interaction Agent** | `b5_interaction_agent.py` | Locates elements, handles auto-scrolling into viewports, performs safe clicks, hovers, and multi-option selection. |
+| **B06** | **Form & Data Entry** | `b6_form_agent.py` | Fills input fields, validates entered values via DOM inspection, toggles checkboxes/radios, and holds submission pending approval. |
 | **B07** | **Browser Verification** | `b7_verification_agent.py` | Asserts post-action states (URL validation, DOM presence checks, page title confirmation, visual checks). |
-| **B08** | **Browser Recovery** | `b8_recovery_agent.py` | Catches transient navigation errors, handles timeouts with exponential backoff, dismisses unexpected dialogs, and restarts contexts when stalled. |
 
-### 2. 🖥️ Desktop Superior Fleet (`D01–D08`)
+---
+
+### 2. 🖥️ Desktop Specialist Fleet (`D01–D07`)
 Led by the `DesktopSuperiorAgent`, this fleet manages native Windows operating system tasks via Pywinauto (Win32 and UI Automation backends) alongside Windows shell hooks:
 
 | Agent ID | Sub-Agent Specialist | Implementation File | Key Operational Responsibilities |
 |:---:|:---|:---|:---|
-| **D01** | **Application Control** | `d1_app_agent.py` | Launches standard Win32 executables and Windows 11 packaged UWP apps (`shell:AppsFolder`), handles window reuse, and manages clean termination. |
-| **D02** | **Window Management** | `d2_window_agent.py` | Locates window handles (`hwnd`), brings targets to the foreground, toggles focus, minimizes, maximizes, and restores windows. |
-| **D03** | **GUI Interaction** | `d3_gui_agent.py` | Traverses accessibility control trees, inspects UIA elements, clicks native buttons, and navigates complex dialog menus. |
-| **D04** | **File & Folder** | `d4_file_agent.py` | Normalizes paths, creates directories atomically, writes files, performs renames, moves, and manages approved deletions. |
-| **D05** | **Keyboard & Input** | `d5_input_agent.py` | Performs reliable text entry via UIA `ValuePattern.SetValue` with fallback keyboard emulation, executing hotkeys (`Ctrl+S`, `Enter`). |
-| **D06** | **Code Generation** | `d6_code_agent.py` | Synthesizes Python, JavaScript, HTML, and CSS source code using `Qwen3 1.7B`, validates syntax via AST parsers, and writes clean files. |
-| **D07** | **Desktop Verification** | `d7_verification_agent.py` | Performs deterministic verification of filesystem states (`os.path.exists`, non-zero size), window existence, and running processes (`psutil`). |
-| **D08** | **Desktop Recovery** | `d8_recovery_agent.py` | Handles missing window titles, recovers from locked input patterns, gracefully clears stuck dialogs, and manages retry attempts. |
-
-### 3. 🔀 Hybrid Automation Coordinator (`A16–A19`)
-For workflows requiring both desktop and browser capabilities (e.g., searching for documentation online, downloading a file, creating a project folder, and opening it in VS Code):
-- **DAG Dependency Graph (`DAGTaskGraph`)**: Parses multi-step workflows into directed acyclic dependency trees, automatically resolving prerequisite tasks before downstream actions start.
-- **Resource Locking**: Employs hardware and application locks (`LOCK_BROWSER`, `LOCK_DESKTOP`, `LOCK_FILESYSTEM`) to prevent concurrent race conditions.
-- **Concurrent Thread Dispatch**: Dispatches independent tasks (e.g., launching an IDE while navigating to documentation) concurrently across a managed `ThreadPoolExecutor`.
-- **Live State Tracker (`ExecutionTracker`)**: Tracks per-subtask execution status, start/end timestamps, step outcomes, and error payloads.
-
-### 4. 🕷️ Redesigned Web Research Engine (Crawlee + BeautifulSoup4)
-O.P.S. 2.0 replaces basic HTTP scraping with an enterprise-grade retrieval pipeline:
-- **Crawlee Integration (`crawling_worker.py`)**: Utilizes `crawlee.beautifulsoup_crawler.BeautifulSoupCrawler` for concurrent, polite, and resilient web crawls with automatic header rotation and redirect handling.
-- **BeautifulSoup4 Extraction (`content_extraction_worker.py`)**: Strips scripts, ads, and boilerplate; parses semantic headings (`h1`–`h4`), content paragraphs, markdown tables, and authoritative links.
-- **Canonical Source Grounding (`[S1]`, `[S2]`)**: Compiles structured evidence chunks with permanent citation identifiers, verified by the `EvidenceValidationAgent` to prevent synthetic hallucinations.
-
-### 5. 🧠 6-Stage Prompt Understanding & Reasoning Pipeline
-The `AdvancedPromptUnderstandingAgent` replaces simple keyword matching with an intelligent 6-stage pipeline:
-1. **Context Resolution (`context_resolver.py`)**: Resolves pronouns, follow-ups, and accumulated constraints across conversational turns.
-2. **Intent & Goal Decomposition (`prompt_engine.py`)**: Uses `Qwen3 1.7B` to decompose prompts into structured action contracts.
-3. **Entity & Parameter Extraction**: Isolates target applications, paths, URLs, file names, programming languages, and flags.
-4. **Constraint Enforcement**: Guarantees safety rules (e.g., `do not overwrite`, `read-only`, `preservation of existing code`).
-5. **Mathematical Invariant Validation (`validator.py`)**: Enforces deterministic routing invariants across task types (`ANSWER`, `AUTOMATION`, `COMPOSITE`, `CLARIFICATION`).
-6. **Clarification Triggering**: Halts execution and politely requests clarification if critical parameters (such as ambiguous project paths) are missing.
-
----
-
-## 🏛️ The Central 13 LangGraph Orchestrators
-
-At the core of O.P.S. 2.0 is the centralized, stateful **LangGraph multi-agent architecture**:
-
-![13-Agent Orchestration Topology](assets/screenshots/agent_orchestration_topology.png)
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        O.P.S. 2.0 MULTI-AGENT FLEET                     │
-├────────────────────────────────────────────────────────────────────────┤
-│ GROUP 01: GLOBAL INTELLIGENCE                                          │
-│   ├── [01] Global Intent Router (Qwen3 0.6B Fast Classifier)          │
-│   └── [02] Task Understanding & Planner (Qwen3 1.7B Orchestrator)      │
-│                                                                        │
-│ GROUP 02: ANSWERING ENGINE                                             │
-│   ├── [03] Local Reasoning Agent (Qwen3 1.7B Local Reasoner)          │
-│   ├── [04] Web Research Agent (Crawlee + BeautifulSoup4 Pipeline)      │
-│   ├── [05] Evidence Validation Agent (Cross-Domain Fact Verifier)      │
-│   └── [06] Answer Synthesis Agent (Multi-Source Coherence Engine)      │
-│                                                                        │
-│ GROUP 03: AUTOMATION ENGINE                                            │
-│   ├── [07] Automation Planner (Deterministic Action Sequencer)         │
-│   ├── [08] Desktop Superior Agent (Pywinauto D01–D08 Fleet)            │
-│   ├── [09] Browser Superior Agent (Playwright B01–B08 Fleet)          │
-│   ├── [10] Automation Verification & Recovery (Post-Action Verifier)   │
-│   └── [11] Human-in-the-Loop Safety Controller (Security Gatekeeper)   │
-│                                                                        │
-│ GROUP 04: COMPOSITE COORDINATION & DELIVERY                            │
-│   ├── [12] Composite Task Coordinator (Research + Automation Bridge)   │
-│   └── [13] Result Formatter / O.P.S. Delivery Engine                   │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🚀 Core Capabilities
-
-### 1. 💡 Answering Engine (3 Adaptive Modes)
-
-![Pop-up Cockpit HUD Answering Modes](assets/screenshots/popup_cockpit_answering_modes.png)
-
-- **LLM Mode**: Uses the local `Qwen3 1.7B` model for instant, completely offline answers to conceptual, mathematical, and programming queries. Zero telemetry leaves your machine.
-- **Web Mode**: Discovers fresh external intelligence via DuckDuckGo, crawls pages using **Crawlee**, extracts structured content with **BeautifulSoup4**, cross-verifies facts, and delivers structured answers with clickable references (`[S1]`, `[S2]`).
-- **Hybrid Mode**: Simultaneously forks execution to local reasoning and live web research, converging at the synthesizer to produce deep, context-rich analysis grounded in verified facts.
-
-### 2. 🤖 Dual-Engine Workstation Automation
-
-#### A. Desktop Automation (Pywinauto & Win32 Fleet)
-Hands-free control over native Windows software (`Notepad`, `Calculator`, `VS Code`, `File Explorer`, system dialogs, custom applications).
-
-![Desktop Automation Notepad](assets/screenshots/desktop_automation_notepad.png)
-
-#### B. Browser Automation (Playwright Fleet)
-Headless or headed Chromium automation capable of navigating complex modern web apps, clicking interactive controls, searching YouTube, playing requested media, and downloading files.
-
-![Browser Automation YouTube](assets/screenshots/browser_automation_youtube.png)
-
-#### C. Hybrid & Composite Workflows
-Seamlessly executes cross-engine tasks, such as finding a release number online, downloading the installer in a browser, creating directories, and launching software locally.
-
-### 3. 📄 Temporary Document RAG with Pinecone
-
-![Temporary Document RAG Intelligence](assets/screenshots/temporary_document_rag.png)
-
-- **Supported Documents**: Accepts PDF (`.pdf`) and Microsoft Word (`.docx`, `.doc`) documents up to 25 MB directly through the Cockpit paperclip button.
-- **Local Dense Embeddings**: Generates 768-dimensional vector embeddings locally using `nomic-embed-text` in `~112 ms`.
-- **Serverless Vector Indexing**: Indexes chunks into conversation-isolated namespaces in Pinecone (`ops-temporary-rag`).
-- **Strict Grounding & Honest Refusal**: Answers strictly cite document page and section numbers, and explicitly refuse to extrapolate when information is absent.
-- **Guaranteed Ephemeral Deletion**: In-memory chunk text and Pinecone vectors are permanently wiped upon clicking **Refresh**, confirmed by `describe_index_stats (vector_count == 0)`.
-
-### 4. 🎛️ Dynamic Pop-up Cockpit HUD
-- **Tactical Retro Design**: Monospaced font, glowing status indicators, sound effects, and floating HUD styling.
-- **Draggable Header**: Click and drag the tactical top bar to move the Cockpit anywhere across multiple displays.
-- **Dynamic 8-Axis Resizing**: Fluidly resize the window from 400×520 px to 1600×1800 px with a live HUD dimension badge.
-- **Global Hotkeys**: Quick-access shortcuts (`Ctrl + Alt` to open, `Ctrl + Alt + Space` to close).
-- **Real-Time Token Streaming**: Text typewriter SSE stream delivers words as they are generated.
-
-### 5. 🛡️ Human-in-the-Loop Safety Controller
-- **Security Interception**: Destructive commands (file system modifications, bulk deletions, process termination) are automatically paused by Agent 11.
-- **Approval Queue**: Renders an interactive confirmation dialog requiring explicit user clearance (`CONFIRM` or `DENY`) before physical execution.
+| **D01** | **Discovery Agent** | `d1_discovery_agent.py` | Enumerates active running processes (`psutil`) and active window handles (`win32gui`) to discover application states. |
+| **D02** | **App Lifecycle** | `d2_lifecycle_agent.py` | Launches Win32 executables and Windows UWP packaged apps, enforcing single-instance launch deduplication. |
+| **D03** | **Window Manager** | `d3_window_agent.py` | Locates window handles (`hwnd`), brings target windows to the foreground, toggles focus, minimizes, and maximizes. |
+| **D04** | **GUI Interaction** | `d4_gui_agent.py` | Traverses accessibility control trees, inspects UIA elements, clicks native buttons, and navigates menus. |
+| **D05** | **Keyboard & Input** | `d5_input_agent.py` | Reliable text entry via UIA `ValuePattern.SetValue` with fallback keyboard emulation, executing hotkeys (`Enter`, `Ctrl+S`). |
+| **D06** | **File & Explorer** | `d6_file_agent.py` | Normalizes paths, creates directories atomically, writes files, performs renames, moves, and manages approved operations. |
+| **D07** | **Code Generator** | `d7_code_agent.py` | Synthesizes Python, JavaScript, HTML, and CSS source code using `Qwen3 1.7B`, validates syntax via AST parsers, and executes scripts. |
 
 ---
 
@@ -256,9 +176,9 @@ Seamlessly executes cross-engine tasks, such as finding a release number online,
 | Layer | Technologies |
 | :--- | :--- |
 | **Multi-Agent Orchestrator** | [LangGraph](https://github.com/langchain-ai/langgraph), [LangChain](https://www.langchain.com/), `MemorySaver` |
-| **Automation Sub-Agent Fleets** | **Browser Fleet (`B01–B08`)**, **Desktop Fleet (`D01–D08`)**, **Hybrid DAG Coordinator** |
+| **Automation Sub-Agent Fleets** | **Browser Fleet (`B01–B07`)**, **Desktop Fleet (`D01–D07`)**, **Coordination & Delivery (`C01–C03`)** |
 | **Web Crawling & Parsing** | [Crawlee](https://crawlee.dev/python/) (`BeautifulSoupCrawler`), [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/) |
-| **Local Model Fleet** | [Ollama](https://ollama.com/) (`Qwen3 0.6B Q8_0`, `Qwen3 1.7B Q8_0`, `Llama 3.2 1B`, `nomic-embed-text`) |
+| **Local Model Fleet** | [Ollama](https://ollama.com/) (`Qwen3 0.6B Q8_0`, `Qwen3 1.7B Q8_0`, `Llama 3.2 1B Instruct`, `nomic-embed-text`) |
 | **Vector Database** | [Pinecone Serverless](https://www.pinecone.io/) (AWS `us-east-1`, 768 dimensions, Cosine metric) |
 | **Desktop Automation** | [Pywinauto](https://pywinauto.readthedocs.io/) (Win32 & UI Automation backends) |
 | **Browser Automation** | [Playwright](https://playwright.dev/) (Chromium) |
@@ -322,7 +242,7 @@ npm install
 npm run dev
 ```
 
-### 5. Access O.P.S. 2.0
+### 5. Access O.P.S.
 - **Ambient AI OS Dashboard**: Open [http://localhost:3000](http://localhost:3000)
 - **Standalone Pop-up Cockpit HUD**: Open [http://localhost:3000/?mode=cockpit](http://localhost:3000/?mode=cockpit)
 
