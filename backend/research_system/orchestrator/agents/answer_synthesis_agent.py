@@ -149,7 +149,7 @@ def answer_synthesis_agent_node(state: CentralGraphState) -> Dict[str, Any]:
             "   - NEVER invent requests-per-second numbers or arbitrary benchmark figures.\n"
             "5. If a requested detail (e.g. exact release day) cannot be found in the retrieved evidence, explicitly state that it could not be verified from the sources rather than guessing.\n"
             "6. Use inline citations [S1], [S2] corresponding to the verified sources provided.\n"
-            "7. Maintain a calm, articulate, confident JARVIS-style technical persona."
+            "7. Maintain a calm, articulate, confident O.P.S. technical style."
         )
 
         user_prompt = (

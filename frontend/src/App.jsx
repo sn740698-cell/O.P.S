@@ -1263,7 +1263,7 @@ export default function App() {
                 {/* Local-First Tri-Model Architecture */}
                 <OpsTriModelStatus />
 
-                {/* Central JARVIS-Style Command & Voice Core */}
+                {/* Central O.P.S. Command & Voice Core */}
                 <OpsCommandCore
                   activeTaskPrompt={currentTaskPrompt}
                   isLoading={isLoading}

@@ -1,7 +1,7 @@
 """
 O.P.S. 2.0 — Answer Generation Agent
 Reasoning Agent 4: Synthesizes final evidence-grounded responses embodying
-the JARVIS-inspired persona and professional Markdown formatting.
+the O.P.S. persona and professional Markdown formatting.
 Includes continuous '📌 Discussion So Far' active conversation summary.
 """
 
@@ -26,7 +26,7 @@ def answer_generation_node(state: ResearchState) -> Dict[str, Any]:
     """
     Reasoning Agent 4: Answer Generation Agent
     Model: Qwen3 1.7B
-    Synthesizes the final evidence-based response with JARVIS persona,
+    Synthesizes the final evidence-based response with O.P.S. structured delivery,
     professional Markdown (headings, tables, lists, emojis, code blocks),
     and appends the continuous '📌 Discussion So Far' conversation summary.
     """
@@ -110,9 +110,9 @@ def answer_generation_node(state: ResearchState) -> Dict[str, Any]:
             "Do NOT speculate or fabricate unverified details. Disclose what could be verified and what remains unconfirmed.\n"
         )
 
-    # JARVIS-Inspired Personality System Prompt
+    # O.P.S. Personality System Prompt
     system_prompt = (
-        "You are O.P.S., a sophisticated personal AI assistant inspired by JARVIS from Iron Man.\n\n"
+        "You are O.P.S., a sophisticated personal AI assistant.\n\n"
         "PERSONALITY & TONE:\n"
         "- Intelligent, articulate, courteous, calm, and composed.\n"
         "- Confident without being arrogant; helpful, proactive, and technically astute.\n"
@@ -164,7 +164,7 @@ def answer_generation_node(state: ResearchState) -> Dict[str, Any]:
         f"{mode_instructions}\n"
         f"Active User Directive: {query}\n\n"
         f"Verified Evidence:\n{formatted_evidence}\n\n"
-        "Provide your professional, JARVIS-styled synthesis followed by '## 📌 Discussion So Far':"
+        "Provide your professional, structured synthesis followed by '## 📌 Discussion So Far':"
     )
 
     final_text = ""
@@ -187,8 +187,8 @@ def answer_generation_node(state: ResearchState) -> Dict[str, Any]:
             timeout=90.0
         )
     except Exception as e:
-        logger.warning(f"Ollama generation encountered error ({e}), synthesizing structured JARVIS fallback.")
-        # Fallback structured JARVIS synthesis
+        logger.warning(f"Ollama generation encountered error ({e}), synthesizing structured O.P.S. fallback.")
+        # Fallback structured O.P.S. synthesis
         final_text = (
             f"Certainly. Here is the synthesized briefing regarding **{query}**.\n\n"
             f"### 🔍 Key Findings & Intelligence\n\n"
@@ -228,7 +228,7 @@ def answer_generation_node(state: ResearchState) -> Dict[str, Any]:
         component_type="reasoning_agent",
         event_type="NODE_COMPLETED",
         execution_status="COMPLETED",
-        safe_task_summary=f"Synthesized evidence-based JARVIS response ({len(final_text)} chars) in {duration:.2f}s",
+        safe_task_summary=f"Synthesized evidence-based response ({len(final_text)} chars) in {duration:.2f}s",
         safe_output_summary=final_text[:180] + "...",
         tool_name="Qwen3 1.7B",
         timestamp=time.time()

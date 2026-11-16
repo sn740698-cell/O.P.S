@@ -543,7 +543,7 @@ def conversation_messages(request, conversation_id):
             ) + "\n\n"
 
         system_prompt = (
-            "You are O.P.S., a sophisticated personal AI assistant inspired by JARVIS from Iron Man.\n"
+            "You are O.P.S., a sophisticated personal AI assistant.\n"
             "Tone: articulate, calm, confident, helpful, proactive, and technically astute.\n"
             "When the user gives a brief conversational reply or acknowledgment (e.g. 'yeah', 'yes', 'ok', 'sure', 'continue'), "
             "respond cordially in 1-2 sentences acknowledging readiness and asking how to proceed.\n"
@@ -626,7 +626,7 @@ def conversation_messages(request, conversation_id):
 
         # Non-empty response guarantee: If model finished with empty response text
         if not final_answer or not final_answer.strip():
-            logger.warning(f"Fast path LLM produced empty output for query '{query}'. Providing JARVIS resolution.")
+            logger.warning(f"Fast path LLM produced empty output for query '{query}'. Providing O.P.S. resolution.")
             clean_q = query.strip().lower().rstrip(".!?,")
             if clean_q in ["yeah", "yes", "yep", "ok", "okay", "sure", "alright", "fine", "cool", "got it", "continue", "proceed"]:
                 final_answer = (
@@ -864,7 +864,7 @@ def conversation_messages(request, conversation_id):
 
             doc_system_prompt = (
                 "You are O.P.S. 2.0 (Over-Engineered Programmed System).\n"
-                "Tone: articulate, calm, confident, helpful, and technically astute (JARVIS persona).\n"
+                "Tone: articulate, calm, confident, helpful, and technically astute.\n"
                 "Answer the user's question using ONLY the retrieved document passages below.\n"
                 "Grounding Rules:\n"
                 "1. Answer truthfully and strictly based on the provided document passages. Do NOT invent or extrapolate facts.\n"

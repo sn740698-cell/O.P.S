@@ -174,7 +174,7 @@ At the core of O.P.S. 2.0 is the centralized, stateful **LangGraph multi-agent a
 │                                                                        │
 │ GROUP 04: COMPOSITE COORDINATION & DELIVERY                            │
 │   ├── [12] Composite Task Coordinator (Research + Automation Bridge)   │
-│   └── [13] Result Formatter / O.P.S. Persona (JARVIS Output Engine)    │
+│   └── [13] Result Formatter / O.P.S. Delivery Engine                   │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 

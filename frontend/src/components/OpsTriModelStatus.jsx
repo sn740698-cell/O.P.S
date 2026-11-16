@@ -28,8 +28,8 @@ export default function OpsTriModelStatus() {
       name: 'Llama 3.2 1B Instruct',
       role: 'Autonomous Tool Execution & Voice',
       badge: 'EXECUTION',
-      desc: 'Structured scraping, multi-page crawling, app control & Jarvis voice.',
-      agents: 'ScrapeGraphAI • Crawlee • Open Web • Apps • Desktop • Jarvis',
+      desc: 'Structured scraping, multi-page crawling, app control & autonomous voice.',
+      agents: 'ScrapeGraphAI • Crawlee • Open Web • Apps • Desktop • Voice Engine',
       icon: MessageSquare,
       color: 'border-cyan-500/80 bg-cyan-950/20 text-cyan-300'
     }

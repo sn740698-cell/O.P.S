@@ -146,7 +146,7 @@ export default function LoadingStatusIndicator({
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="font-bold text-[11px] uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
             <Bot className="w-3.5 h-3.5 text-red-500" />
-            <span>O.P.S. // JARVIS</span>
+            <span>O.P.S.</span>
           </span>
 
           <span

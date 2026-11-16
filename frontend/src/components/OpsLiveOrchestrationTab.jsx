@@ -362,15 +362,15 @@ const AGENT_NODES = [
     },
     {
       id: "result_formatter_agent",
-      name: "Result Formatter (Persona)",
+      name: "Result Formatter (Output Engine)",
       tag: "DELIVERY AGENT",
       model: "Qwen3 1.7B Q8_0",
       type: "reasoning_agent",
-      role: "Delivers the final output in the articulate JARVIS persona, compiles bibliographies, and appends telemetry.",
+      role: "Delivers the final output in articulate O.P.S. synthesis, compiles bibliographies, and appends telemetry.",
       tool: "Ollama Qwen3 1.7B Delivery Engine",
       parent: "Composite Task Coordinator / Synthesis Agent",
       child: "END",
-      matchKeys: ["result_formatter_agent", "result_formatter", "chat_manager", "persona"]
+      matchKeys: ["result_formatter_agent", "result_formatter", "chat_manager", "output_engine"]
     }
   ]
 ];

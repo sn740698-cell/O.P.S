@@ -1,9 +1,9 @@
 """
-Agent 13: Result Formatter / O.P.S. Persona Agent
+Agent 13: Result Formatter / O.P.S. Delivery Agent
 Group 4: Composite Coordination and Response Delivery
-Model: Qwen3 1.7B / JARVIS Persona Engine
+Model: Qwen3 1.7B / O.P.S. Response Engine
 Formats final response across all 4 groups: Answering, Automation, Composite, and Clarification.
-Presents verification diagnostics, source bibliographies, step summaries, and professional persona.
+Presents verification diagnostics, source bibliographies, step summaries, and clean structured delivery.
 """
 
 import time
@@ -17,14 +17,14 @@ logger = logging.getLogger("OPS.Agent.ResultFormatter")
 event_bus = EventBus()
 
 AGENT_ID = "result_formatter_agent"
-AGENT_NAME = "Result Formatter / Persona Agent"
+AGENT_NAME = "Result Formatter / Delivery Agent"
 GROUP_ID = "composite_coordination"
 COMPONENT_TYPE = "reasoning_agent"
 
 
 def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
     """
-    Agent 13 node: Synthesizes final response adhering strictly to JARVIS persona
+    Agent 13 node: Synthesizes final response adhering strictly to O.P.S. standards
     and delivers formatted output to the Pop-up Cockpit and SSE streams.
     """
     t0 = time.time()
@@ -34,7 +34,7 @@ def result_formatter_agent_node(state: CentralGraphState) -> Dict[str, Any]:
     req_id = state.get("request_id") or f"req_{task_id}"
     conv_id = state.get("conversation_id")
 
-    emit_agent_started(state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE, "Formatting final response in O.P.S. JARVIS persona...")
+    emit_agent_started(state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE, "Formatting final response in O.P.S. structure...")
 
     try:
         final_text = ""

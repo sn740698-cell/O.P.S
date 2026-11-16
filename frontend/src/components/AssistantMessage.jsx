@@ -35,13 +35,13 @@ export default function AssistantMessage({
 
   return (
     <div className="space-y-1.5 pb-3 border-b border-zinc-900 last:border-b-0 font-mono">
-      {/* JARVIS Assistant Header */}
+      {/* Assistant Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></div>
           <span className="font-bold text-[11px] uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
             <Bot className="w-3.5 h-3.5 text-sky-400" />
-            <span>O.P.S. // JARVIS</span>
+            <span>O.P.S.</span>
           </span>
           {displayCategory && (
             <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${

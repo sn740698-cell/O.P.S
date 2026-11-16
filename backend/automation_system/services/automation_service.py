@@ -380,7 +380,7 @@ class AutomationService:
         task.error_details = error_msg if not overall_success else ""
         task.save()
 
-        # Generate JARVIS formatted summary of execution
+        # Generate formatted summary of execution
         summary_text = cls._generate_completion_summary(task, steps, overall_success, error_msg)
 
         event_bus.publish(
@@ -512,7 +512,7 @@ class AutomationService:
     @classmethod
     def _generate_completion_summary(cls, task: AutomationTask, steps: List[Dict[str, Any]], success: bool, error: str) -> str:
         """
-        Generates clean JARVIS Markdown formatted response summarizing the automation execution.
+        Generates clean Markdown formatted response summarizing the automation execution.
         """
         status_icon = "✅" if success else "⚠️"
         mode_title = f"{task.automation_mode} AUTOMATION"

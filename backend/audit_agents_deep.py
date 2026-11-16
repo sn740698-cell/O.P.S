@@ -161,7 +161,7 @@ def run_agent_audit():
     # 13. Result Formatter / Persona Agent
     st13 = make_base_state(query="What is 2 + 2?", task_type="ANSWER", answering_mode="LLM")
     st13["local_reasoning_output"] = "2 + 2 equals 4."
-    ok13, out13 = audit_agent(13, "Result Formatter / Persona Agent", result_formatter_agent_node, st13)
+    ok13, out13 = audit_agent(13, "Result Formatter / Delivery Agent", result_formatter_agent_node, st13)
     results["Agent_13"] = ok13
 
     print("\n" + "=" * 70)
