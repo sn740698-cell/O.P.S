@@ -24,6 +24,16 @@ logger = logging.getLogger("OPS.SafetyPolicy")
 CONSEQUENTIAL_ACTIONS = {
     "launch_app": "Launch desktop application or program",
     "open_app": "Launch desktop application or program",
+    "open_folder": "Open directory in File Explorer",
+    "open_browser": "Launch web browser to external site",
+    "navigate": "Navigate browser to external target URL",
+    "open_url": "Navigate browser to external target URL",
+    "youtube_search_and_play": "Launch YouTube player and execute video playback",
+    "youtube_search": "Launch YouTube search on external portal",
+    "instagram_open": "Launch Instagram on external web portal",
+    "instagram_reels": "Launch Instagram Reels on external web portal",
+    "spotify_play": "Launch Spotify player and start music playback",
+    "google_search": "Launch Google Search on external web portal",
     "delete_file": "Permanent deletion of file(s)",
     "delete_folder": "Permanent deletion of folder(s)",
     "install_software": "Installation of system software or packages",
@@ -59,21 +69,27 @@ class SafetyPolicy:
         Returns: (risk_level, requires_approval, reason)
         """
         action_clean = action.lower().strip()
+        q_clean = query.lower().strip()
         
         # 1. Direct match on consequential action verbs
         if action_clean in CONSEQUENTIAL_ACTIONS:
             desc = CONSEQUENTIAL_ACTIONS[action_clean]
-            target = params.get("target") or params.get("path") or params.get("file_path") or "unspecified target"
-            return "HIGH", True, f"Operation requires explicit authorization: {desc} ({target})."
+            target = params.get("target") or params.get("target_url") or params.get("url") or params.get("app_name") or params.get("name") or params.get("path") or params.get("file_path") or params.get("query") or "external target"
+            return "HIGH", True, f"Operator authorization required before launching target: {desc} ({target})."
 
-        # 2. Check parameters for dangerous operations
+        # 2. Check query context for target launching directives
+        is_launch_directive = any(q_clean.startswith(w) for w in ["open ", "launch ", "start ", "run ", "play "])
+        if is_launch_directive and any(w in q_clean for w in ["youtube", "google", "instagram", "spotify", "notepad", "calculator", "explorer", "vs code", "vscode", "browser", "chrome"]):
+            return "HIGH", True, f"Operator authorization required before launching target: '{query.strip()}'."
+
+        # 3. Check parameters for dangerous operations
         if action_clean == "create_folder" and params.get("overwrite"):
             return "HIGH", True, "Overwriting existing folder requires explicit approval."
 
         if action_clean == "click" and any(k in str(params).lower() for k in ["submit", "purchase", "pay", "delete", "confirm order"]):
             return "HIGH", True, "Submitting external transaction or destructive web action requires approval."
 
-        # 3. Check query context for destructive keywords
+        # 4. Check query context for destructive keywords
         for pattern in CONSEQUENTIAL_KEYWORDS:
             if re.search(pattern, query, re.IGNORECASE):
                 return "HIGH", True, "Directive contains destructive or consequential operations requiring authorization."

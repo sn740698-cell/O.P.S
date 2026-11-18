@@ -36,15 +36,16 @@ if errorlevel 1 (
 :: ----------------------------------------------------------------------
 :: 1. Check Ollama Local Model Server (Port 11434)
 :: ----------------------------------------------------------------------
-echo [1/4] Verifying Ollama Engine...
+SET "OLLAMA_MODELS=D:\Dependencies\Ollama_Models"
+echo [1/4] Verifying Ollama Engine (D:\Dependencies\Ollama_Models)...
 curl.exe -s http://127.0.0.1:11434/ >nul 2>&1
 if not errorlevel 1 (
     echo       Ollama server is active on http://127.0.0.1:11434
 ) else (
-    echo       Ollama not detected on port 11434. Attempting to start Ollama...
+    echo       Ollama not detected on port 11434. Attempting to start Ollama from D:\Dependencies...
     where ollama >nul 2>&1
     if not errorlevel 1 (
-        start "Ollama Engine" /min ollama serve
+        start "Ollama Engine" /min cmd /c "set OLLAMA_MODELS=D:\Dependencies\Ollama_Models && ollama serve"
         ping 127.0.0.1 -n 4 >nul
     ) else (
         echo       [WARN] Ollama command not found on PATH. Ensure Ollama is running.

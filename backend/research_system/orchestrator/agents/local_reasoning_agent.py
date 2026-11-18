@@ -38,7 +38,8 @@ def local_reasoning_agent_node(state: CentralGraphState) -> Dict[str, Any]:
         from research_system.services.temporary_rag_service import get_temporary_rag_service
         rag_service = get_temporary_rag_service()
 
-        if is_doc_mode and conv_id and rag_service.has_active_documents(conv_id):
+        has_docs = (conv_id and rag_service.has_active_documents(conv_id)) or bool(rag_service._ephemeral_chunks)
+        if is_doc_mode and has_docs:
             # 1. Retrieve relevant passages from temporary Pinecone namespace
             emit_agent_started(state, AGENT_ID, AGENT_NAME, GROUP_ID, COMPONENT_TYPE, "Retrieving passages from temporary document vector store...")
             passages = rag_service.query_context(conversation_id=conv_id, query=query, top_k=4)
@@ -99,6 +100,8 @@ def local_reasoning_agent_node(state: CentralGraphState) -> Dict[str, Any]:
 
             return {
                 "current_agent": AGENT_ID,
+                "answering_mode": "DOCUMENT",
+                "response_mode": "DOCUMENT",
                 "local_reasoning_output": response_text,
                 "source_references": sources,
                 "retrieved_document_chunks": passages

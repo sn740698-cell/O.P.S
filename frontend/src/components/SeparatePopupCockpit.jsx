@@ -816,7 +816,7 @@ export default function SeparatePopupCockpit() {
       const resp = await fetch(`/api/chat/conversations/${conversationId}/messages/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: prompt, input_type: 'text', request_id: requestId }),
+        body: JSON.stringify({ content: prompt, input_type: 'text', request_id: requestId, active_documents: attachedDocs }),
         signal: abortCtrl.signal
       });
 
@@ -1087,38 +1087,7 @@ export default function SeparatePopupCockpit() {
     dismissedApprovalsRef.current.add(apprId);
 
     try {
-      if (pendingApproval?.action_type?.startsWith('AUTOMATION')) {
-        setCurrentThought('APPROVED — EXECUTION STARTING');
-        const resp = await fetch(`/api/chat/approvals/${apprId}/respond/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ decision: 'approve', action: 'accept', conversation_id: conversationId })
-        });
-        if (!resp.ok) {
-          const errData = await resp.json().catch(() => ({}));
-          throw new Error(errData.error || `Server error (${resp.status})`);
-        }
-        const data = await resp.json();
-        setIsHitlModalOpen(false);
-        setPendingApproval(null);
-        setCurrentThought('COMPLETED');
-
-        const botAnswer = data.final_answer || data.content || data.response || "Automation execution completed.";
-        const finalCategory = data.response_mode || data.mode || activeMode || 'AUTOMATION';
-        const finalEngine = data.active_engine || 'AUTOMATION';
-
-        setActiveEngine(finalEngine);
-        setActiveMode(finalCategory);
-
-        updateOrAppendAssistantTurn({
-          text: botAnswer,
-          content: botAnswer,
-          category: finalCategory,
-          plan: data.plan || data.step_results,
-          summary: data.conversation_summary
-        });
-        retroSoundEngine.playBeep(780, 0.12);
-      } else {
+      if (pendingApproval?.action_type === 'PERMANENT_CONVERSATION_DELETION' || pendingApproval?.action_type === 'CONVERSATION_REFRESH') {
         const resp = await fetch(
           `/api/chat/conversations/${conversationId}/refresh-approval/${apprId}/accept/`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' } }
@@ -1149,6 +1118,37 @@ export default function SeparatePopupCockpit() {
         setCurrentThought('Fresh conversation initialized. Temporary document session cleared.');
         setIsHitlModalOpen(false);
         setPendingApproval(null);
+        retroSoundEngine.playMemoryErase();
+      } else {
+        setCurrentThought('APPROVED — EXECUTION STARTING');
+        const resp = await fetch(`/api/chat/approvals/${apprId}/respond/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'approve', action: 'accept', conversation_id: conversationId })
+        });
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || `Server error (${resp.status})`);
+        }
+        const data = await resp.json();
+        setIsHitlModalOpen(false);
+        setPendingApproval(null);
+        setCurrentThought('COMPLETED');
+
+        const botAnswer = data.final_answer || data.content || data.response || "Automation execution completed.";
+        const finalCategory = data.response_mode || data.mode || activeMode || 'AUTOMATION';
+        const finalEngine = data.active_engine || 'AUTOMATION';
+
+        setActiveEngine(finalEngine);
+        setActiveMode(finalCategory);
+
+        updateOrAppendAssistantTurn({
+          text: botAnswer,
+          content: botAnswer,
+          category: finalCategory,
+          plan: data.plan || data.step_results,
+          summary: data.conversation_summary
+        });
         retroSoundEngine.playBeep(780, 0.12);
       }
     } catch (err) {

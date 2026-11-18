@@ -11,6 +11,9 @@ import logging
 import httpx
 from typing import Dict, Any, Optional, Callable
 
+if os.path.exists(r"D:\Dependencies\Ollama_Models"):
+    os.environ.setdefault("OLLAMA_MODELS", r"D:\Dependencies\Ollama_Models")
+
 logger = logging.getLogger("OPS.OllamaClient")
 
 # Canonical model identifiers matching installed Ollama models

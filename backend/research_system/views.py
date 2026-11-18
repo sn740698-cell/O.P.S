@@ -389,6 +389,12 @@ def conversation_messages(request, conversation_id):
                 "approval_id": orch_res.get("approval_id"),
                 "mode": resp_mode,
                 "response_mode": resp_mode,
+                "action_type": "AUTOMATION_ACTION",
+                "target": orch_res.get("target") or (orch_res.get("plan", [{}])[0].get("title") if orch_res.get("plan") else "Target Application"),
+                "target_application": orch_res.get("target_application"),
+                "target_url": orch_res.get("target_url"),
+                "execution_plan": orch_res.get("plan") or orch_res.get("execution_plan"),
+                "approval_reason": orch_res.get("approval_reason") or "Human authorization required before launching target.",
                 "stages": [f"{resp_mode} Workflow", "Human Authorization Gate"]
             }, status=200)
 

@@ -81,6 +81,19 @@ def global_intent_router_node(state: CentralGraphState) -> Dict[str, Any]:
             has_active_docs = True
             active_docs = state.get("active_documents")
 
+        if not has_active_docs:
+            try:
+                from research_system.services.temporary_rag_service import get_temporary_rag_service
+                rag_service = get_temporary_rag_service()
+                with rag_service._storage_lock:
+                    for c_id, docs in rag_service._active_documents.items():
+                        if docs:
+                            has_active_docs = True
+                            active_docs = list(docs.values())
+                            break
+            except Exception:
+                pass
+
         is_explicit_web = any(w in q_lower for w in ["search the web", "search online", "google it", "look up on google", "web research", "search web"])
         is_greeting = q_lower in ["hi", "hello", "hey", "who are you", "what can you do", "good morning", "good evening"]
 

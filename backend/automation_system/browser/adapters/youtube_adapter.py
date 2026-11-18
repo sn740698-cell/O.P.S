@@ -25,7 +25,80 @@ class YouTubeAdapter:
         """Navigates to YouTube homepage."""
         res = NavigationEngine.navigate(page, cls.BASE_URL)
         time.sleep(1.0)
+        NavigationEngine._dismiss_overlays(page)
         return res
+
+    @classmethod
+    def paste_and_search(cls, page: Page, query: str) -> Dict[str, Any]:
+        """
+        Actively focuses the YouTube search bar, fills/pastes the user query,
+        submits with Enter, and ensures search results are loaded.
+        Guarantees fallback navigation to search results URL if input is obstructed.
+        """
+        import urllib.parse
+        clean_q = query.strip()
+        encoded_q = urllib.parse.quote_plus(clean_q)
+        cur_url = page.url.lower()
+
+        # Step 1: Ensure we are on YouTube
+        if "youtube.com" not in cur_url:
+            cls.open_home(page)
+
+        # Step 2: Dismiss overlays or consent banners
+        NavigationEngine._dismiss_overlays(page)
+
+        # Step 3: Physically locate search box, click, paste query, and press Enter
+        yt_search_selectors = [
+            "input#search",
+            "input[name='search_query']",
+            "ytd-searchbox input",
+            "input.ytd-searchbox",
+            "#search-input input",
+            "div#search-input input",
+            "input[aria-label='Search']"
+        ]
+
+        pasted = False
+        for sel in yt_search_selectors:
+            try:
+                loc = page.locator(sel).first
+                if loc.is_visible(timeout=1500):
+                    loc.click(timeout=2000, force=True)
+                    time.sleep(0.2)
+                    loc.fill(clean_q)
+                    time.sleep(0.2)
+                    loc.press("Enter")
+                    pasted = True
+                    logger.info(f"Pasted and submitted YouTube search query '{clean_q}' via '{sel}'")
+                    break
+            except Exception:
+                continue
+
+        time.sleep(1.5)
+
+        # Step 4: Foolproof Fallback - if search didn't trigger, navigate directly to search URL
+        if not pasted or "search_query" not in page.url.lower():
+            search_url = f"https://www.youtube.com/results?search_query={encoded_q}"
+            NavigationEngine.navigate(page, search_url)
+            time.sleep(1.2)
+            # Ensure query text is visible in search input on results page
+            try:
+                for sel in yt_search_selectors:
+                    loc = page.locator(sel).first
+                    if loc.is_visible(timeout=500):
+                        loc.fill(clean_q)
+                        break
+            except Exception:
+                pass
+
+        verif = BrowserVerificationEngine.verify_page_state(page, url_substring="results?search_query=")
+        return {
+            "success": True,
+            "action": "youtube_paste_and_search",
+            "query": clean_q,
+            "url": page.url,
+            "verification": verif
+        }
 
     @classmethod
     def search_song_or_video(cls, page: Page, query: str) -> Dict[str, Any]:
@@ -33,28 +106,7 @@ class YouTubeAdapter:
         Navigates to YouTube if not already there, inputs search query, and submits.
         Leaves search results displayed on screen without auto-playing.
         """
-        import urllib.parse
-        cur_url = page.url.lower()
-        if "youtube.com" not in cur_url:
-            cls.open_home(page)
-
-        search_res = SearchEngine.execute_search(
-            page,
-            query=query,
-            custom_selector="input#search, input[name='search_query']"
-        )
-        if not search_res.get("success", False) or "search_query" not in page.url.lower():
-            encoded_q = urllib.parse.quote_plus(query)
-            search_url = f"https://www.youtube.com/results?search_query={encoded_q}"
-            search_res = NavigationEngine.navigate(page, search_url)
-            search_res["action"] = "search"
-            search_res["query"] = query
-
-        time.sleep(1.5)
-        verif = BrowserVerificationEngine.verify_page_state(page, url_substring="results?search_query=")
-        search_res["verification"] = verif
-        search_res["success"] = True
-        return search_res
+        return cls.paste_and_search(page, query)
 
     @classmethod
     def click_first_video(cls, page: Page) -> Dict[str, Any]:
@@ -166,19 +218,17 @@ class YouTubeAdapter:
     @classmethod
     def execute_full_search_and_play(cls, page: Page, query: str) -> Dict[str, Any]:
         """
-        Executes sequential flow: Open YouTube -> Search -> Click first result -> Verify playback.
+        Executes sequential flow:
+        1. Open YouTube & paste query into search box
+        2. Submit search and wait for results
+        3. Click top video result and trigger playback
+        4. Empirically verify video playback state
         """
-        import urllib.parse
         t0 = time.time()
         logger.info(f"Starting YouTube workflow for: '{query}'")
 
-        # Step 1: Clean query and navigate directly to search results
-        clean_q = query.strip()
-        encoded_q = urllib.parse.quote_plus(clean_q)
-        search_url = f"https://www.youtube.com/results?search_query={encoded_q}"
-        nav_res = NavigationEngine.navigate(page, search_url)
-
-        time.sleep(1.2)
+        # Step 1: Paste query into YouTube search box & submit
+        search_res = cls.paste_and_search(page, query)
 
         # Step 2: Click first result or directly navigate to its watch URL
         click_res = cls.click_first_video(page)

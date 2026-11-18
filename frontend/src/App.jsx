@@ -1045,20 +1045,7 @@ export default function App() {
     dismissedApprovalsRef.current.add(apprId);
 
     try {
-      if (pendingApproval?.action_type?.startsWith('AUTOMATION')) {
-        const resp = await fetch(`/api/chat/approvals/${apprId}/respond/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ decision: 'approve', action: 'accept', conversation_id: conversationId })
-        });
-        if (!resp.ok) {
-          const errData = await resp.json().catch(() => ({}));
-          throw new Error(errData.error || `Server error (${resp.status})`);
-        }
-        setIsHitlModalOpen(false);
-        setPendingApproval(null);
-        setCurrentThought('Automation action authorized. Resuming execution...');
-      } else {
+      if (pendingApproval?.action_type === 'PERMANENT_CONVERSATION_DELETION' || pendingApproval?.action_type === 'CONVERSATION_REFRESH') {
         const resp = await fetch(`/api/chat/conversations/${conversationId}/refresh-approval/${apprId}/accept/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
@@ -1090,6 +1077,19 @@ export default function App() {
         retroSoundEngine.playMemoryErase();
         setIsHitlModalOpen(false);
         setPendingApproval(null);
+      } else {
+        const resp = await fetch(`/api/chat/approvals/${apprId}/respond/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'approve', action: 'accept', conversation_id: conversationId })
+        });
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || `Server error (${resp.status})`);
+        }
+        setIsHitlModalOpen(false);
+        setPendingApproval(null);
+        setCurrentThought('Automation action authorized. Resuming execution...');
       }
       loadAuditLogs();
     } catch (err) {

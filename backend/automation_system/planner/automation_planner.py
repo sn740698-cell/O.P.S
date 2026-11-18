@@ -346,7 +346,7 @@ class AutomationPlanner:
         # and any desktop app (Notepad, VS Code, Terminal, etc.)
         # =============================================================
         m_open_text = re.search(
-            r'^(?:please\s+)?(?:can\s+you\s+)?(?:just\s+)?open\s+(?:the\s+)?(?P<app>[a-zA-Z0-9_\-\s\.]+?)\s+(?:from\s+(?:the\s+)?desktop\s+)?(?:and\s+)?(?:text|type|write|prompt|send|enter|search\s+for|search\s+about|search)(?::\s*|\s+)(?:this\s*:\s*|this\s+|that\s*:\s*|that\s+|in\s+it\s*:\s*|in\s+it\s+|about\s+|:\s*)?(?P<text>.+)$',
+            r'^(?:please\s+)?(?:can\s+you\s+)?(?:just\s+)?open\s+(?:the\s+)?(?P<app>[a-zA-Z0-9_\-\s\.]+?)\s+(?:from\s+(?:the\s+)?desktop\s+)?(?:and\s+)?(?:text|type|write|prompt|send|enter|paste|search\s+for|search\s+about|search)(?::\s*|\s+)(?:this\s*:\s*|this\s+|that\s*:\s*|that\s+|in\s+it\s*:\s*|in\s+it\s+|in\s+(?:the\s+)?search(?:\s+bar|\s+box)?(?:\s+of\s+[a-zA-Z0-9_\-]+)?(?:\s*:\s*|\s+)|about\s+|:\s*)?(?P<text>.+)$',
             query.strip(),
             re.IGNORECASE
         )
@@ -371,7 +371,7 @@ class AutomationPlanner:
                         "action": "launch_app",
                         "params": {"app_name": target_raw, "path": exe_path},
                         "depends_on": [],
-                        "risk_level": RISK_LOW,
+                        "risk_level": RISK_HIGH,
                         "status": "PENDING",
                         "verification": {"type": "window_exists", "target": app_title}
                     },
@@ -393,8 +393,8 @@ class AutomationPlanner:
                     "mode_reason": f"Open {app_title} and type text.",
                     "steps": steps,
                     "target_apps": [app_title],
-                    "risk_level": RISK_LOW,
-                    "requires_approval": False
+                    "risk_level": RISK_HIGH,
+                    "requires_approval": True
                 }
 
             # Otherwise, target is a Web Service / Web Application (Universal Resolver)
@@ -411,12 +411,12 @@ class AutomationPlanner:
                         "action": "google_search",
                         "params": {"query": text_to_send},
                         "depends_on": [],
-                        "risk_level": RISK_LOW,
+                        "risk_level": RISK_HIGH,
                         "status": "PENDING"
                     }],
                     "target_apps": ["Browser (Google)"],
-                    "risk_level": RISK_LOW,
-                    "requires_approval": False
+                    "risk_level": RISK_HIGH,
+                    "requires_approval": True
                 }
             elif target_raw in ["youtube"]:
                 return {
@@ -425,17 +425,18 @@ class AutomationPlanner:
                     "mode_reason": f"Search YouTube for '{text_to_send}' and play result.",
                     "steps": [{
                         "step_id": 1,
-                        "title": f"Search YouTube for '{text_to_send}' and play",
+                        "title": f"Search YouTube for '{text_to_send}' and play the first result",
                         "executor": "browser",
                         "action": "youtube_search_and_play",
                         "params": {"query": text_to_send},
                         "depends_on": [],
-                        "risk_level": RISK_LOW,
-                        "status": "PENDING"
+                        "risk_level": RISK_HIGH,
+                        "status": "PENDING",
+                        "verification": {"type": "youtube_video_active"}
                     }],
-                    "target_apps": ["Browser (YouTube)"],
-                    "risk_level": RISK_LOW,
-                    "requires_approval": False
+                    "target_apps": [f"Browser (YouTube: {text_to_send})"],
+                    "risk_level": RISK_HIGH,
+                    "requires_approval": True
                 }
             else:
                 return {
@@ -1947,35 +1948,44 @@ class AutomationPlanner:
         if "youtube" in q_lower or (
             any(w in q_lower for w in ["song", "music video", "play "]) and not any(w in q_lower for w in ["explain", "what is", "how to"]) and "spotify" not in q_lower
         ):
-            song_name = "Believer by Imagine Dragons"
-            m = re.search(r'search\s+(?:for\s+)?(.*?)(?:\s+and\s+open|\s+and\s+play|\s+on\s+youtube|$)', query, re.IGNORECASE)
-            if m and m.group(1).strip():
-                clean_term = m.group(1).strip(" \"'.,;:!?")
-                clean_term = re.sub(r'(?:\s+and)?\s+(?:click|select|open|play)\s+(?:on\s+)?(?:that|the|this|a)?\s*(?:video|result|one)?$', '', clean_term, flags=re.IGNORECASE).strip(" \"'.,;:!?")
-                if clean_term and clean_term.lower() not in ["a song", "another song", "music", "it"]:
-                    song_name = clean_term
-            elif "play" in q_lower:
-                m_play = re.search(r'play\s+(.*?)(?:\s+on\s+youtube|$)', query, re.IGNORECASE)
-                if m_play and m_play.group(1).strip():
-                    clean_term = m_play.group(1).strip(" \"'.,;:!?")
-                    clean_term = re.sub(r'(?:\s+and)?\s+(?:click|select|open|play)\s+(?:on\s+)?(?:that|the|this|a)?\s*(?:video|result|one)?$', '', clean_term, flags=re.IGNORECASE).strip(" \"'.,;:!?")
-                    if clean_term:
-                        song_name = clean_term
+            # Universal robust extraction for ANY query on YouTube
+            q_clean = query.strip(" .!?,;:\"'")
+            extracted_term = ""
 
-            has_chain_click = any(w in q_lower for w in ["open the first", "click the first", "play the first", "first result", "click on that", "click on the", "click video", "click the video", "and click", "click that video", "click it", "open it", "and open", "and click it", "and play it"])
-            wants_play = has_chain_click or q_lower.startswith("play ") or "play the song" in q_lower or "and play" in q_lower or ("play " in q_lower and "search" not in q_lower) or any(w in q_lower for w in ["open on youtube", "play on youtube", "click it", "open it", "play it"])
-            has_search_directive = any(w in q_lower for w in ["search for", "search", "find"]) or "search" in q_lower
+            # Check for pattern: 'play/search/find/watch/paste X on youtube'
+            m_on = re.search(r'(?:search\s+(?:for\s+)?|play\s+|watch\s+|find\s+|listen\s+to\s+|paste\s+)(.*?)\s+on\s+youtube', q_clean, re.IGNORECASE)
+            if m_on and m_on.group(1).strip():
+                extracted_term = m_on.group(1).strip()
+            else:
+                pat = r'^(?:please\s+)?(?:can\s+you\s+)?(?:open\s+youtube\s+(?:and\s+)?|on\s+youtube\s+|youtube\s+)?(?:search\s+(?:for\s+)?|play\s+|tell\s+(?:me\s+)?(?:about\s+)?|show\s+(?:me\s+)?|find\s+|watch\s+|listen\s+to\s+|look\s+up\s+|paste\s+(?:in\s+(?:the\s+)?search\s*(?:bar|box)?\s*(?:of\s+youtube\s*)?(?::\s*)?)?|type\s+)?(.*?)(?:\s+(?:on\s+youtube))?$'
+                m = re.match(pat, q_clean, re.IGNORECASE)
+                extracted_term = m.group(1).strip() if m else q_clean
 
-            if wants_play:
+            # Clean trailing playback/click instructions from extracted term
+            extracted_term = re.sub(
+                r'(?:\s+and)?\s+(?:click\s+to\s+play|click\s+it|play\s+it|open\s+it|and\s+play|and\s+click|to\s+play|and\s+select\s+the\s+first\s+result|and\s+open\s+the\s+first|and\s+play\s+the\s+first\s+result|click\s+the\s+video|click\s+on\s+that).*$',
+                '',
+                extracted_term,
+                flags=re.IGNORECASE
+            ).strip(" .!?,;:\"'")
+
+            # Clean any remaining redundant youtube words
+            extracted_term = re.sub(r'\b(?:on\s+youtube|open\s+youtube|youtube)\b', '', extracted_term, flags=re.IGNORECASE).strip(" .!?,;:\"'")
+
+            if extracted_term.lower() in ["search", "search for", "find", "open", "play", "watch", "none", ""]:
+                extracted_term = ""
+
+            # If user provided a query term, search and click to play!
+            if extracted_term:
                 steps = [
                     {
                         "step_id": 1,
-                        "title": f"Search YouTube for '{song_name}' and play the first result",
+                        "title": f"Search YouTube for '{extracted_term}' and play the first result",
                         "executor": "browser",
                         "action": "youtube_search_and_play",
-                        "params": {"query": song_name},
+                        "params": {"query": extracted_term},
                         "depends_on": [],
-                        "risk_level": RISK_LOW,
+                        "risk_level": RISK_HIGH,
                         "status": "PENDING",
                         "verification": {"type": "youtube_video_active"}
                     }
@@ -1983,36 +1993,14 @@ class AutomationPlanner:
                 return {
                     "status": "READY",
                     "automation_mode": MODE_BROWSER,
-                    "mode_reason": f"Deterministic YouTube search and playback workflow for '{song_name}'.",
+                    "mode_reason": f"Search YouTube for '{extracted_term}' and play the first result.",
                     "steps": steps,
-                    "target_apps": ["Playwright Browser (YouTube)"],
-                    "risk_level": RISK_LOW,
-                    "requires_approval": False
-                }
-            elif has_search_directive:
-                steps = [
-                    {
-                        "step_id": 1,
-                        "title": f"Open YouTube and search for '{song_name}'",
-                        "executor": "browser",
-                        "action": "youtube_search",
-                        "params": {"query": song_name},
-                        "depends_on": [],
-                        "risk_level": RISK_LOW,
-                        "status": "PENDING",
-                        "verification": {"type": "browser_page_state", "url_substring": "results?search_query="}
-                    }
-                ]
-                return {
-                    "status": "READY",
-                    "automation_mode": MODE_BROWSER,
-                    "mode_reason": f"Deterministic YouTube search results workflow for '{song_name}'.",
-                    "steps": steps,
-                    "target_apps": ["Playwright Browser (YouTube)"],
-                    "risk_level": RISK_LOW,
-                    "requires_approval": False
+                    "target_apps": [f"Browser (YouTube: {extracted_term})"],
+                    "risk_level": RISK_HIGH,
+                    "requires_approval": True
                 }
 
+            # Plain 'Open YouTube' homepage
             target_url = "https://www.youtube.com"
             steps = [
                 {
@@ -2022,7 +2010,7 @@ class AutomationPlanner:
                     "action": "navigate",
                     "params": {"url": target_url},
                     "depends_on": [],
-                    "risk_level": RISK_LOW,
+                    "risk_level": RISK_HIGH,
                     "status": "PENDING",
                     "verification": {"type": "page_title_loaded"}
                 }
@@ -2030,11 +2018,11 @@ class AutomationPlanner:
             return {
                 "status": "READY",
                 "automation_mode": MODE_BROWSER,
-                "mode_reason": "Deterministic browser navigation workflow for YouTube.",
+                "mode_reason": "Navigate browser to YouTube homepage.",
                 "steps": steps,
-                "target_apps": ["Playwright Browser"],
-                "risk_level": RISK_LOW,
-                "requires_approval": False
+                "target_apps": ["Browser (YouTube)"],
+                "risk_level": RISK_HIGH,
+                "requires_approval": True
             }
 
         # 9c. Spotify Automation (Browser & Desktop)
